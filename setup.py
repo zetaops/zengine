@@ -9,7 +9,7 @@ setup(
     packages=find_packages(exclude=['tests', 'tests.*']),
     author='Evren Esat Ozkan',
     author_email='evrenesat@zetaops.io',
-    description='Minimal BPMN Workflow engine implementation using SpiffWorkflow',
+    description='A minimal BPMN Workflow Engine implementation using SpiffWorkflow',
     requires=['SpiffWorkflow'],
 
 )
