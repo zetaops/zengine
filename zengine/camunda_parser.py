@@ -1,19 +1,28 @@
+# -*-  coding: utf-8 -*-
+"""
+This BPMN parser module takes the following extension elements from Camunda's output xml
+ and makes them available in the spec definition of the task.
+"""
+
+# Copyright (C) 2015 ZetaOps Inc.
+#
+# This file is licensed under the GNU General Public License v3
+# (GPLv3).  See LICENSE.txt for details.
+__author__ = "Evren Esat Ozkan"
+
+
 import logging
 from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
 from SpiffWorkflow.bpmn.parser.ProcessParser import ProcessParser
 from utils import DotDict
 
 LOG = logging.getLogger(__name__)
-__author__ = 'Evren Esat Ozkan'
-
-
 
 
 class CamundaBMPNParser(BpmnParser):
     def __init__(self):
         super(CamundaBMPNParser, self).__init__()
         self.PROCESS_PARSER_CLASS = CamundaProcessParser
-
 
 
 # noinspection PyBroadException
@@ -39,7 +48,7 @@ class CamundaProcessParser(ProcessParser):
         return spec
 
     # def _attach_properties(self, spec, node):
-    #     """
+    # """
     #     attachs extension properties to the spec.ext object
     #     :param spec: task spec
     #     :param node: xml task node
