@@ -23,19 +23,13 @@ from utils import DotDict
 
 class ZEngine(object):
     """
-    takes wf
+
     """
+    WORKFLOW_DIRECTORY = ''
+    ACTIVITY_MODULES_PATH = ''
 
-    def __init__(self, **kwargs):
+    def __init__(self):
 
-        """
-        conf dictionary should include:
-        self.conf.WORKFLOW_DIRECTORY
-        self.conf.ACTIVITY_MODULES_PATH (python import path)
-        :param kwargs:
-        :return:
-        """
-        self.conf = DotDict(kwargs)
         self.current = DotDict()
         self.modules = {}
         self.workflow = BpmnWorkflow
@@ -62,7 +56,7 @@ class ZEngine(object):
         :return: workflow spec package
         """
         return open(os.path.join("{path}/{name}.zip".format(**{
-            'path': self.conf.WORKFLOW_DIRECTORY,
+            'path': self.WORKFLOW_DIRECTORY,
             'name': self.current.workflow_name})))
 
     def serialize_workflow(self):
@@ -109,19 +103,19 @@ class ZEngine(object):
             for task in ready_tasks:
                 self.set_current(task=task)
                 print("TASK >> %s" % self.current.name, self.current.task.data)
-                self.process_callbacks()
+                self.process_activities()
                 self.complete_current_task()
             self.save_workflow()
 
     def run_module_method(self, module_method):
         if module_method not in self.modules:
             mod_parts = module_method.split('.')
-            module = "%s.%s" % (self.conf.ACTIVITY_MODULES_PATH, mod_parts[:-1])
+            module = "%s.%s" % (self.ACTIVITY_MODULES_PATH, mod_parts[:-1])
             method = mod_parts[-1]
-            self.modules[module_method] = import_module(module)
+            self.modules[module_method] = getattr(import_module(module), method)
         self.modules[module_method](self.current)
 
-    def process_callbacks(self):
+    def process_activities(self):
         if 'activities' in self.current.spec.data:
             for cb in self.current.spec.data.callbacks:
                 self.run_module_method(cb)
