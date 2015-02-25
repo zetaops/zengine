@@ -28,7 +28,7 @@ ZEngine is licensed under the `GPL v3.0`_
 Issues
 ======
 
-Please report any bugs or requests that you have using the GitHub issue tracker!
+Please report any bugs or requests that you have using the GitHub issue tracker.
 
 Development
 ===========
@@ -38,4 +38,5 @@ Authors
 =======
 
 * Evren Esat Özkan
-
+* Ali Rıza Keleş
+* Gökhan Boranalp

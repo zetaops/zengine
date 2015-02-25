@@ -1,0 +1,44 @@
+# -*-  coding: utf-8 -*-
+"""
+test wf engine
+ """
+# -
+# Copyright (C) 2015 ZetaOps Inc.
+#
+# This file is licensed under the GNU General Public License v3
+# (GPLv3).  See LICENSE.txt for details.
+__author__ = "Evren Esat Ozkan"
+import os.path
+from zengine.engine import ZEngine
+
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+# path of the activity modules which will be invoked by workflow tasks
+ACTIVITY_MODULES_IMPORT_PATH = 'zengine.tests.activities'
+# absolute path to the workflow packages
+WORKFLOW_PACKAGES_PATH = os.path.join(BASE_DIR, 'workflows')
+
+
+
+class TestEngine(ZEngine):
+    WORKFLOW_DIRECTORY = WORKFLOW_PACKAGES_PATH,
+    ACTIVITY_MODULES_PATH = ACTIVITY_MODULES_IMPORT_PATH
+
+    def __init__(self):
+        super(TestEngine, self).__init__()
+        self.set_current(session={}, jsonin={}, jsonout={})
+
+    def save_workflow(self, wf_name, serialized_wf_instance):
+        if 'workflows' not in self.current.session:
+            self.current.session['workflows'] = {}
+        self.current.session['workflows'][wf_name] = serialized_wf_instance
+
+    def load_workflow(self, workflow_name):
+        try:
+            return self.current.session['workflows'].get(workflow_name, None)
+        except KeyError:
+            return None
+
+    def cleanup(self):
+        self.current.jsonin = {}
+        self.current.jsonout = {}

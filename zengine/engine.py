@@ -2,7 +2,7 @@
 """
 ZEnging engine class
 import, extend and override load_workflow and save_workflow methods
-
+override the cleanup method if you need to run some cleanup code after each run cycle
 """
 
 # Copyright (C) 2015 ZetaOps Inc.
@@ -25,13 +25,13 @@ class ZEngine(object):
     """
 
     """
-    WORKFLOW_DIRECTORY = ''
-    ACTIVITY_MODULES_PATH = ''
+    WORKFLOW_DIRECTORY = ''  # relative or absolute directory path
+    ACTIVITY_MODULES_PATH = ''  # python import path
 
     def __init__(self):
 
         self.current = DotDict()
-        self.modules = {}
+        self.activities = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec = WorkflowSpec
 
@@ -49,15 +49,14 @@ class ZEngine(object):
         Tries to load the previously serialized (and saved) workflow
         Creates a new one if it can't
         """
-        self.workflow = self.load_workflow() or self.create_workflow()
+        self.workflow = self.load_workflow(self.current.workflow_name) or self.create_workflow()
 
     def get_worfklow_spec(self):
         """
         :return: workflow spec package
         """
-        return open(os.path.join("{path}/{name}.zip".format(**{
-            'path': self.WORKFLOW_DIRECTORY,
-            'name': self.current.workflow_name})))
+        path = "{}/{}.zip".format(self.WORKFLOW_DIRECTORY, self.current.workflow_name)
+        return open(path)
 
     def serialize_workflow(self):
         return self.workflow.serialize(serializer=DictionarySerializer())
@@ -106,16 +105,30 @@ class ZEngine(object):
                 self.process_activities()
                 self.complete_current_task()
             self.save_workflow()
+        self.cleanup()
 
-    def run_module_method(self, module_method):
-        if module_method not in self.modules:
-            mod_parts = module_method.split('.')
+    def run_activity(self, activity):
+        """
+
+        :param activity:
+        :return:
+        """
+        if activity not in self.activities:
+            mod_parts = activity.split('.')
             module = "%s.%s" % (self.ACTIVITY_MODULES_PATH, mod_parts[:-1])
             method = mod_parts[-1]
-            self.modules[module_method] = getattr(import_module(module), method)
-        self.modules[module_method](self.current)
+            self.activities[activity] = getattr(import_module(module), method)
+        self.activities[activity](self.current)
 
     def process_activities(self):
         if 'activities' in self.current.spec.data:
             for cb in self.current.spec.data.callbacks:
-                self.run_module_method(cb)
+                self.run_activity(cb)
+
+    def cleanup(self):
+        """
+        this method will be called after each run cycle
+        override this if you need some codes to be called after WF engine finished it's tasks  and activities
+        :return: None
+        """
+        pass
