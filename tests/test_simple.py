@@ -13,7 +13,7 @@ from tests.testengine import TestEngine
 __author__ = 'Evren Esat Ozkan'
 
 
-def test_task_1():
+def test_show_login():
     engine = TestEngine()
     engine.set_current(workflow_name='simple_login')
     engine.load_or_create_workflow()
@@ -22,13 +22,33 @@ def test_task_1():
     assert 'login_form' == engine.current.jsonout['form']
 
 
-def test_task_2():
+def test_login_successful():
     engine = TestEngine()
     engine.set_current(workflow_name='simple_login')
     engine.load_or_create_workflow()
     engine.run()
-    engine.reset()
     engine.set_current(jsonin={'login_data': {'username': 'user', 'password': 'pass'}})
     engine.run()
-    assert True == engine.current.jsonout['success']
+    assert {'screen': 'dashboard'} == engine.current.jsonout
 
+
+def test_login_failed():
+    engine = TestEngine()
+    engine.set_current(workflow_name='simple_login')
+    engine.load_or_create_workflow()
+    engine.run()
+    engine.set_current(jsonin={'login_data': {'username': 'user', 'password': 'WRONG_PASS'}})
+    engine.run()
+    assert 'login_form' == engine.current.jsonout['form']
+
+
+def test_login_fail_retry_success():
+    engine = TestEngine()
+    engine.set_current(workflow_name='simple_login')
+    engine.load_or_create_workflow()
+    engine.run()
+    engine.set_current(jsonin={'login_data': {'username': 'user', 'password': 'WRONG_PASS'}})
+    engine.run()
+    engine.set_current(jsonin={'login_data': {'username': 'user', 'password': 'pass'}})
+    engine.run()
+    assert {'screen': 'dashboard'} == engine.current.jsonout

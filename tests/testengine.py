@@ -45,9 +45,9 @@ class TestEngine(ZEngine):
         """
         self.set_current(jsonin={}, jsonout={})
 
-
-if __name__ == '__main__':
-    engine = TestEngine()
-    engine.set_current(workflow_name='simple_login')
-    engine.load_or_create_workflow()
-    engine.run()
+#
+# if __name__ == '__main__':
+#     engine = TestEngine()
+#     engine.set_current(workflow_name='simple_login')
+#     engine.load_or_create_workflow()
+#     engine.run()
