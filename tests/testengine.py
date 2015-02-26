@@ -14,14 +14,13 @@ from zengine.engine import ZEngine
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # path of the activity modules which will be invoked by workflow tasks
-ACTIVITY_MODULES_IMPORT_PATH = 'zengine.tests.activities'
+ACTIVITY_MODULES_IMPORT_PATH = 'tests.activities'
 # absolute path to the workflow packages
 WORKFLOW_PACKAGES_PATH = os.path.join(BASE_DIR, 'workflows')
 
 
-
 class TestEngine(ZEngine):
-    WORKFLOW_DIRECTORY = WORKFLOW_PACKAGES_PATH,
+    WORKFLOW_DIRECTORY = WORKFLOW_PACKAGES_PATH
     ACTIVITY_MODULES_PATH = ACTIVITY_MODULES_IMPORT_PATH
 
     def __init__(self):
@@ -39,6 +38,16 @@ class TestEngine(ZEngine):
         except KeyError:
             return None
 
-    def cleanup(self):
-        self.current.jsonin = {}
-        self.current.jsonout = {}
+    def reset(self):
+        """
+        we need to cleanup the data dicts to simulate real request cylces
+        :return:
+        """
+        self.set_current(jsonin={}, jsonout={})
+
+
+if __name__ == '__main__':
+    engine = TestEngine()
+    engine.set_current(workflow_name='simple_login')
+    engine.load_or_create_workflow()
+    engine.run()

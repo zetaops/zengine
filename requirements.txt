@@ -1,0 +1,2 @@
+-e git://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow
+pytest

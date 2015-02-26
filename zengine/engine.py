@@ -10,9 +10,8 @@ override the cleanup method if you need to run some cleanup code after each run 
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 __author__ = "Evren Esat Ozkan"
-
-from importlib import import_module
 import os.path
+from importlib import import_module
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
 from SpiffWorkflow import Task
@@ -36,20 +35,21 @@ class ZEngine(object):
         self.workflow_spec = WorkflowSpec
 
     def _load_workflow(self):
-        serialized_wf = self.load_workflow(self.workflow_name)
-        self.workflow = BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
+        serialized_wf = self.load_workflow(self.current.workflow_name)
+        if serialized_wf:
+            return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
 
     def create_workflow(self):
         wf_pkg_file = self.get_worfklow_spec()
         self.workflow_spec = BpmnSerializer().deserialize_workflow_spec(wf_pkg_file)
-        self.workflow = BpmnWorkflow(self.workflow_spec)
+        return BpmnWorkflow(self.workflow_spec)
 
     def load_or_create_workflow(self):
         """
         Tries to load the previously serialized (and saved) workflow
         Creates a new one if it can't
         """
-        self.workflow = self.load_workflow(self.current.workflow_name) or self.create_workflow()
+        self.workflow = self._load_workflow() or self.create_workflow()
 
     def get_worfklow_spec(self):
         """
@@ -89,23 +89,27 @@ class ZEngine(object):
         self.current.update(kwargs)
         if 'task' in self.current:
             # TODO: look for a better way for getting the task type
-            self.current.type = str(self.current.task).split('(')[1].split(')')[0]
+            self.current.task_type = self.current.task.task_spec.__class__.__name__
             self.current.spec = self.current.task.task_spec
             self.current.name = self.current.task.get_name()
 
     def complete_current_task(self):
         self.workflow.complete_task_from_id(self.current.task.id)
 
+
     def run(self):
         ready_tasks = self.workflow.get_tasks(state=Task.READY)
         if ready_tasks:
             for task in ready_tasks:
                 self.set_current(task=task)
-                print("TASK >> %s" % self.current.name, self.current.task.data)
+                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
                 self.process_activities()
                 self.complete_current_task()
-            self.save_workflow()
+            self._save_workflow()
         self.cleanup()
+        if self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
+            self.run()
+            #FIXME: ParalelSplit durumunda ne olacak????
 
     def run_activity(self, activity):
         """
@@ -115,14 +119,14 @@ class ZEngine(object):
         """
         if activity not in self.activities:
             mod_parts = activity.split('.')
-            module = "%s.%s" % (self.ACTIVITY_MODULES_PATH, mod_parts[:-1])
+            module = "%s.%s" % (self.ACTIVITY_MODULES_PATH, mod_parts[:-1][0])
             method = mod_parts[-1]
             self.activities[activity] = getattr(import_module(module), method)
         self.activities[activity](self.current)
 
     def process_activities(self):
         if 'activities' in self.current.spec.data:
-            for cb in self.current.spec.data.callbacks:
+            for cb in self.current.spec.data.activities:
                 self.run_activity(cb)
 
     def cleanup(self):
