@@ -10,16 +10,12 @@ __author__ = "Evren Esat Ozkan"
 from tests.testengine import TestEngine
 
 
-__author__ = 'Evren Esat Ozkan'
-
-
 def test_show_login():
     engine = TestEngine()
     engine.set_current(workflow_name='simple_login')
     engine.load_or_create_workflow()
     engine.run()
-    # assert 0
-    assert 'login_form' == engine.current.jsonout['form']
+    assert {'form': 'login_form'} == engine.current.jsonout
 
 
 def test_login_successful():
@@ -39,7 +35,7 @@ def test_login_failed():
     engine.run()
     engine.set_current(jsonin={'login_data': {'username': 'user', 'password': 'WRONG_PASS'}})
     engine.run()
-    assert 'login_form' == engine.current.jsonout['form']
+    assert {'form': 'login_form'} == engine.current.jsonout
 
 
 def test_login_fail_retry_success():

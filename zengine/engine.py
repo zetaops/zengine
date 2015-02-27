@@ -87,15 +87,14 @@ class ZEngine(object):
         :return:
         """
         self.current.update(kwargs)
-        if 'task' in self.current:
-            # TODO: look for a better way for getting the task type
-            self.current.task_type = self.current.task.task_spec.__class__.__name__
-            self.current.spec = self.current.task.task_spec
-            self.current.name = self.current.task.get_name()
+        if 'task' in kwargs:
+            task = kwargs['task']
+            self.current.task_type = task.task_spec.__class__.__name__
+            self.current.spec = task.task_spec
+            self.current.name = task.get_name()
 
     def complete_current_task(self):
         self.workflow.complete_task_from_id(self.current.task.id)
-
 
     def run(self):
         ready_tasks = self.workflow.get_tasks(state=Task.READY)
@@ -109,7 +108,6 @@ class ZEngine(object):
         self.cleanup()
         if self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
             self.run()
-            #FIXME: ParalelSplit durumunda ne olacak????
 
     def run_activity(self, activity):
         """
@@ -132,7 +130,7 @@ class ZEngine(object):
     def cleanup(self):
         """
         this method will be called after each run cycle
-        override this if you need some codes to be called after WF engine finished it's tasks  and activities
+        override this if you need some codes to be called after WF engine finished it's tasks and activities
         :return: None
         """
         pass
