@@ -8,6 +8,8 @@ test wf engine
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 __author__ = "Evren Esat Ozkan"
+
+import re
 import os.path
 from zengine.engine import ZEngine
 
@@ -26,6 +28,10 @@ class TestEngine(ZEngine):
     def __init__(self):
         super(TestEngine, self).__init__()
         self.set_current(session={}, jsonin={}, jsonout={})
+
+    def get_linear_dump(self):
+        tree_dmp = self.workflow.task_tree.get_dump()
+        return ','.join(re.findall('Task of ([\w|_]*?) \(', tree_dmp))
 
     def save_workflow(self, wf_name, serialized_wf_instance):
         if 'workflows' not in self.current.session:

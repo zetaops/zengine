@@ -17,9 +17,9 @@ TEST_USER = {'username': 'user', 'password': 'pass', 'id': 1}
 
 def do_login(current):
     login_data = current.jsonin['login_data']
-    loged_in = login_data['username'] == TEST_USER['username'] and login_data['password'] == TEST_USER['password']
-    current.task.data['is_login_successful'] = loged_in
-    current.jsonout = {'success': loged_in}
+    logged_in = login_data['username'] == TEST_USER['username'] and login_data['password'] == TEST_USER['password']
+    current.task.data['is_login_successful'] = logged_in
+    current.jsonout = {'success': logged_in}
 
 
 def show_login(current):

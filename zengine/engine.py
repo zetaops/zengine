@@ -55,7 +55,8 @@ class ZEngine(object):
         """
         :return: workflow spec package
         """
-        path = "{}/{}.zip".format(self.WORKFLOW_DIRECTORY, self.current.workflow_name)
+        path = "{}/{}.zip".format(self.WORKFLOW_DIRECTORY,
+                                  self.current.workflow_name)
         return open(path)
 
     def serialize_workflow(self):
@@ -101,7 +102,7 @@ class ZEngine(object):
         if ready_tasks:
             for task in ready_tasks:
                 self.set_current(task=task)
-                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
+                # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
                 self.process_activities()
                 self.complete_current_task()
             self._save_workflow()
