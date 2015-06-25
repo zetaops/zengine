@@ -55,6 +55,7 @@ class ZEngine(object):
         """
         :return: workflow spec package
         """
+        # FIXME: this is a very ugly workaround
         if isinstance(self.WORKFLOW_DIRECTORY, (str, unicode)):
             wfdir = self.WORKFLOW_DIRECTORY
         else:
