@@ -55,8 +55,12 @@ class ZEngine(object):
         """
         :return: workflow spec package
         """
-        path = "{}/{}.zip".format(self.WORKFLOW_DIRECTORY,
-                                  self.current.workflow_name)
+        # FIXME: this is a very ugly workaround
+        if isinstance(self.WORKFLOW_DIRECTORY, (str, unicode)):
+            wfdir = self.WORKFLOW_DIRECTORY
+        else:
+            wfdir = self.WORKFLOW_DIRECTORY[0]
+        path = "{}/{}.zip".format(wfdir, self.current.workflow_name)
         return open(path)
 
     def serialize_workflow(self):

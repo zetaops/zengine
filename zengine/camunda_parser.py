@@ -8,6 +8,8 @@ This BPMN parser module takes the following extension elements from Camunda's ou
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from SpiffWorkflow.bpmn.parser.util import full_attr
+
 __author__ = "Evren Esat Ozkan"
 
 
@@ -35,26 +37,21 @@ class CamundaProcessParser(ProcessParser):
         :return: TaskSpec
         """
         spec = super(CamundaProcessParser, self).parse_node(node)
-        spec.data = DotDict()
-        try:
-            input_nodes = self._get_input_nodes(node)
-            if input_nodes:
-                for nod in input_nodes:
-                    spec.data.update(self._parse_input_node(nod))
-        except Exception as e:
-            LOG.exception("Error while processing node: %s" % node)
+        spec.data = self.parse_input_data(node)
         spec.defines = spec.data
-        # spec.ext = self._attach_properties(node, spec)
+        service_class = node.get(full_attr('assignee'))
+        if service_class:
+            self.parsed_nodes[node.get('id')].service_class = node.get(full_attr('assignee'))
         return spec
 
-    # def _attach_properties(self, spec, node):
-    # """
-    #     attachs extension properties to the spec.ext object
-    #     :param spec: task spec
-    #     :param node: xml task node
-    #     :return: task spec
-    #     """
-    #     return spec
+    def parse_input_data(self, node):
+        data = DotDict()
+        try:
+            for nod in self._get_input_nodes(node):
+                data.update(self._parse_input_node(nod))
+        except Exception as e:
+            LOG.exception("Error while processing node: %s" % node)
+        return data
 
     @staticmethod
     def _get_input_nodes(node):
