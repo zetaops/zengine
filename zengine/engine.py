@@ -55,7 +55,12 @@ class ZEngine(object):
         """
         :return: workflow spec package
         """
-        path = "{}/{}.zip".format(self.WORKFLOW_DIRECTORY, self.current.workflow_name)
+        # FIXME: this is a very ugly workaround
+        if isinstance(self.WORKFLOW_DIRECTORY, (str, unicode)):
+            wfdir = self.WORKFLOW_DIRECTORY
+        else:
+            wfdir = self.WORKFLOW_DIRECTORY[0]
+        path = "{}/{}.zip".format(wfdir, self.current.workflow_name)
         return open(path)
 
     def serialize_workflow(self):
@@ -101,8 +106,9 @@ class ZEngine(object):
         if ready_tasks:
             for task in ready_tasks:
                 self.set_current(task=task)
-                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
-                self.process_activities()
+                # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
+                # self.process_activities()
+                self.run_activity(self.current.spec.service_class)
                 self.complete_current_task()
             self._save_workflow()
         self.cleanup()
@@ -122,10 +128,10 @@ class ZEngine(object):
             self.activities[activity] = getattr(import_module(module), method)
         self.activities[activity](self.current)
 
-    def process_activities(self):
-        if 'activities' in self.current.spec.data:
-            for cb in self.current.spec.data.activities:
-                self.run_activity(cb)
+    # def process_activities(self):
+    #     if 'activities' in self.current.spec.data:
+    #         for cb in self.current.spec.data.activities:
+    #             self.run_activity(cb)
 
     def cleanup(self):
         """
