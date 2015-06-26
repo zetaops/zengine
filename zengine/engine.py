@@ -108,6 +108,10 @@ class ZEngine(object):
                 self.set_current(task=task)
                 # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
                 self.process_activities()
+
+                # self.process_activities()
+                self.run_activity(self.current.spec.service_class)
+
                 self.complete_current_task()
             self._save_workflow()
         self.cleanup()
@@ -127,10 +131,10 @@ class ZEngine(object):
             self.activities[activity] = getattr(import_module(module), method)
         self.activities[activity](self.current)
 
-    def process_activities(self):
-        if 'activities' in self.current.spec.data:
-            for cb in self.current.spec.data.activities:
-                self.run_activity(cb)
+    # def process_activities(self):
+    #     if 'activities' in self.current.spec.data:
+    #         for cb in self.current.spec.data.activities:
+    #             self.run_activity(cb)
 
     def cleanup(self):
         """
