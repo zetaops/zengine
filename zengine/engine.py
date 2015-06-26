@@ -107,10 +107,11 @@ class ZEngine(object):
             for task in ready_tasks:
                 self.set_current(task=task)
                 # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
-                self.process_activities()
+                # self.process_activities()
 
                 # self.process_activities()
-                self.run_activity(self.current.spec.service_class)
+                if hasattr(self.current.spec, 'service_class'):
+                    self.run_activity(self.current.spec.service_class)
 
                 self.complete_current_task()
             self._save_workflow()
@@ -126,7 +127,7 @@ class ZEngine(object):
         """
         if activity not in self.activities:
             mod_parts = activity.split('.')
-            module = "%s.%s" % (self.ACTIVITY_MODULES_PATH, mod_parts[:-1][0])
+            module = ".".join([self.ACTIVITY_MODULES_PATH] + mod_parts[:-1])
             method = mod_parts[-1]
             self.activities[activity] = getattr(import_module(module), method)
         self.activities[activity](self.current)
