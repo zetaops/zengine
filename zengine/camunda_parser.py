@@ -16,7 +16,7 @@ __author__ = "Evren Esat Ozkan"
 import logging
 from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
 from SpiffWorkflow.bpmn.parser.ProcessParser import ProcessParser
-from utils import DotDict
+from zengine.utils import DotDict
 
 LOG = logging.getLogger(__name__)
 
