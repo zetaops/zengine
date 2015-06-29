@@ -51,7 +51,10 @@ class ZEngine(object):
     ACTIVITY_MODULES_PATH = ''  # python import path
 
     def __init__(self):
-
+        self.use_compact_serializer = True
+        if self.use_compact_serializer:
+            self.serialize_workflow = self.compact_serialize_workflow
+            self.deserialize_workflow = self.compact_deserialize_workflow
         self.current = DotDict()
         self.activities = {}
         self.workflow = BpmnWorkflow
@@ -60,9 +63,22 @@ class ZEngine(object):
     def _load_workflow(self):
         serialized_wf = self.load_workflow(self.current.workflow_name)
         if serialized_wf:
-            # return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
-            return CompactWorkflowSerializer().deserialize_workflow(
-                serialized_wf, workflow_spec=self.current.spec)
+            return self.deserialize_workflow(serialized_wf)
+
+
+    def deserialize_workflow(self, serialized_wf):
+        return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
+
+    def compact_deserialize_workflow(self, serialized_wf):
+        return CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
+                                                                workflow_spec=self.workflow.spec)
+
+    def serialize_workflow(self):
+        return self.workflow.serialize(serializer=DictionarySerializer())
+
+    def compact_serialize_workflow(self):
+        self.workflow.refresh_waiting_tasks()
+        return CompactWorkflowSerializer().serialize_workflow(self.workflow, include_spec=False)
 
     def create_workflow(self):
         # wf_pkg_file = self.get_worfklow_spec()
@@ -92,10 +108,6 @@ class ZEngine(object):
         return BpmnSerializer().deserialize_workflow_spec(
             InMemoryPackager.package_in_memory(self.current.workflow_name, path))
 
-    def serialize_workflow(self):
-        # return self.workflow.serialize(serializer=DictionarySerializer())
-        self.workflow.refresh_waiting_tasks()
-        return CompactWorkflowSerializer().serialize_workflow(self.workflow, include_spec=False)
 
 
     def _save_workflow(self):
@@ -134,23 +146,22 @@ class ZEngine(object):
         self.workflow.complete_task_from_id(self.current.task.id)
 
     def run(self):
-        ready_tasks = self.workflow.get_tasks(state=Task.READY)
-        if ready_tasks:
-            for task in ready_tasks:
+        while 1:
+            for task in self.workflow.get_tasks(state=Task.READY):
                 self.set_current(task=task)
-                # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
-                # self.process_activities()
-
-                # self.process_activities()
-                if hasattr(self.current.spec, 'service_class'):
-                    self.run_activity(self.current.spec.service_class)
-
+                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
+                if hasattr(self.current['spec'], 'service_class'):
+                    print("RUN ACTIVITY: %s, %s" % (self.current['spec'].service_class, self.current['request']['context']))
+                    self.run_activity(self.current['spec'].service_class)
+                else:
+                    print('NO ACTIVITY!!')
                 self.complete_current_task()
-            if not self.current.task_type.startswith('Start'):
-                self._save_workflow()
-        self.cleanup()
-        if self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
-            self.run()
+                if not self.current.task_type.startswith('Start'):
+                    self._save_workflow()
+            self.cleanup()
+
+            if self.current.task_type == 'UserTask' or self.current.task_type.startswith('End'):
+                break
 
     def run_activity(self, activity):
         """

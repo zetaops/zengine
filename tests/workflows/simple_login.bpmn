@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://activiti.org/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd" id="_qyVjYLNPEeSf4I-xcGOQ0Q" exporter="camunda modeler" exporterVersion="2.7.0" targetNamespace="http://activiti.org/bpmn">
-  <bpmn2:process id="Process_1" isExecutable="false">
+  <bpmn2:process id="simple_login" isExecutable="false">
     <bpmn2:startEvent id="StartEvent_1">
       <bpmn2:outgoing>SequenceFlow_1</bpmn2:outgoing>
     </bpmn2:startEvent>
-    <bpmn2:serviceTask id="show_login_form" camunda:assignee="views.Login" camunda:class="view.show_login" name="show login">
+    <bpmn2:userTask id="show_login_form" camunda:class="views.show_login" camunda:assignee="views.show_login" name="show login">
       <bpmn2:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="activities">
@@ -20,22 +20,13 @@
       <bpmn2:incoming>SequenceFlow_1</bpmn2:incoming>
       <bpmn2:incoming>SequenceFlow_3</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_7</bpmn2:outgoing>
-    </bpmn2:serviceTask>
+    </bpmn2:userTask>
     <bpmn2:sequenceFlow id="SequenceFlow_1" name="" sourceRef="StartEvent_1" targetRef="show_login_form"/>
     <bpmn2:sequenceFlow id="SequenceFlow_7" name="" sourceRef="show_login_form" targetRef="Task_3"/>
-    <bpmn2:task id="Task_3" name="authenticate">
-      <bpmn2:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="activities">
-            <camunda:list>
-              <camunda:value>views.do_login</camunda:value>
-            </camunda:list>
-          </camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn2:extensionElements>
+    <bpmn2:serviceTask id="Task_3" camunda:class="views.do_login" name="authenticate">
       <bpmn2:incoming>SequenceFlow_7</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_8</bpmn2:outgoing>
-    </bpmn2:task>
+    </bpmn2:serviceTask>
     <bpmn2:sequenceFlow id="SequenceFlow_8" name="" sourceRef="Task_3" targetRef="ExclusiveGateway_1"/>
     <bpmn2:exclusiveGateway id="ExclusiveGateway_1">
       <bpmn2:incoming>SequenceFlow_8</bpmn2:incoming>
@@ -53,16 +44,7 @@
     <bpmn2:endEvent id="EndEvent_1">
       <bpmn2:incoming>SequenceFlow_2</bpmn2:incoming>
     </bpmn2:endEvent>
-    <bpmn2:userTask id="UserTask_1" name="show_dashboard">
-      <bpmn2:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="activities">
-            <camunda:list>
-              <camunda:value>views.show_dashboard</camunda:value>
-            </camunda:list>
-          </camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn2:extensionElements>
+    <bpmn2:userTask id="UserTask_1" camunda:assignee="views.show_dashboard" name="show_dashboard">
       <bpmn2:incoming>SequenceFlow_6</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_2</bpmn2:outgoing>
     </bpmn2:userTask>
