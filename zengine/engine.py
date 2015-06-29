@@ -1,4 +1,14 @@
 # -*-  coding: utf-8 -*-
+from __future__ import print_function, absolute_import, division
+
+from __future__ import division
+from io import BytesIO
+
+from SpiffWorkflow.bpmn.storage.Packager import Packager, main
+from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
+from zengine.camunda_parser import CamundaBMPNParser
+from zengine.utils import DotDict
+
 """
 ZEnging engine class
 import, extend and override load_workflow and save_workflow methods
@@ -14,11 +24,24 @@ import os.path
 from importlib import import_module
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
+from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import CompactWorkflowSerializer
 from SpiffWorkflow import Task
 from SpiffWorkflow.specs import WorkflowSpec
 from SpiffWorkflow.storage import DictionarySerializer
-from utils import DotDict
 
+
+
+class InMemoryPackager(Packager):
+
+    PARSER_CLASS = CamundaBMPNParser
+
+    @classmethod
+    def package_in_memory(cls, workflow_name, workflow_files):
+        s = BytesIO()
+        p = cls(s, workflow_name, meta_data=[])
+        p.add_bpmn_files_by_glob(workflow_files)
+        p.create_package()
+        return s.getvalue()
 
 class ZEngine(object):
     """
@@ -37,11 +60,14 @@ class ZEngine(object):
     def _load_workflow(self):
         serialized_wf = self.load_workflow(self.current.workflow_name)
         if serialized_wf:
-            return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
+            # return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
+            return CompactWorkflowSerializer().deserialize_workflow(
+                serialized_wf, workflow_spec=self.current.spec)
 
     def create_workflow(self):
-        wf_pkg_file = self.get_worfklow_spec()
-        self.workflow_spec = BpmnSerializer().deserialize_workflow_spec(wf_pkg_file)
+        # wf_pkg_file = self.get_worfklow_spec()
+        # self.workflow_spec = BpmnSerializer().deserialize_workflow_spec(wf_pkg_file)
+        self.workflow_spec = self.get_worfklow_spec()
         return BpmnWorkflow(self.workflow_spec)
 
     def load_or_create_workflow(self):
@@ -60,18 +86,24 @@ class ZEngine(object):
             wfdir = self.WORKFLOW_DIRECTORY
         else:
             wfdir = self.WORKFLOW_DIRECTORY[0]
-        path = "{}/{}.zip".format(wfdir, self.current.workflow_name)
-        return open(path)
+        # path = "{}/{}.zip".format(wfdir, self.current.workflow_name)
+        # return open(path)
+        path = "{}/{}.bpmn".format(wfdir, self.current.workflow_name)
+        return BpmnSerializer().deserialize_workflow_spec(
+            InMemoryPackager.package_in_memory(self.current.workflow_name, path))
 
     def serialize_workflow(self):
-        return self.workflow.serialize(serializer=DictionarySerializer())
+        # return self.workflow.serialize(serializer=DictionarySerializer())
+        self.workflow.refresh_waiting_tasks()
+        return CompactWorkflowSerializer().serialize_workflow(self.workflow, include_spec=False)
+
 
     def _save_workflow(self):
         self.save_workflow(self.current.workflow_name, self.serialize_workflow())
 
     def save_workflow(self, workflow_name, serilized_workflow_instance):
         """
-        implement this method with your own persisntence method.
+        override this with your own persisntence method.
         :return:
         """
 
@@ -114,7 +146,8 @@ class ZEngine(object):
                     self.run_activity(self.current.spec.service_class)
 
                 self.complete_current_task()
-            self._save_workflow()
+            if not self.current.task_type.startswith('Start'):
+                self._save_workflow()
         self.cleanup()
         if self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
             self.run()
