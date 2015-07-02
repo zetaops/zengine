@@ -55,7 +55,7 @@ class ZEngine(object):
         if self.use_compact_serializer:
             self.serialize_workflow = self.compact_serialize_workflow
             self.deserialize_workflow = self.compact_deserialize_workflow
-        self.current = DotDict()
+        self.current = DotDict({'request':{}})
         self.activities = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec = WorkflowSpec
@@ -151,7 +151,7 @@ class ZEngine(object):
                 self.set_current(task=task)
                 print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
                 if hasattr(self.current['spec'], 'service_class'):
-                    print("RUN ACTIVITY: %s, %s" % (self.current['spec'].service_class, self.current['request']['context']))
+                    print("RUN ACTIVITY: %s, %s" % (self.current['spec'].service_class, self.current.request.get('context')))
                     self.run_activity(self.current['spec'].service_class)
                 else:
                     print('NO ACTIVITY!!')
