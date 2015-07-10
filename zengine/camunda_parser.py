@@ -61,6 +61,7 @@ class CamundaProcessParser(ProcessParser):
                     if gchild.tag.endswith("inputOutput"):
                         children = gchild.getchildren()
                         return children
+        return []
 
     @classmethod
     def _parse_input_node(cls, node):

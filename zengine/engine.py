@@ -152,7 +152,7 @@ class ZEngine(object):
                 self.current['task'].data.update(self.current['task_data'])
                 print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
                 if hasattr(self.current['spec'], 'service_class'):
-                    print("RUN ACTIVITY: %s, %s" % (self.current['spec'].service_class, self.current['request'].context))
+                    print("RUN ACTIVITY: %s, %s" % (self.current['spec'].service_class, self.current))
                     self.run_activity(self.current['spec'].service_class)
                 else:
                     print('NO ACTIVITY!!')
