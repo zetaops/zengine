@@ -182,7 +182,7 @@ class ZEngine(object):
         :param kwargs:
         :return:
         """
-        self.current.update(kwargs)
+        self.current.update(**kwargs)
         self.current.session = self.current.request.env['session']
         self.current.input = self.current.request.context['data'],
         self.current.output = self.current.request.context['result'],
