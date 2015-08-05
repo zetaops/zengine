@@ -1,2 +1,6 @@
+beaker
+falcon
+-e git://github.com/didip/beaker_extensions.git#egg=beaker_extensions
+redis
 -e git://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow
 pytest

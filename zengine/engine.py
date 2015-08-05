@@ -2,13 +2,24 @@
 from __future__ import print_function, absolute_import, division
 
 from __future__ import division
+import importlib
 from io import BytesIO
+from importlib import import_module
+import os
 
-from SpiffWorkflow.bpmn.storage.Packager import Packager, main
-from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
-from zengine.camunda_parser import CamundaBMPNParser
-from zengine.utils import DotDict
+from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
+from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
+from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import CompactWorkflowSerializer
+from SpiffWorkflow import Task
+from SpiffWorkflow.specs import WorkflowSpec
+from SpiffWorkflow.storage import DictionarySerializer
+from SpiffWorkflow.bpmn.storage.Packager import Packager
+from beaker.session import Session
+from falcon import Request, Response
+from zengine.lib.camunda_parser import CamundaBMPNParser
 
+
+settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 """
 ZEnging engine class
 import, extend and override load_workflow and save_workflow methods
@@ -20,19 +31,9 @@ override the cleanup method if you need to run some cleanup code after each run 
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 __author__ = "Evren Esat Ozkan"
-import os.path
-from importlib import import_module
-from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
-from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
-from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import CompactWorkflowSerializer
-from SpiffWorkflow import Task
-from SpiffWorkflow.specs import WorkflowSpec
-from SpiffWorkflow.storage import DictionarySerializer
-
 
 
 class InMemoryPackager(Packager):
-
     PARSER_CLASS = CamundaBMPNParser
 
     @classmethod
@@ -43,28 +44,92 @@ class InMemoryPackager(Packager):
         p.create_package()
         return s.getvalue()
 
-class ZEngine(object):
-    """
 
+class Condition(object):
+    def __getattr__(self, name):
+        return None
+
+    def __str__(self):
+        return self.__dict__
+
+
+class Current(object):
     """
-    WORKFLOW_DIRECTORY = ''  # relative or absolute directory path
-    ACTIVITY_MODULES_PATH = ''  # python import path
+    :type task: Task | None
+    :type response: Response | None
+    :type request: Request | None
+    :type spec: WorkflowSpec | None
+    :type workflow: Workflow | None
+    :type session: Session | None
+    """
+    def __init__(self, **kwargs):
+        self.task_type = ''
+        self.task_data = {}
+        self.task = None
+        self.name = ''
+        self.input = {}
+        self.output = {}
+        self.response = None
+        self.session = None
+        self.spec = None
+        self.workflow = None
+        self.request = None
+        self.workflow_name = ''
+        self.update(**kwargs)
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+class ZEngine(object):
+    ALLOWED_CLIENT_COMMANDS = ['edit_object', 'add_object', 'update_object', 'cancel', 'clear_wf']
+    WORKFLOW_DIRECTORY = settings.WORKFLOW_PACKAGES_PATH,
+    ACTIVITY_MODULES_PATH = settings.ACTIVITY_MODULES_IMPORT_PATH
 
     def __init__(self):
         self.use_compact_serializer = True
         if self.use_compact_serializer:
             self.serialize_workflow = self.compact_serialize_workflow
             self.deserialize_workflow = self.compact_deserialize_workflow
-        self.current = DotDict({'request':{}, 'task_data': {}})
+        self.current = Current()
         self.activities = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec = WorkflowSpec
+
+    def save_workflow(self, wf_name, serialized_wf_instance):
+        if self.current.name.startswith('End'):
+            del self.current.session['workflows'][wf_name]
+            return
+        if 'workflows' not in self.current.session:
+            self.current.session['workflows'] = {}
+
+        self.current.session['workflows'][wf_name] = serialized_wf_instance
+
+
+    def load_workflow(self, workflow_name):
+        try:
+            return self.current.session['workflows'].get(workflow_name, None)
+        except KeyError:
+            return None
+
+    def process_client_commands(self, request_data, wf_name):
+        if 'clear_wf' in request_data and 'workflows' in self.current.session and \
+                        wf_name in self.current.session['workflows']:
+            del self.current.session['workflows'][wf_name]
+        self.current.task_data = {'IS': Condition()}
+        if 'cmd' in request_data and request_data['cmd'] in self.ALLOWED_CLIENT_COMMANDS:
+            self.current.task_data[request_data['cmd']] = True
+            self.current.task_data['cmd'] = request_data['cmd']
+        else:
+            for cmd in self.ALLOWED_CLIENT_COMMANDS:
+                self.current.task_data[cmd] = None
+        self.current.task_data['object_id'] = request_data.get('object_id', None)
 
     def _load_workflow(self):
         serialized_wf = self.load_workflow(self.current.workflow_name)
         if serialized_wf:
             return self.deserialize_workflow(serialized_wf)
-
 
     def deserialize_workflow(self, serialized_wf):
         return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
@@ -108,26 +173,8 @@ class ZEngine(object):
         return BpmnSerializer().deserialize_workflow_spec(
             InMemoryPackager.package_in_memory(self.current.workflow_name, path))
 
-
-
     def _save_workflow(self):
         self.save_workflow(self.current.workflow_name, self.serialize_workflow())
-
-    def save_workflow(self, workflow_name, serilized_workflow_instance):
-        """
-        override this with your own persisntence method.
-        :return:
-        """
-
-    def load_workflow(self, workflow_name):
-        """
-        override this method to load the previously
-        saved workflow instance
-
-        :return: serialized workflow instance
-
-        """
-        return ''
 
     def set_current(self, **kwargs):
         """
@@ -136,6 +183,9 @@ class ZEngine(object):
         :return:
         """
         self.current.update(kwargs)
+        self.current.session = self.current.request.env['session']
+        self.current.input = self.current.request.context['data'],
+        self.current.output = self.current.request.context['result'],
         if 'task' in kwargs:
             task = kwargs['task']
             self.current.task_type = task.task_spec.__class__.__name__
@@ -149,10 +199,12 @@ class ZEngine(object):
         while 1:
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.set_current(task=task)
-                self.current['task'].data.update(self.current['task_data'])
-                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE", self.current.task_type)
+                self.current.task.data.update(self.current.task_data)
+                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE",
+                      self.current.task_type)
                 if hasattr(self.current['spec'], 'service_class'):
-                    print("RUN ACTIVITY: %s, %s" % (self.current['spec'].service_class, self.current))
+                    print("RUN ACTIVITY: %s, %s" % (
+                        self.current['spec'].service_class, self.current))
                     self.run_activity(self.current['spec'].service_class)
                 else:
                     print('NO ACTIVITY!!')
