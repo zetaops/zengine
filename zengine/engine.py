@@ -16,10 +16,11 @@ from SpiffWorkflow.storage import DictionarySerializer
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
 from falcon import Request, Response
+from zengine.dispatcher import settings
 from zengine.lib.camunda_parser import CamundaBMPNParser
 
 
-settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
+
 """
 ZEnging engine class
 import, extend and override load_workflow and save_workflow methods
@@ -184,8 +185,8 @@ class ZEngine(object):
         """
         self.current.update(**kwargs)
         self.current.session = self.current.request.env['session']
-        self.current.input = self.current.request.context['data'],
-        self.current.output = self.current.request.context['result'],
+        self.current.input = self.current.request.context['data']
+        self.current.output = self.current.request.context['result']
         if 'task' in kwargs:
             task = kwargs['task']
             self.current.task_type = task.task_spec.__class__.__name__
@@ -199,15 +200,16 @@ class ZEngine(object):
         while 1:
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.set_current(task=task)
+
                 self.current.task.data.update(self.current.task_data)
-                print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE",
-                      self.current.task_type)
-                if hasattr(self.current['spec'], 'service_class'):
-                    print("RUN ACTIVITY: %s, %s" % (
-                        self.current['spec'].service_class, self.current))
-                    self.run_activity(self.current['spec'].service_class)
-                else:
-                    print('NO ACTIVITY!!')
+                # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE",
+                #       self.current.task_type)
+                if hasattr(self.current.spec, 'service_class'):
+                    # print("RUN ACTIVITY: %s, %s" % (
+                    #     self.current.spec.service_class, self.current))
+                    self.run_activity(self.current.spec.service_class)
+                # else:
+                #     print('NO ACTIVITY!!')
                 self.complete_current_task()
                 if not self.current.task_type.startswith('Start'):
                     self._save_workflow()

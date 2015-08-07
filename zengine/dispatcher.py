@@ -6,7 +6,10 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from beaker.cache import _backends
-from pyoko.conf import settings
+import importlib
+import os
+
+settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 
 __author__ = 'Evren Esat Ozkan'
 
@@ -22,7 +25,7 @@ SESSION_OPTIONS = {
     'session.cookie_expires': True,
     'session.type': 'redis',
     'session.url': settings.REDIS_SERVER,
-    'auto': True,
+    'session.auto': True,
     'session.path': '/',
 }
 

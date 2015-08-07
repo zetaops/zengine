@@ -12,7 +12,12 @@ __author__ = 'Evren Esat Ozkan'
 #         req.session = req.env['session']
 
 
-ALLOWED_ORIGINS = ['http://127.0.0.1:8080', 'http://127.0.0.1:9001', 'http://104.155.6.147']
+ALLOWED_ORIGINS = ['http://127.0.0.1:8080',
+                   'http://127.0.0.1:9001',
+                   'http://ulakbus.zetaops.io',
+                   'http://ulakbus.org',
+                   'http://ulakbus.net',
+                   'http://104.155.6.147']
 
 class CORS(object):
     """
