@@ -9,7 +9,14 @@ setup(
     packages=find_packages(exclude=['tests', 'tests.*']),
     author='Evren Esat Ozkan',
     author_email='evrenesat@zetaops.io',
-    description='A minimal BPMN Workflow Engine implementation using SpiffWorkflow',
-    requires=['SpiffWorkflow'],
-
+    description='A webframework based on SpiffWorkflow (BPMN Engine)',
+    requires=['beaker', 'falcon', 'beaker_extensions', 'redis',
+              'SpiffWorkflow', 'pyoko'],
+    install_requires=['beaker', 'falcon', 'beaker_extensions', 'redis',
+                      'SpiffWorkflow', 'pyoko'],
+    dependency_links=[
+        'git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions',
+        'git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow',
+        'git+https://github.com/zetaops/pyoko.git#egg=pyoko',
+        ],
 )
