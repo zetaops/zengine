@@ -2,7 +2,7 @@ ZEngine
 ========
 
 
-ZEngine is a easy to use BPMN workflow engine  based on SpiffWorkflow.
+ZEngine is a workflow based web framework.
 
 
 

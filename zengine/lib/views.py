@@ -74,14 +74,13 @@ class CrudView(BaseView):
                 raise HTTPNotFound()
 
         else:
-            self.object = None
+            self.object = model_class(current)
         {
             'list': self.list,
             'show': self.show,
             'add': self.add,
             'edit': self.edit,
             'delete': self.delete,
-            'save': self.save,
         }[current.input['cmd']]()
 
 
@@ -97,7 +96,7 @@ class CrudView(BaseView):
         """
         # TODO: add pagination
         # TODO: use models
-        for obj in self.MODEL.objects.filter():
+        for obj in self.model.objects.filter():
             data = obj.data
             self.output['objects'].append({"data": data, "key": obj.key})
 
@@ -108,13 +107,9 @@ class CrudView(BaseView):
         if self.do:
             serialized_form = JsonForm(self.object).serialize()
             self.output['forms'] = serialized_form
+            self._save_object()
         else:
-            if not self.object:
-                self.object = self.model_class()
-            self.object._load_data(self.current.input['form'])
-            self.object.save()
-            self.current.task_data['IS'].opertation_successful = True
-
+            serialized_form = JsonForm(self.model_class()).serialize()
 
 
     def add(self):
@@ -126,11 +121,12 @@ class CrudView(BaseView):
         else:
             serialized_form = JsonForm(self.model_class()).serialize()
 
-    def save(self):
-        """
-        You should override this method in your class
-        """
-        raise NotImplementedError
+
+    def _save_object(self):
+        self.object._load_data(self.current.input['form'])
+        self.object.save()
+        self.current.task_data['IS'].opertation_successful = True
+
 
     def delete(self):
         """

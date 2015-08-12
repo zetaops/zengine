@@ -14,6 +14,8 @@ from zengine import middlewares
 
 settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 
+AuthBackend = importlib.import_module(settings.AUTH_BACKEND)
+
 beaker.cache.clsmap = _backends({'redis': redis_.RedisManager})
 
 SESSION_OPTIONS = {

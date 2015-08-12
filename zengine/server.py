@@ -44,7 +44,7 @@ class Connector(object):
         self.on_post(req, resp, wf_name)
 
     def on_post(self, req, resp, wf_name):
-        self.engine.set_current(request=req,
+        self.engine.current.update(request=req,
                                 response=resp,
                                 workflow_name=wf_name,
                                 )

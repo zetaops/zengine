@@ -9,19 +9,21 @@ import os
 
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
-from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import CompactWorkflowSerializer
+from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
+    CompactWorkflowSerializer
 from SpiffWorkflow import Task
 from SpiffWorkflow.specs import WorkflowSpec
 from SpiffWorkflow.storage import DictionarySerializer
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
 from falcon import Request, Response
-from zengine.config import settings
+import lazy_object_proxy
+from zengine.config import settings, AuthBackend
+from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import getlogger
 
 log = getlogger()
-
 
 """
 ZEnging engine class
@@ -65,7 +67,12 @@ class Current(object):
     :type workflow: Workflow | None
     :type session: Session | None
     """
+
     def __init__(self, **kwargs):
+        self.workflow_name = kwargs.pop('workflow_name', '')
+        self.request = kwargs.pop('request', None)
+        self.response = kwargs.pop('response', None)
+        self.session = self.request.env['session'] if self.request else None
         self.task_type = ''
         self.task_data = {}
         self.task = None
@@ -73,20 +80,39 @@ class Current(object):
         self.input = {}
         self.output = {}
         self.response = None
-        self.session = None
         self.spec = None
         self.workflow = None
-        self.request = None
-        self.workflow_name = ''
+        self.auth = AuthBackend(self.session)
+        self.user = lazy_object_proxy.Proxy(
+            lambda: self.auth.get_user(self.session))
         self.update(**kwargs)
+        self.permissions = []
+        self.perm_cache = lazy_object_proxy.Proxy(
+            lambda: Cache('user_perms_%s' % self.session['user_id']))
+
+    def has_perm(self, perm):
+        if not self.permissions:
+            self.permissions = self.perm_cache.get(self.get_perms())
+        return self.user.has_permission(perm)
+
+    def get_perms(self):
+        self.permissions = self.user.get_permissions()
+        self.perm_cache.set(self.permissions)
+        return self.permissions
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+        if 'task' in kwargs:
+            self.current.task_type = kwargs[
+                'task'].task_spec.__class__.__name__
+            self.current.spec = kwargs['task'].task_spec
+            self.current.name = kwargs['task'].get_name()
 
 
 class ZEngine(object):
-    ALLOWED_CLIENT_COMMANDS = ['edit_object', 'add_object', 'update_object', 'cancel', 'clear_wf']
+    ALLOWED_CLIENT_COMMANDS = ['edit_object', 'add_object', 'update_object',
+                               'cancel', 'clear_wf']
     WORKFLOW_DIRECTORY = settings.WORKFLOW_PACKAGES_PATH,
     ACTIVITY_MODULES_PATH = settings.ACTIVITY_MODULES_IMPORT_PATH
 
@@ -109,7 +135,6 @@ class ZEngine(object):
 
         self.current.session['workflows'][wf_name] = serialized_wf_instance
 
-
     def load_workflow(self, workflow_name):
         try:
             return self.current.session['workflows'].get(workflow_name, None)
@@ -121,13 +146,15 @@ class ZEngine(object):
                         wf_name in self.current.session['workflows']:
             del self.current.session['workflows'][wf_name]
         self.current.task_data = {'IS': Condition()}
-        if 'cmd' in request_data and request_data['cmd'] in self.ALLOWED_CLIENT_COMMANDS:
+        if 'cmd' in request_data and request_data[
+            'cmd'] in self.ALLOWED_CLIENT_COMMANDS:
             self.current.task_data[request_data['cmd']] = True
             self.current.task_data['cmd'] = request_data['cmd']
         else:
             for cmd in self.ALLOWED_CLIENT_COMMANDS:
                 self.current.task_data[cmd] = None
-        self.current.task_data['object_id'] = request_data.get('object_id', None)
+        self.current.task_data['object_id'] = request_data.get('object_id',
+                                                               None)
 
     def _load_workflow(self):
         serialized_wf = self.load_workflow(self.current.workflow_name)
@@ -146,7 +173,8 @@ class ZEngine(object):
 
     def compact_serialize_workflow(self):
         self.workflow.refresh_waiting_tasks()
-        return CompactWorkflowSerializer().serialize_workflow(self.workflow, include_spec=False)
+        return CompactWorkflowSerializer().serialize_workflow(self.workflow,
+                                                              include_spec=False)
 
     def create_workflow(self):
         # wf_pkg_file = self.get_worfklow_spec()
@@ -174,26 +202,12 @@ class ZEngine(object):
         # return open(path)
         path = "{}/{}.bpmn".format(wfdir, self.current.workflow_name)
         return BpmnSerializer().deserialize_workflow_spec(
-            InMemoryPackager.package_in_memory(self.current.workflow_name, path))
+            InMemoryPackager.package_in_memory(self.current.workflow_name,
+                                               path))
 
     def _save_workflow(self):
-        self.save_workflow(self.current.workflow_name, self.serialize_workflow())
-
-    def set_current(self, **kwargs):
-        """
-        workflow_name should be given in kwargs
-        :param kwargs:
-        :return:
-        """
-        self.current.update(**kwargs)
-        self.current.session = self.current.request.env['session']
-        self.current.input = self.current.request.context['data']
-        self.current.output = self.current.request.context['result']
-        if 'task' in kwargs:
-            task = kwargs['task']
-            self.current.task_type = task.task_spec.__class__.__name__
-            self.current.spec = task.task_spec
-            self.current.name = task.get_name()
+        self.save_workflow(self.current.workflow_name,
+                           self.serialize_workflow())
 
     def complete_current_task(self):
         self.workflow.complete_task_from_id(self.current.task.id)
@@ -202,10 +216,11 @@ class ZEngine(object):
 
         while 1:
             for task in self.workflow.get_tasks(state=Task.READY):
-                self.set_current(task=task)
+                self.current.update(task=task)
                 self.current.task.data.update(self.current.task_data)
-                log.info("TASK >> %s %s TYPE: %s" % (self.current.name, self.current.task.data,
-                      self.current.task_type))
+                log.info("TASK >> %s %s TYPE: %s" % (
+                self.current.name, self.current.task.data,
+                self.current.task_type))
                 if hasattr(self.current.spec, 'service_class'):
                     log.info("RUN ACTIVITY: %s, %s" % (
                         self.current.spec.service_class, self.current))
@@ -217,7 +232,8 @@ class ZEngine(object):
                     self._save_workflow()
             self.cleanup()
 
-            if self.current.task_type == 'UserTask' or self.current.task_type.startswith('End'):
+            if self.current.task_type == 'UserTask' or self.current.task_type.startswith(
+                    'End'):
                 break
 
     def run_activity(self, activity):
