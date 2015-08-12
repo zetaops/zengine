@@ -16,9 +16,11 @@ from SpiffWorkflow.storage import DictionarySerializer
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
 from falcon import Request, Response
-from zengine.dispatcher import settings
+from zengine.config import settings
 from zengine.lib.camunda_parser import CamundaBMPNParser
+from zengine.log import getlogger
 
+log = getlogger()
 
 
 """
@@ -197,19 +199,19 @@ class ZEngine(object):
         self.workflow.complete_task_from_id(self.current.task.id)
 
     def run(self):
+
         while 1:
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.set_current(task=task)
-
                 self.current.task.data.update(self.current.task_data)
-                # print("TASK >> %s" % self.current.name, self.current.task.data, "TYPE",
-                #       self.current.task_type)
+                log.info("TASK >> %s %s TYPE: %s" % (self.current.name, self.current.task.data,
+                      self.current.task_type))
                 if hasattr(self.current.spec, 'service_class'):
-                    # print("RUN ACTIVITY: %s, %s" % (
-                    #     self.current.spec.service_class, self.current))
+                    log.info("RUN ACTIVITY: %s, %s" % (
+                        self.current.spec.service_class, self.current))
                     self.run_activity(self.current.spec.service_class)
-                # else:
-                #     print('NO ACTIVITY!!')
+                else:
+                    log.info('NO ACTIVITY!!')
                 self.complete_current_task()
                 if not self.current.task_type.startswith('Start'):
                     self._save_workflow()

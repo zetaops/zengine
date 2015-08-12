@@ -6,21 +6,28 @@ Then route all requests to workflow engine.
 
 We process request and response objects for json data in middleware layer,
 so activity methods (which will be invoked from workflow engine)
-can read json data from request.context.jsonin
-and writeback to request.context.jsonout
+can read json data from request.input
+and writeback to request.output
 
 """
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from wsgiref import simple_server
 
+import falcon
+from beaker.middleware import SessionMiddleware
+from zengine.lib.utils import DotDict
+from zengine.config import ENABLED_MIDDLEWARES, SESSION_OPTIONS
 from zengine.engine import ZEngine
-from zengine.dispatcher import app, falcon_app
 
-__author__ = 'Evren Esat Ozkan'
 
+class ZRequest(falcon.Request):
+    context_type = DotDict
+
+
+falcon_app = falcon.API(middleware=ENABLED_MIDDLEWARES, request_type=ZRequest)
+app = SessionMiddleware(falcon_app, SESSION_OPTIONS, environ_key="session")
 
 
 class Connector(object):
@@ -32,8 +39,6 @@ class Connector(object):
     # self.logger = logging.getLogger('dispatch.' + __name__)
     def __init__(self):
         self.engine = ZEngine()
-
-
 
     def on_get(self, req, resp, wf_name):
         self.on_post(req, resp, wf_name)
@@ -48,11 +53,12 @@ class Connector(object):
         self.engine.run()
 
 
-
 workflow_connector = Connector()
 falcon_app.add_route('/{wf_name}/', workflow_connector)
 
+
 def runserver(port=9001, addr='0.0.0.0'):
+    from wsgiref import simple_server
     httpd = simple_server.make_server(addr, port, app)
     httpd.serve_forever()
 

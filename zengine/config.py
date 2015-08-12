@@ -1,24 +1,19 @@
 # -*-  coding: utf-8 -*-
-"""falcon dispatcher configuration"""
+"""configuration"""
 
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from beaker.cache import _backends
 import importlib
+from beaker.cache import _backends
 import os
-
-settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
-
-__author__ = 'Evren Esat Ozkan'
-
-import falcon
-from zengine.lib.utils import DotDict
-from beaker.middleware import SessionMiddleware
 import beaker
 from beaker_extensions import redis_
 from zengine import middlewares
+
+settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
+
 beaker.cache.clsmap = _backends({'redis': redis_.RedisManager})
 
 SESSION_OPTIONS = {
@@ -34,9 +29,3 @@ ENABLED_MIDDLEWARES = [
     middlewares.JSONTranslator(),
     middlewares.CORS(),
 ]
-
-class ZRequest(falcon.Request):
-    context_type = DotDict
-
-falcon_app = falcon.API(middleware=ENABLED_MIDDLEWARES, request_type=ZRequest)
-app = SessionMiddleware(falcon_app, SESSION_OPTIONS, environ_key="session")
