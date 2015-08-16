@@ -82,22 +82,23 @@ class Current(object):
         self.response = None
         self.spec = None
         self.workflow = None
-        self.auth = AuthBackend(self.session)
+        self.auth = lazy_object_proxy.Proxy(
+            lambda: AuthBackend(self.session))
         self.user = lazy_object_proxy.Proxy(
-            lambda: self.auth.get_user(self.session))
+            lambda: self.auth.get_user())
+        self.role = lazy_object_proxy.Proxy(
+            lambda: self.auth.get_role())
         self.update(**kwargs)
         self.permissions = []
-        self.perm_cache = lazy_object_proxy.Proxy(
-            lambda: Cache('user_perms_%s' % self.session['user_id']))
 
     def has_perm(self, perm):
         if not self.permissions:
-            self.permissions = self.perm_cache.get(self.get_perms())
+            self.permissions = self.session.get('permissions', self.get_perms())
         return self.user.has_permission(perm)
 
     def get_perms(self):
-        self.permissions = self.user.get_permissions()
-        self.perm_cache.set(self.permissions)
+        self.permissions = self.role.get_permissions()
+        self.session['permissions'] = self.permissions
         return self.permissions
 
     def update(self, **kwargs):

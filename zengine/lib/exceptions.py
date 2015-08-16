@@ -1,5 +1,3 @@
-__author__ = 'Evren Esat Ozkan'
-
 from falcon.errors import *
 
 class MultipleObjectsReturned(Exception):

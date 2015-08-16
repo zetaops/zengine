@@ -106,10 +106,11 @@ class CrudView(BaseView):
         """
         if self.do:
             serialized_form = JsonForm(self.object).serialize()
-            self.output['forms'] = serialized_form
+
             self._save_object()
         else:
             serialized_form = JsonForm(self.model_class()).serialize()
+            self.output['forms'] = serialized_form
 
 
     def add(self):
