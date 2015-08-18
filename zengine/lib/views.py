@@ -6,7 +6,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from falcon import HTTPNotFound
-from pyoko.model import Model
+
+from pyoko.model import Model, model_registry
 from zengine.lib.forms import JsonForm
 
 __author__ = "Evren Esat Ozkan"
@@ -16,7 +17,12 @@ class BaseView(object):
     """
     this class constitute a base for all view classes.
     """
-    def __init__(self, current):
+
+    def __init__(self, current=None):
+        if current:
+            self.set_current(current)
+
+    def set_current(self, current):
         self.current = current
         self.input = current.input
         self.output = current.output
@@ -32,24 +38,10 @@ class SimpleView(BaseView):
     otherwise show the form by calling self._show() method.
 
     """
+
     def __init__(self, current):
         super(SimpleView, self).__init__(current)
-        if current.request.context['data'].get('cmd', '') == 'do':
-            self._do()
-        else:
-            self._show()
-
-    def _do(self):
-        """
-        You should override this method in your class
-        """
-        raise NotImplementedError
-
-    def _show(self):
-        """
-        You should override this method in your class
-        """
-        raise NotImplementedError
+        self.__class__.__dict__["%s_view" % (self.cmd or 'show')](self)
 
 
 class CrudView(BaseView):
@@ -58,79 +50,65 @@ class CrudView(BaseView):
 
     :type object: Model | None
     """
+    #
+    # def __init__(self):
+    #     super(CrudView, self).__init__()
 
-
-
-    def __init__(self, current, model_class):
-        self.model_class = model_class
-        super(CrudView, self).__init__(current)
+    def __call__(self, current):
+        current.log.info("CRUD CALL")
+        self.set_current(current)
+        self.model_class = model_registry.get_model(current.input['model'])
         self.object_id = self.input.get('object_id')
         if self.object_id:
             try:
                 self.object = self.model_class.objects.get(self.object_id)
                 if self.object.deleted:
-                    raise
+                    raise HTTPNotFound()
             except:
                 raise HTTPNotFound()
 
         else:
-            self.object = model_class(current)
-        {
-            'list': self.list,
-            'show': self.show,
-            'add': self.add,
-            'edit': self.edit,
-            'delete': self.delete,
-        }[current.input['cmd']]()
+            self.object = self.model_class(current)
+        current.log.info('Calling %s_view of %s' % (
+        (self.cmd or 'list'), self.model_class.__name__))
+        self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
 
-
-    def show(self):
+    def show_view(self):
         self.output['object'] = self.object.clean_value()
 
-
-
-
-    def list(self):
-        """
-        You should override this method in your class
-        """
+    def list_view(self):
         # TODO: add pagination
-        # TODO: use models
-        for obj in self.model.objects.filter():
-            data = obj.data
+        # TODO: investigate and if neccessary add sequrity/sanity checks for search params
+        query = self.object.objects.filter()
+        if 'filters' in self.input:
+            query = query.filter(**self.input['filters'])
+        self.output['objects'] = []
+        for obj in query:
+            data = obj.clean_value()
             self.output['objects'].append({"data": data, "key": obj.key})
+        self.output
 
-    def edit(self):
-        """
-        You should override this method in your class
-        """
+    def edit_view(self):
         if self.do:
-            serialized_form = JsonForm(self.object).serialize()
-
             self._save_object()
         else:
-            serialized_form = JsonForm(self.model_class()).serialize()
-            self.output['forms'] = serialized_form
+            self.output['forms'] = JsonForm(self.object).serialize()
 
-
-    def add(self):
-        """
-        You should override this method in your class
-        """
+    def add_view(self):
         if self.do:
-            pass
+            self._save_object()
         else:
-            serialized_form = JsonForm(self.model_class()).serialize()
+            self.output['forms'] = JsonForm(self.model_class()).serialize()
 
-
-    def _save_object(self):
-        self.object._load_data(self.current.input['form'])
+    def _save_object(self, data=None):
+        self.object._load_data(data or self.current.input['form'])
         self.object.save()
         self.current.task_data['IS'].opertation_successful = True
 
+    def delete_view(self):
+        # TODO: add confirmation dialog
+        self.object.delete()
+        self.current.task_data['IS'].opertation_successful = True
 
-    def delete(self):
-        """
-        You should override this method in your class
-        """
-        raise NotImplementedError
+
+crud_view = CrudView()

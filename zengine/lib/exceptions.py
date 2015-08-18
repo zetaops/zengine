@@ -1,8 +1,5 @@
 from falcon.errors import *
 
-class MultipleObjectsReturned(Exception):
-    """The query returned multiple objects when only one was expected."""
-    pass
 
 
 class SuspiciousOperation(Exception):

@@ -17,16 +17,11 @@ and writeback to request.output
 
 import falcon
 from beaker.middleware import SessionMiddleware
-from zengine.lib.utils import DotDict
+
 from zengine.config import ENABLED_MIDDLEWARES, SESSION_OPTIONS
 from zengine.engine import ZEngine
 
-
-class ZRequest(falcon.Request):
-    context_type = DotDict
-
-
-falcon_app = falcon.API(middleware=ENABLED_MIDDLEWARES, request_type=ZRequest)
+falcon_app = falcon.API(middleware=ENABLED_MIDDLEWARES)
 app = SessionMiddleware(falcon_app, SESSION_OPTIONS, environ_key="session")
 
 
@@ -44,12 +39,9 @@ class Connector(object):
         self.on_post(req, resp, wf_name)
 
     def on_post(self, req, resp, wf_name):
-        self.engine.current.update(request=req,
-                                response=resp,
-                                workflow_name=wf_name,
-                                )
-        self.engine.process_client_commands(req.context['data'], wf_name)
-        self.engine.load_or_create_workflow()
+        self.engine.start_engine(request=req, response=resp,
+                                 workflow_name=wf_name)
+        self.engine.current.log.info("ENGINE STARTED")
         self.engine.run()
 
 

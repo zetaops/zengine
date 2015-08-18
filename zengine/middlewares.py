@@ -19,10 +19,12 @@ ALLOWED_ORIGINS = ['http://127.0.0.1:8080',
                    'http://ulakbus.net',
                    'http://104.155.6.147']
 
+
 class CORS(object):
     """
     allow origins
     """
+
     def process_response(self, request, response, resource):
         origin = request.get_header('Origin')
         # if origin in ALLOWED_ORIGINS:
