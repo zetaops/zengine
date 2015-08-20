@@ -26,9 +26,14 @@ class BaseView(object):
         self.current = current
         self.input = current.input
         self.output = current.output
-        self.cmd = current.input.get('cmd')
+        self.cmd = current.task_data['cmd']
         self.subcmd = current.input.get('subcmd')
-        self.do = self.subcmd == 'do'
+        self.do = self.subcmd in ['do_show', 'do_list', 'do_edit', 'do_add']
+        self.next_task = self.subcmd.split('_')[1] if self.do else None
+
+    def go_next_task(self):
+        if self.next_task:
+            self.current.set_task_data(self.next_task)
 
 
 class SimpleView(BaseView):
@@ -70,11 +75,12 @@ class CrudView(BaseView):
         else:
             self.object = self.model_class(current)
         current.log.info('Calling %s_view of %s' % (
-        (self.cmd or 'list'), self.model_class.__name__))
+            (self.cmd or 'list'), self.model_class.__name__))
         self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
 
     def show_view(self):
         self.output['object'] = self.object.clean_value()
+        self.output['client_cmd'] = 'show_object'
 
     def list_view(self):
         # TODO: add pagination
@@ -82,33 +88,55 @@ class CrudView(BaseView):
         query = self.object.objects.filter()
         if 'filters' in self.input:
             query = query.filter(**self.input['filters'])
+        self.output['client_cmd'] = 'list_objects'
         self.output['objects'] = []
         for obj in query:
+            if ('just_deleted_object_key' in self.current.task_data and
+                self.current.task_data['just_deleted_object_key'] == obj.key):
+                del self.current.task_data['just_deleted_object_key']
+                continue
+
             data = obj.clean_value()
             self.output['objects'].append({"data": data, "key": obj.key})
+
+
+        if 'just_added_object' in self.current.task_data:
+            self.output['objects'].append(self.current.task_data['just_added_object'].copy())
+            del self.current.task_data['just_added_object']
         self.output
 
     def edit_view(self):
         if self.do:
             self._save_object()
+            self.go_next_task()
         else:
             self.output['forms'] = JsonForm(self.object).serialize()
+            self.output['client_cmd'] = 'add_object'
 
     def add_view(self):
         if self.do:
             self._save_object()
+            self.go_next_task()
         else:
             self.output['forms'] = JsonForm(self.model_class()).serialize()
+            self.output['client_cmd'] = 'add_object'
 
     def _save_object(self, data=None):
-        self.object._load_data(data or self.current.input['form'])
+        self.object.set_data(data or self.current.input['form'])
         self.object.save()
-        self.current.task_data['IS'].opertation_successful = True
+        if self.next_task == 'list':  # to overcome 1s riak-solr delay
+            self.current.task_data['just_added_object'] = {
+                'key': self.object.key,
+                'data': self.object.clean_value()}
+        # self.current.task_data['IS'].opertation_successful = True
 
     def delete_view(self):
         # TODO: add confirmation dialog
+        # self.current.task_data['IS'].opertation_successful = True
+        if self.next_task == 'list':  # to overcome 1s riak-solr delay
+            self.current.task_data['just_deleted_object_key'] = self.object.key
         self.object.delete()
-        self.current.task_data['IS'].opertation_successful = True
+        self.go_next_task()
 
 
 crud_view = CrudView()

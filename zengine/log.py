@@ -7,15 +7,17 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import logging
-
+from zengine.config import settings
 def getlogger():
     # create logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
     # create console handler and set level to debug
-
-    ch = logging.FileHandler(filename="ulakbus.log")
+    if settings.LOG_HANDLER == 'file':
+        ch = logging.FileHandler(filename="%sulakbus.log" % settings.LOG_DIR, mode="w")
+    else:
+        ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
     # create formatter

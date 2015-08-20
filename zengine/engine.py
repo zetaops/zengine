@@ -6,6 +6,7 @@ import importlib
 from io import BytesIO
 from importlib import import_module
 import os
+from uuid import uuid4
 
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
@@ -19,7 +20,7 @@ from beaker.session import Session
 from falcon import Request, Response
 import lazy_object_proxy
 from zengine.config import settings, AuthBackend
-from zengine.lib.cache import Cache
+from zengine.lib.cache import Cache, cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import getlogger
 from zengine.lib.views import crud_view
@@ -38,6 +39,7 @@ override the cleanup method if you need to run some cleanup code after each run 
 # (GPLv3).  See LICENSE.txt for details.
 __author__ = "Evren Esat Ozkan"
 
+ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do']
 
 class InMemoryPackager(Packager):
     PARSER_CLASS = CamundaBMPNParser
@@ -52,6 +54,10 @@ class InMemoryPackager(Packager):
 
 
 class Condition(object):
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
     def __getattr__(self, name):
         return None
 
@@ -92,6 +98,18 @@ class Current(object):
         self.role = lazy_object_proxy.Proxy(
             lambda: self.auth.get_role())
         self.update(**kwargs)
+        if 'token' in self.input:
+            self.token = self.input['token']
+            log.info("TOKEN iNCOMiNG: %s " % self.token)
+            self.new_token = False
+        else:
+            self.token = uuid4().hex
+            self.new_token = True
+            log.info("TOKEN NEW: %s " % self.token)
+
+        self.wfcache = Cache(key=self.token, json=True)
+        log.info("\n\nWFCACHE: %s" % self.wfcache.get())
+        self.set_task_data()
         self.permissions = []
 
     def has_perm(self, perm):
@@ -114,9 +132,29 @@ class Current(object):
             self.name = kwargs['task'].get_name()
 
 
+    def set_task_data(self, internal_cmd=None):
+        # Setup defaults
+        if 'IS' not in self.task_data:
+            self.task_data['IS'] = Condition()
+        for cmd in ALLOWED_CLIENT_COMMANDS:
+            self.task_data[cmd] = None
+        # this cmd coming from inside of the app
+        if internal_cmd and internal_cmd in ALLOWED_CLIENT_COMMANDS:
+            self.task_data[internal_cmd] = True
+            self.task_data['cmd'] = internal_cmd
+        else:
+            if 'cmd' in self.input and self.input['cmd'] in ALLOWED_CLIENT_COMMANDS:
+                self.task_data[self.input['cmd']] = True
+                self.task_data['cmd'] = self.input['cmd']
+            else:
+                self.task_data['cmd'] = None
+            # if 'subcmd' in self.input and self.input[
+            #     'subcmd'] in self.ALLOWED_CLIENT_COMMANDS:
+            #     self.task_data[self.input['subcmd']] = True
+            #     self.task_data['subcmd'] = self.input['subcmd']
+        self.task_data['object_id'] = self.input.get('object_id', None)
+
 class ZEngine(object):
-    ALLOWED_CLIENT_COMMANDS = ['edit_object', 'add_object', 'update_object',
-                               'cancel', 'clear_wf']
     WORKFLOW_DIRECTORY = settings.WORKFLOW_PACKAGES_PATH,
     ACTIVITY_MODULES_PATH = settings.ACTIVITY_MODULES_IMPORT_PATH
 
@@ -132,35 +170,25 @@ class ZEngine(object):
 
     def save_workflow(self, wf_name, serialized_wf_instance):
         if self.current.name.startswith('End'):
-            del self.current.session['workflows'][wf_name]
-            return
-        if 'workflows' not in self.current.session:
-            self.current.session['workflows'] = {}
-
-        self.current.session['workflows'][wf_name] = serialized_wf_instance
-
-    def load_workflow(self, workflow_name):
-        try:
-            return self.current.session['workflows'].get(workflow_name, None)
-        except KeyError:
-            return None
-
-    def process_client_commands(self):
-        c = self.current
-        if 'clear_wf' in c.input and 'workflows' in c.session and \
-                        c.workflow_name in c.session['workflows']:
-            del c.session['workflows'][c.workflow_name]
-        c.task_data = {'IS': Condition()}
-        if 'cmd' in c.input and c.input['cmd'] in self.ALLOWED_CLIENT_COMMANDS:
-            c.task_data[c.input['cmd']] = True
-            c.task_data['cmd'] = c.input['cmd']
+            self.current.wfcache.delete()
+            # pass
         else:
-            for cmd in self.ALLOWED_CLIENT_COMMANDS:
-                c.task_data[cmd] = None
-        c.task_data['object_id'] = c.input.get('object_id', None)
+            task_data = self.current.task_data.copy()
+            task_data['IS_srlzd'] = self.current.task_data['IS'].__dict__
+            del task_data['IS']
+            self.current.wfcache.set((serialized_wf_instance, task_data))
+        return True
+
+    def load_workflow(self):
+        if not self.current.new_token:
+            workflow_data, task_data = self.current.wfcache.get()
+            task_data['IS'] = Condition(**task_data['IS_srlzd'])
+            self.current.update(task_data=task_data)
+            self.current.set_task_data()
+            return workflow_data
 
     def _load_workflow(self):
-        serialized_wf = self.load_workflow(self.current.workflow_name)
+        serialized_wf = self.load_workflow()
         if serialized_wf:
             return self.deserialize_workflow(serialized_wf)
 
@@ -168,8 +196,8 @@ class ZEngine(object):
         return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
 
     def compact_deserialize_workflow(self, serialized_wf):
-        wf = CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
-                                                              workflow_spec=self.workflow_spec)
+        wf = CompactWorkflowSerializer().deserialize_workflow(
+            serialized_wf, workflow_spec=self.workflow_spec)
         return wf
 
     def serialize_workflow(self):
@@ -197,7 +225,7 @@ class ZEngine(object):
         """
         :return: workflow spec package
         """
-        # FIXME: this is a very ugly workaround
+        # FIXME: this is a very ugly workaround for a weird path incosistency
         if isinstance(self.WORKFLOW_DIRECTORY, (str, unicode)):
             wfdir = self.WORKFLOW_DIRECTORY
         else:
@@ -218,7 +246,6 @@ class ZEngine(object):
 
     def start_engine(self, **kwargs):
         self.current = Current(**kwargs)
-        self.process_client_commands()
         self.load_or_create_workflow()
 
     def run(self):
@@ -226,7 +253,7 @@ class ZEngine(object):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.update(task=task)
                 self.current.task.data.update(self.current.task_data)
-                log.info("TASK >> %s %s TYPE: %s" % (
+                log.info("TASK > > %s %s %s TYPE: %s" % ( self.current.token,
                     self.current.name, self.current.task.data,
                     self.current.task_type))
                 if hasattr(self.current.spec, 'service_class'):
@@ -243,6 +270,8 @@ class ZEngine(object):
             if self.current.task_type == 'UserTask' or self.current.task_type.startswith(
                     'End'):
                 break
+        self.current.output['token'] = self.current.token
+        log.info("token: %s " % self.current.token)
 
     def run_activity(self, activity):
         """

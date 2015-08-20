@@ -6,23 +6,30 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import json
 
 from zengine.config import settings
 from redis import Redis
 
 redis_host, redis_port = settings.REDIS_SERVER.split(':')
 cache = Redis(redis_host, redis_port)
-
-
+#
+# def dumper(obj):
+#     try:
+#         return obj.toJSON()
+#     except:
+#         return obj.__dict__
+#
 class Cache:
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         self.args = args
-        self._key_str = ''
+
+        self._key_str = kwargs.pop('key', '')
+        self.serialize_to_json = kwargs.pop('json')
 
     def _key(self):
         if not self._key_str:
-            self._key_str = (str('_'.join([repr(n) for n in self.args]))
-                         if len(self.args) > 1 else self.args[0])
+            self._key_str = str('_'.join([repr(n) for n in self.args]))
         return self._key_str
 
     def __unicode__(self):
@@ -36,7 +43,9 @@ class Cache:
         :return: cached value
         """
         d = cache.get(self._key())
-        return d if d is not None else default
+        return ((json.loads(d) if self.serialize_to_json else d)
+                if d is not None
+                else default)
 
     def set(self, val, lifetime=None):
         """
@@ -46,8 +55,9 @@ class Cache:
         :param lifetime: exprition time in sec
         :return: val
         """
-        cache.set(self._key(), val,
-                  lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
+        cache.set(self._key(),
+                  (json.dumps(val) if self.serialize_to_json else val))
+                  # lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
         return val
 
     def delete(self, *args):
