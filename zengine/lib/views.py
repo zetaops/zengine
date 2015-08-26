@@ -39,9 +39,8 @@ class BaseView(object):
 class SimpleView(BaseView):
     """
     simple form based views can be build  up on this class.
-    we call self._do() method if client sends a 'do' command,
-    otherwise show the form by calling self._show() method.
-
+    we call self.%s_view() method with %s substituted with self.input['cmd']
+    self.show_view() will be called if client doesn't give any cmd
     """
 
     def __init__(self, current):
@@ -53,6 +52,8 @@ class CrudView(BaseView):
     """
     A base class for "Create List Show Update Delete" type of views.
 
+
+
     :type object: Model | None
     """
     #
@@ -62,21 +63,29 @@ class CrudView(BaseView):
     def __call__(self, current):
         current.log.info("CRUD CALL")
         self.set_current(current)
-        self.model_class = model_registry.get_model(current.input['model'])
-        self.object_id = self.input.get('object_id')
-        if self.object_id:
-            try:
-                self.object = self.model_class.objects.get(self.object_id)
-                if self.object.deleted:
-                    raise HTTPNotFound()
-            except:
-                raise HTTPNotFound()
-
+        if 'model' not in current.input:
+            self.list_models()
         else:
-            self.object = self.model_class(current)
-        current.log.info('Calling %s_view of %s' % (
-            (self.cmd or 'list'), self.model_class.__name__))
-        self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
+            self.model_class = model_registry.get_model(current.input['model'])
+
+            self.object_id = self.input.get('object_id')
+            if self.object_id:
+                try:
+                    self.object = self.model_class.objects.get(self.object_id)
+                    if self.object.deleted:
+                        raise HTTPNotFound()
+                except:
+                    raise HTTPNotFound()
+
+            else:
+                self.object = self.model_class(current)
+            current.log.info('Calling %s_view of %s' % (
+                (self.cmd or 'list'), self.model_class.__name__))
+            self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
+
+    def list_models(self):
+        self.output["models"] = [m.__name__ for m in
+                       model_registry.get_base_models()]
 
     def show_view(self):
         self.output['object'] = self.object.clean_value()
@@ -128,11 +137,9 @@ class CrudView(BaseView):
             self.current.task_data['just_added_object'] = {
                 'key': self.object.key,
                 'data': self.object.clean_value()}
-        # self.current.task_data['IS'].opertation_successful = True
 
     def delete_view(self):
         # TODO: add confirmation dialog
-        # self.current.task_data['IS'].opertation_successful = True
         if self.next_task == 'list':  # to overcome 1s riak-solr delay
             self.current.task_data['just_deleted_object_key'] = self.object.key
         self.object.delete()

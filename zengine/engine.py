@@ -162,6 +162,7 @@ class ZEngine(object):
         self.current = None
         self.activities = {'crud_view': crud_view}
         self.workflow = BpmnWorkflow
+        self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
 
     def save_workflow(self, wf_name, serialized_wf_instance):
@@ -223,11 +224,14 @@ class ZEngine(object):
         """
         :return: workflow spec package
         """
-        path = "{}/{}.bpmn".format(settings.WORKFLOW_PACKAGES_PATH,
-                                   self.current.workflow_name)
-        return BpmnSerializer().deserialize_workflow_spec(
-            InMemoryPackager.package_in_memory(self.current.workflow_name,
-                                               path))
+        if self.current.workflow_name not in self.workflow_spec_cache:
+            path = "{}/{}.bpmn".format(settings.WORKFLOW_PACKAGES_PATH,
+                                       self.current.workflow_name)
+            spec = BpmnSerializer().deserialize_workflow_spec(
+                InMemoryPackager.package_in_memory(self.current.workflow_name,
+                                                   path))
+            self.workflow_spec_cache[self.current.workflow_name] = spec
+        return self.workflow_spec_cache[self.current.workflow_name]
 
     def _save_workflow(self):
         """
@@ -261,7 +265,7 @@ class ZEngine(object):
                 output += "\n\t%s: %s" % (k, v)
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
-        output += "\n\TOKEN: %s" % self.current.token
+        output += "\n\tTOKEN: %s" % self.current.token
         log.info(output + "\n= = = = = =\n")
 
     def run(self):
