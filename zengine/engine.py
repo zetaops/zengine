@@ -1,6 +1,10 @@
 # -*-  coding: utf-8 -*-
-from __future__ import print_function, absolute_import, division
+# Copyright (C) 2015 ZetaOps Inc.
+#
+# This file is licensed under the GNU General Public License v3
+# (GPLv3).  See LICENSE.txt for details.
 
+from __future__ import print_function, absolute_import, division
 from __future__ import division
 import importlib
 from io import BytesIO
@@ -27,19 +31,8 @@ from zengine.lib.views import crud_view
 
 log = getlogger()
 
-"""
-ZEnging engine class
-import, extend and override load_workflow and save_workflow methods
-override the cleanup method if you need to run some cleanup code after each run cycle
-"""
-
-# Copyright (C) 2015 ZetaOps Inc.
-#
-# This file is licensed under the GNU General Public License v3
-# (GPLv3).  See LICENSE.txt for details.
-__author__ = "Evren Esat Ozkan"
-
 ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do']
+
 
 class InMemoryPackager(Packager):
     PARSER_CLASS = CamundaBMPNParser
@@ -54,7 +47,6 @@ class InMemoryPackager(Packager):
 
 
 class Condition(object):
-
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
@@ -62,11 +54,16 @@ class Condition(object):
         return None
 
     def __str__(self):
-        return self.__dict__
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 
 class Current(object):
     """
+    This object holds and passes the whole state of the app to task activites
+
     :type task: Task | None
     :type response: Response | None
     :type request: Request | None
@@ -86,6 +83,7 @@ class Current(object):
         self.task = None
         self.log = log
         self.name = ''
+        self.activity = ''
         self.input = self.request.context['data']
         self.output = self.request.context['result']
         self.response = None
@@ -97,7 +95,6 @@ class Current(object):
             lambda: self.auth.get_user())
         self.role = lazy_object_proxy.Proxy(
             lambda: self.auth.get_role())
-        self.update(**kwargs)
         if 'token' in self.input:
             self.token = self.input['token']
             log.info("TOKEN iNCOMiNG: %s " % self.token)
@@ -123,17 +120,24 @@ class Current(object):
         self.session['permissions'] = self.permissions
         return self.permissions
 
-    def update(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        if 'task' in kwargs:
-            self.task_type = kwargs['task'].task_spec.__class__.__name__
-            self.spec = kwargs['task'].task_spec
-            self.name = kwargs['task'].get_name()
-
+    def update_task(self, task):
+        """
+        updates self.task with current task step
+        then updates the task's data with self.task_data
+        """
+        self.task = task
+        self.task.data.update(self.task_data)
+        self.task_type = task.task_spec.__class__.__name__
+        self.spec = task.task_spec
+        self.name = task.get_name()
+        self.activity = getattr(self.spec, 'service_class', '')
 
     def set_task_data(self, internal_cmd=None):
-        # Setup defaults
+        """
+        updates task data according to client input
+        internal_cmd overrides client cmd if exists
+        eihter way cmd should be one of ALLOWED_CLIENT_COMMANDS
+        """
         if 'IS' not in self.task_data:
             self.task_data['IS'] = Condition()
         for cmd in ALLOWED_CLIENT_COMMANDS:
@@ -143,74 +147,67 @@ class Current(object):
             self.task_data[internal_cmd] = True
             self.task_data['cmd'] = internal_cmd
         else:
-            if 'cmd' in self.input and self.input['cmd'] in ALLOWED_CLIENT_COMMANDS:
+            if 'cmd' in self.input and self.input[
+                'cmd'] in ALLOWED_CLIENT_COMMANDS:
                 self.task_data[self.input['cmd']] = True
                 self.task_data['cmd'] = self.input['cmd']
             else:
                 self.task_data['cmd'] = None
-            # if 'subcmd' in self.input and self.input[
-            #     'subcmd'] in self.ALLOWED_CLIENT_COMMANDS:
-            #     self.task_data[self.input['subcmd']] = True
-            #     self.task_data['subcmd'] = self.input['subcmd']
         self.task_data['object_id'] = self.input.get('object_id', None)
 
-class ZEngine(object):
-    WORKFLOW_DIRECTORY = settings.WORKFLOW_PACKAGES_PATH,
-    ACTIVITY_MODULES_PATH = settings.ACTIVITY_MODULES_IMPORT_PATH
 
+class ZEngine(object):
     def __init__(self):
         self.use_compact_serializer = True
-        if self.use_compact_serializer:
-            self.serialize_workflow = self.compact_serialize_workflow
-            self.deserialize_workflow = self.compact_deserialize_workflow
         self.current = None
         self.activities = {'crud_view': crud_view}
         self.workflow = BpmnWorkflow
         self.workflow_spec = WorkflowSpec()
 
     def save_workflow(self, wf_name, serialized_wf_instance):
+        """
+        if we aren't come to the end of the wf,
+        saves the wf state and data to cache
+        """
         if self.current.name.startswith('End'):
             self.current.wfcache.delete()
-            # pass
         else:
             task_data = self.current.task_data.copy()
             task_data['IS_srlzd'] = self.current.task_data['IS'].__dict__
             del task_data['IS']
             self.current.wfcache.set((serialized_wf_instance, task_data))
-        return True
 
-    def load_workflow(self):
+    def load_workflow_from_cache(self):
+        """
+        loads the serialized wf state and data from cache
+        updates the self.current.task_data
+        """
         if not self.current.new_token:
-            workflow_data, task_data = self.current.wfcache.get()
-            task_data['IS'] = Condition(**task_data['IS_srlzd'])
-            self.current.update(task_data=task_data)
+            serialized_workflow, task_data = self.current.wfcache.get()
+            task_data['IS'] = Condition(**task_data.pop('IS_srlzd'))
+            self.current.task_data = task_data
             self.current.set_task_data()
-            return workflow_data
+            return serialized_workflow
 
     def _load_workflow(self):
-        serialized_wf = self.load_workflow()
+        """
+        gets the serialized wf data from cache and deserializes it
+        """
+        serialized_wf = self.load_workflow_from_cache()
         if serialized_wf:
             return self.deserialize_workflow(serialized_wf)
 
     def deserialize_workflow(self, serialized_wf):
-        return BpmnWorkflow.deserialize(DictionarySerializer(), serialized_wf)
-
-    def compact_deserialize_workflow(self, serialized_wf):
         wf = CompactWorkflowSerializer().deserialize_workflow(
             serialized_wf, workflow_spec=self.workflow_spec)
         return wf
 
     def serialize_workflow(self):
-        return self.workflow.serialize(serializer=DictionarySerializer())
-
-    def compact_serialize_workflow(self):
         self.workflow.refresh_waiting_tasks()
         return CompactWorkflowSerializer().serialize_workflow(self.workflow,
                                                               include_spec=False)
 
     def create_workflow(self):
-        # wf_pkg_file = self.get_worfklow_spec()
-        # self.workflow_spec = BpmnSerializer().deserialize_workflow_spec(wf_pkg_file)
         self.workflow_spec = self.get_worfklow_spec()
         return BpmnWorkflow(self.workflow_spec)
 
@@ -219,82 +216,84 @@ class ZEngine(object):
         Tries to load the previously serialized (and saved) workflow
         Creates a new one if it can't
         """
-        self.workflow = self._load_workflow() or self.create_workflow()
+        return self._load_workflow() or self.create_workflow()
+        # self.current.update(workflow=self.workflow)
 
     def get_worfklow_spec(self):
         """
         :return: workflow spec package
         """
-        # FIXME: this is a very ugly workaround for a weird path incosistency
-        if isinstance(self.WORKFLOW_DIRECTORY, (str, unicode)):
-            wfdir = self.WORKFLOW_DIRECTORY
-        else:
-            wfdir = self.WORKFLOW_DIRECTORY[0]
-        # path = "{}/{}.zip".format(wfdir, self.current.workflow_name)
-        # return open(path)
-        path = "{}/{}.bpmn".format(wfdir, self.current.workflow_name)
+        path = "{}/{}.bpmn".format(settings.WORKFLOW_PACKAGES_PATH,
+                                   self.current.workflow_name)
         return BpmnSerializer().deserialize_workflow_spec(
             InMemoryPackager.package_in_memory(self.current.workflow_name,
                                                path))
 
     def _save_workflow(self):
-        self.save_workflow(self.current.workflow_name,
-                           self.serialize_workflow())
-
-    def complete_current_task(self):
-        self.workflow.complete_task_from_id(self.current.task.id)
+        """
+        calls the real save method if we pass the beggining of the wf
+        """
+        if not self.current.task_type.startswith('Start'):
+            self.save_workflow(self.current.workflow_name,
+                               self.serialize_workflow())
 
     def start_engine(self, **kwargs):
         self.current = Current(**kwargs)
-        self.load_or_create_workflow()
+        log.info("::::::::::: ENGINE STARTED :::::::::::\n"
+                 "\tCMD:%s\n"
+                 "\tSUBCMD:%s" % (self.current.input.get('cmd'),
+                                self.current.input.get('subcmd')))
+        self.workflow = self.load_or_create_workflow()
+        self.current.workflow = self.workflow
+
+    def log_wf_state(self):
+        """
+        logging the state of the workflow and data
+        """
+        output = '\n- - - - - -\n'
+        output += "WORKFLOW: %s" % self.current.workflow_name.upper()
+
+        output += "\nTASK: %s ( %s )\n" % (
+            self.current.name, self.current.task_type)
+        output += "DATA:"
+        for k, v in self.current.task_data.items():
+            if v:
+                output += "\n\t%s: %s" % (k, v)
+        output += "\nCURRENT:"
+        output += "\n\tACTIVITY: %s" % self.current.activity
+        output += "\n\TOKEN: %s" % self.current.token
+        log.info(output + "\n= = = = = =\n")
 
     def run(self):
-        while 1:
+        """
+        main loop of the workflow engine
+        runs all READY tasks, calls their activities, saves wf state,
+        breaks if current task is a UserTask or EndTask
+        """
+        while not (self.current.task_type == 'UserTask' or
+                       self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
-                self.current.update(task=task)
-                self.current.task.data.update(self.current.task_data)
-                log.info("TASK > > %s %s %s TYPE: %s" % ( self.current.token,
-                    self.current.name, self.current.task.data,
-                    self.current.task_type))
-                if hasattr(self.current.spec, 'service_class'):
-                    log.info("RUN ACTIVITY: %s, %s" % (
-                        self.current.spec.service_class, self.current))
-                    self.run_activity(self.current.spec.service_class)
-                else:
-                    log.info('NO ACTIVITY!!')
-                self.complete_current_task()
-                if not self.current.task_type.startswith('Start'):
-                    self._save_workflow()
-            self.cleanup()
-
-            if self.current.task_type == 'UserTask' or self.current.task_type.startswith(
-                    'End'):
-                break
+                self.current.update_task(task)
+                self.log_wf_state()
+                self.run_activity()
+                self.workflow.complete_task_from_id(self.current.task.id)
+                self._save_workflow()
         self.current.output['token'] = self.current.token
-        log.info("token: %s " % self.current.token)
 
-    def run_activity(self, activity):
-        """
 
-        :param activity:
-        :return:
+    def run_activity(self):
         """
-        if activity not in self.activities:
-            mod_parts = activity.split('.')
-            module = ".".join([self.ACTIVITY_MODULES_PATH] + mod_parts[:-1])
-            method = mod_parts[-1]
-            self.activities[activity] = getattr(import_module(module), method)
-        self.activities[activity](self.current)
+        imports, caches and calls the associated activity of the current task
 
-    # def process_activities(self):
-    #     if 'activities' in self.current.spec.data:
-    #         for cb in self.current.spec.data.activities:
-    #             self.run_activity(cb)
-
-    def cleanup(self):
+        :param str activity: python path of activity function or class definition
         """
-        this method will be called after each run cycle
-        override this if you need some codes to be called after WF engine finished it's tasks and activities
-        :return: None
-        """
-        pass
+        if not self.current.activity:
+            return
+        if self.current.activity not in self.activities:
+            mod_parts = self.current.activity.split('.')
+            module_name = ".".join(
+                [settings.ACTIVITY_MODULES_IMPORT_PATH] + mod_parts[:-1])
+            method_name = mod_parts[-1]
+            activity = getattr(import_module(module_name), method_name)
+            self.activities[self.current.activity] = activity
+        self.activities[self.current.activity](self.current)

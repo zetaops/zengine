@@ -136,6 +136,7 @@ class CrudView(BaseView):
         if self.next_task == 'list':  # to overcome 1s riak-solr delay
             self.current.task_data['just_deleted_object_key'] = self.object.key
         self.object.delete()
+        del self.current.input['object_id']
         self.go_next_task()
 
 

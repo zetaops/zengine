@@ -41,7 +41,6 @@ class Connector(object):
     def on_post(self, req, resp, wf_name):
         self.engine.start_engine(request=req, response=resp,
                                  workflow_name=wf_name)
-        self.engine.current.log.info("ENGINE STARTED")
         self.engine.run()
 
 
