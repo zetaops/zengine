@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 from time import sleep
 from pyoko.model import model_registry
-from tests.test_utils import BaseTestCase
+from tests.test_client import BaseTestCase
 RESPONSES = {}
 
 class CRUDTestCase(BaseTestCase):

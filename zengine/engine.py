@@ -77,7 +77,8 @@ class Current(object):
         self.request = kwargs.pop('request', None)
         self.response = kwargs.pop('response', None)
         self.session = self.request.env['session']
-
+        self.spec = None
+        self.workflow = None
         self.task_type = ''
         self.task_data = {}
         self.task = None
@@ -86,15 +87,9 @@ class Current(object):
         self.activity = ''
         self.input = self.request.context['data']
         self.output = self.request.context['result']
-        self.response = None
-        self.spec = None
-        self.workflow = None
-        self.auth = lazy_object_proxy.Proxy(
-            lambda: AuthBackend(self.session))
-        self.user = lazy_object_proxy.Proxy(
-            lambda: self.auth.get_user())
-        self.role = lazy_object_proxy.Proxy(
-            lambda: self.auth.get_role())
+        self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self.session))
+        self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
+
         if 'token' in self.input:
             self.token = self.input['token']
             log.info("TOKEN iNCOMiNG: %s " % self.token)
@@ -109,16 +104,11 @@ class Current(object):
         self.set_task_data()
         self.permissions = []
 
-    def has_perm(self, perm):
-        if not self.permissions:
-            self.permissions = self.session.get('permissions',
-                                                self.get_perms())
-        return self.user.has_permission(perm)
+    def has_permission(self, perm):
+        return self.auth.has_permission(perm)
 
-    def get_perms(self):
-        self.permissions = self.role.get_permissions()
-        self.session['permissions'] = self.permissions
-        return self.permissions
+    def get_permissions(self):
+        return self.auth.get_permissions()
 
     def update_task(self, task):
         """
@@ -147,8 +137,7 @@ class Current(object):
             self.task_data[internal_cmd] = True
             self.task_data['cmd'] = internal_cmd
         else:
-            if 'cmd' in self.input and self.input[
-                'cmd'] in ALLOWED_CLIENT_COMMANDS:
+            if 'cmd' in self.input and self.input['cmd'] in ALLOWED_CLIENT_COMMANDS:
                 self.task_data[self.input['cmd']] = True
                 self.task_data['cmd'] = self.input['cmd']
             else:
@@ -199,9 +188,8 @@ class ZEngine(object):
             return self.deserialize_workflow(serialized_wf)
 
     def deserialize_workflow(self, serialized_wf):
-        wf = CompactWorkflowSerializer().deserialize_workflow(
-            serialized_wf, workflow_spec=self.workflow_spec)
-        return wf
+        return CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
+                                                              workflow_spec=self.workflow_spec)
 
     def serialize_workflow(self):
         self.workflow.refresh_waiting_tasks()
@@ -220,6 +208,24 @@ class ZEngine(object):
         return self._load_workflow() or self.create_workflow()
         # self.current.update(workflow=self.workflow)
 
+    def find_workflow_path(self):
+        """
+        tries to find the path of the workflow diagram file.
+        first looks to the defined WORKFLOW_PACKAGES_PATH,
+        if it cannot be found there, fallbacks to zengine/workflows
+        directory for default workflows that shipped with zengine
+
+        :return: path of the workflow spec file (BPMN diagram)
+        """
+        path = "%s/%s.bpmn" % (settings.WORKFLOW_PACKAGES_PATH, self.current.workflow_name)
+        if not os.path.exists(path):
+            zengine_path = os.path.dirname(os.path.realpath(__file__))
+            path = "%s/workflows/%s.bpmn" % (zengine_path, self.current.workflow_name)
+            if not os.path.exists(path):
+                raise RuntimeError("BPMN file cannot found: %s" % self.current.workflow_name)
+        return path
+
+
     def get_worfklow_spec(self):
         """
         generates and caches the workflow spec package from
@@ -227,13 +233,11 @@ class ZEngine(object):
 
         :return: workflow spec package
         """
-        # TODO: convert to redis based caching
+        # TODO: convert from in-memory to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
-            path = "{}/{}.bpmn".format(settings.WORKFLOW_PACKAGES_PATH,
-                                       self.current.workflow_name)
-            spec = BpmnSerializer().deserialize_workflow_spec(
-                InMemoryPackager.package_in_memory(self.current.workflow_name,
-                                                   path))
+            path = self.find_workflow_path()
+            spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
+            spec = BpmnSerializer().deserialize_workflow_spec(spec_package)
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
@@ -242,15 +246,13 @@ class ZEngine(object):
         calls the real save method if we pass the beggining of the wf
         """
         if not self.current.task_type.startswith('Start'):
-            self.save_workflow(self.current.workflow_name,
-                               self.serialize_workflow())
+            self.save_workflow(self.current.workflow_name, self.serialize_workflow())
 
     def start_engine(self, **kwargs):
         self.current = Current(**kwargs)
         log.info("::::::::::: ENGINE STARTED :::::::::::\n"
                  "\tCMD:%s\n"
-                 "\tSUBCMD:%s" % (self.current.input.get('cmd'),
-                                self.current.input.get('subcmd')))
+                 "\tSUBCMD:%s" % (self.current.input.get('cmd'), self.current.input.get('subcmd')))
         self.workflow = self.load_or_create_workflow()
         self.current.workflow = self.workflow
 
@@ -261,8 +263,7 @@ class ZEngine(object):
         output = '\n- - - - - -\n'
         output += "WORKFLOW: %s" % self.current.workflow_name.upper()
 
-        output += "\nTASK: %s ( %s )\n" % (
-            self.current.name, self.current.task_type)
+        output += "\nTASK: %s ( %s )\n" % (self.current.name, self.current.task_type)
         output += "DATA:"
         for k, v in self.current.task_data.items():
             if v:
@@ -278,8 +279,7 @@ class ZEngine(object):
         runs all READY tasks, calls their activities, saves wf state,
         breaks if current task is a UserTask or EndTask
         """
-        while not (self.current.task_type == 'UserTask' or
-                       self.current.task_type.startswith('End')):
+        while self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.update_task(task)
                 self.log_wf_state()
@@ -288,20 +288,15 @@ class ZEngine(object):
                 self._save_workflow()
         self.current.output['token'] = self.current.token
 
-
     def run_activity(self):
         """
         imports, caches and calls the associated activity of the current task
-
-        :param str activity: python path of activity function or class definition
         """
-        if not self.current.activity:
-            return
-        if self.current.activity not in self.activities:
-            mod_parts = self.current.activity.split('.')
-            module_name = ".".join(
-                [settings.ACTIVITY_MODULES_IMPORT_PATH] + mod_parts[:-1])
-            method_name = mod_parts[-1]
-            activity = getattr(import_module(module_name), method_name)
-            self.activities[self.current.activity] = activity
-        self.activities[self.current.activity](self.current)
+        if self.current.activity:
+            if self.current.activity not in self.activities:
+                mod_parts = self.current.activity.split('.')
+                module_name = ".".join([settings.ACTIVITY_MODULES_IMPORT_PATH] + mod_parts[:-1])
+                method_name = mod_parts[-1]
+                activity = getattr(import_module(module_name), method_name)
+                self.activities[self.current.activity] = activity
+            self.activities[self.current.activity](self.current)
