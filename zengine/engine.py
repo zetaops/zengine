@@ -222,8 +222,12 @@ class ZEngine(object):
 
     def get_worfklow_spec(self):
         """
+        generates and caches the workflow spec package from
+        bpmn diagrams that read from disk
+
         :return: workflow spec package
         """
+        # TODO: convert to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
             path = "{}/{}.bpmn".format(settings.WORKFLOW_PACKAGES_PATH,
                                        self.current.workflow_name)

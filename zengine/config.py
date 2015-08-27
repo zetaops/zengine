@@ -15,7 +15,9 @@ from zengine import middlewares
 settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 
 auth_backend_path = settings.AUTH_BACKEND.split('.')
-AuthBackend = getattr(importlib.import_module('.'.join(auth_backend_path[:-1])), auth_backend_path[-1])
+module_path = '.'.join(auth_backend_path[:-1])
+class_name = auth_backend_path[-1]
+AuthBackend = getattr(importlib.import_module(module_path), class_name)
 
 beaker.cache.clsmap = _backends({'redis': redis_.RedisManager})
 
