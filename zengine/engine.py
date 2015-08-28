@@ -26,6 +26,7 @@ import lazy_object_proxy
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache, cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
+from zengine.lib.utils import get_object_from_path
 from zengine.log import getlogger
 from zengine.lib.views import crud_view
 
@@ -294,9 +295,15 @@ class ZEngine(object):
         """
         if self.current.activity:
             if self.current.activity not in self.activities:
-                mod_parts = self.current.activity.split('.')
-                module_name = ".".join([settings.ACTIVITY_MODULES_IMPORT_PATH] + mod_parts[:-1])
-                method_name = mod_parts[-1]
-                activity = getattr(import_module(module_name), method_name)
-                self.activities[self.current.activity] = activity
+                for activity_package in settings.ACTIVITY_MODULES_IMPORT_PATHS:
+                    try:
+                        full_path = "%s.%s" % (activity_package, self.current.activity)
+                        self.activities[self.current.activity] = get_object_from_path(full_path)
+                        break
+                    except:
+                        number_of_paths = len(settings.ACTIVITY_MODULES_IMPORT_PATHS)
+                        index_no = settings.ACTIVITY_MODULES_IMPORT_PATHS.index(activity_package)
+                        if index_no + 1 == number_of_paths:
+                            # raise if cant find the activity in the last path
+                            raise
             self.activities[self.current.activity](self.current)

@@ -1,20 +1,20 @@
 # -*-  coding: utf-8 -*-
 import os
-from time import sleep
-from pyoko.model import model_registry
 from werkzeug.test import Client
-from zengine.log import getlogger
 from zengine.server import app
-from ulakbus.models import User, AbstractRole, Role
-import os
-from time import sleep
-from pyoko.model import model_registry
-from werkzeug.test import Client
-from zengine.log import getlogger
-from zengine.server import app
-from ulakbus.models import User, AbstractRole, Role
+
+
+
+def get_worfklow_path(wf_name):
+    return "%s/workflows/%s.zip" % (
+        os.path.dirname(os.path.realpath(__file__)), wf_name)
+
+
 from pprint import pprint
 import json
+
+# TODO: TestClient and BaseTestCase should be moved to Zengine,
+# but without automatic handling of user logins
 
 class RWrapper(object):
     def __init__(self, *args):
@@ -72,4 +72,3 @@ class TestClient(object):
         # update client token from response
         self.token = response_wrapper.token
         return response_wrapper
-

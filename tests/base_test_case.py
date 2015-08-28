@@ -6,7 +6,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from zengine.lib.test_client import TestClient
+from zengine.lib.test_utils import TestClient
 
 from zengine.models import User
 from time import sleep
@@ -30,13 +30,14 @@ RESPONSES = {"get_login_form": {
                                  'title': 'Password'}},
                          'title': 'LoginForm'}},
     'is_login': False},
-    "successful_login": {u'screen': u'dashboard',
+    "successful_login": {u'msg': u'Success',
                          u'is_login': True}}
 
 # encrypted form of test password (123)
 user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
             'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
 
+username='test_user'
 
 class BaseTestCase:
     client = None
@@ -59,7 +60,7 @@ class BaseTestCase:
         if login and self.client.user is None:
             self.client.set_workflow("login")
             self.client.user, new = User.objects.get_or_create({"password": user_pass},
-                                                               username='test_user')
+                                                               username=username)
             self._do_login()
             self.client.set_workflow(workflow_name)
 
@@ -73,7 +74,7 @@ class BaseTestCase:
         output = resp.json
         del output['token']
         assert output == RESPONSES["get_login_form"]
-        data = {"username": "test_user", "password": "123", "cmd": "do"}
+        data = {"username": username, "password": "123", "cmd": "do"}
         resp = self.client.post(**data)
         output = resp.json
         del output['token']

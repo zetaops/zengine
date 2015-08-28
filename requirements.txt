@@ -6,3 +6,6 @@ redis
 pytest
 passlib
 lazy_object_proxy
+werkzeug
+enum34
+-e git://github.com/basho/riak-python-client.git#egg=riak

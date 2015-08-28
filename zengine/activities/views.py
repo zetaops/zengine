@@ -33,7 +33,7 @@ class Login(SimpleView):
                 self.current.input['password'])
             self.current.task_data['IS'].login_successful = auth_result
         except IndexError:
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized("","Login failed")
 
     def show_view(self):
         self.current.output['forms'] = LoginForm().serialize()
