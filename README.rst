@@ -2,7 +2,7 @@ ZEngine
 ========
 
 
-ZEngine is a workflow based web framework.
+ZEngine is a BPMN workflow based REST framework with advanced permissions and extensible scaffolding features.
 
 
 

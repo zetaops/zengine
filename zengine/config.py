@@ -10,27 +10,11 @@ from beaker.cache import _backends
 import os
 import beaker
 from beaker_extensions import redis_
-from zengine import middlewares
+from zengine.lib.utils import get_object_from_path
 
 settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 
-auth_backend_path = settings.AUTH_BACKEND.split('.')
-module_path = '.'.join(auth_backend_path[:-1])
-class_name = auth_backend_path[-1]
-AuthBackend = getattr(importlib.import_module(module_path), class_name)
+AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
 
 beaker.cache.clsmap = _backends({'redis': redis_.RedisManager})
 
-SESSION_OPTIONS = {
-    'session.cookie_expires': True,
-    'session.type': 'redis',
-    'session.url': settings.REDIS_SERVER,
-    'session.auto': True,
-    'session.path': '/',
-}
-
-ENABLED_MIDDLEWARES = [
-    middlewares.RequireJSON(),
-    middlewares.JSONTranslator(),
-    middlewares.CORS(),
-]

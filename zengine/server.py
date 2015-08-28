@@ -2,12 +2,12 @@
 """
 We created a Falcon based WSGI server.
 Integrated session support with beaker.
-Then route all requests to workflow engine.
+Then route all requests to ZEngine.run() that runs SpiffWorkflow engine
+and invokes associated activity methods.
 
-We process request and response objects for json data in middleware layer,
-so activity methods (which will be invoked from workflow engine)
-can read json data from request.input
-and writeback to request.output
+Request and response objects for json data processing at middleware layer,
+thus, activity methods (which will be invoked from workflow engine)
+can simply read json data from current.input and write back to current.output
 
 """
 # Copyright (C) 2015 ZetaOps Inc.
@@ -18,20 +18,22 @@ and writeback to request.output
 import falcon
 from beaker.middleware import SessionMiddleware
 
-from zengine.config import ENABLED_MIDDLEWARES, SESSION_OPTIONS
+from zengine.config import settings
 from zengine.engine import ZEngine
+from zengine.lib.utils import get_object_from_path
 
-falcon_app = falcon.API(middleware=ENABLED_MIDDLEWARES)
-app = SessionMiddleware(falcon_app, SESSION_OPTIONS, environ_key="session")
+falcon_app = falcon.API(middleware=[get_object_from_path(mw_class)()
+                                    for mw_class in settings.ENABLED_MIDDLEWARES])
+app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="session")
 
 
 class Connector(object):
     """
-    this is a callable object to catch all requests and map them to workflow engine.
-    domain.com/show_dashboard/blah/blah/x=2&y=1 will invoke a workflow named show_dashboard
+    this is object will be used to catch all requests from falcon
+    and map them to workflow engine.
+    a request to domain.com/show_dashboard/ will invoke a workflow
+    named show_dashboard with the payload json data
     """
-    # def __init__(self):
-    # self.logger = logging.getLogger('dispatch.' + __name__)
     def __init__(self):
         self.engine = ZEngine()
 
@@ -49,11 +51,18 @@ falcon_app.add_route('/{wf_name}/', workflow_connector)
 
 
 def runserver(port=9001, addr='0.0.0.0'):
+    """
+    Useful for debugging problems in your API; works with pdb.set_trace()
+
+    :param port: listen on this port
+    :param addr: listen on this ip addr
+    :return:
+    """
     from wsgiref import simple_server
     httpd = simple_server.make_server(addr, port, app)
     httpd.serve_forever()
 
 
-# Useful for debugging problems in your API; works with pdb.set_trace()
+
 if __name__ == '__main__':
     runserver()

@@ -1,23 +1,8 @@
 import json
 import falcon
+from zengine.config import settings
 
 __author__ = 'Evren Esat Ozkan'
-
-#
-# class SessionMiddleware(object):
-#     """
-#     just for easier access to session dict
-#     """
-#     def process_request(self, req, resp):
-#         req.session = req.env['session']
-
-
-ALLOWED_ORIGINS = ['http://127.0.0.1:8080',
-                   'http://127.0.0.1:9001',
-                   'http://ulakbus.zetaops.io',
-                   'http://ulakbus.org',
-                   'http://ulakbus.net',
-                   'http://104.155.6.147']
 
 
 class CORS(object):
@@ -27,11 +12,16 @@ class CORS(object):
 
     def process_response(self, request, response, resource):
         origin = request.get_header('Origin')
-        # if origin in ALLOWED_ORIGINS:
-        response.set_header(
-            'Access-Control-Allow-Origin',
-            origin
-        )
+        if origin in settings.ALLOWED_ORIGINS or not origin:
+            response.set_header(
+                'Access-Control-Allow-Origin',
+                origin
+            )
+        else:
+            print("FOOFOFOFOFO", origin)
+            raise falcon.HTTPForbidden("Denied", "Origin not in ALLOWED_ORIGINS: %s" % origin)
+            response.status = falcon.HTTP_403
+
         response.set_header(
             'Access-Control-Allow-Credentials',
             "true"
@@ -94,4 +84,5 @@ class JSONTranslator(object):
             return
         req.context['result']['is_login'] = 'user_id' in req.env['session']
         resp.body = json.dumps(req.context['result'])
-        resp.status = falcon.HTTP_201
+        print(resp.status)
+
