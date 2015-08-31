@@ -23,9 +23,9 @@ class RWrapper(object):
         self.headers = list(args[2])
         try:
             self.json = json.loads(self.content[0])
-            self.token = self.json.get('token')
         except:
-            self.json = None
+            self.json = {}
+        self.token = self.json.get('token')
 
     def raw(self):
         pprint(self.code)
@@ -72,3 +72,77 @@ class TestClient(object):
         # update client token from response
         self.token = response_wrapper.token
         return response_wrapper
+
+
+from zengine.lib.test_utils import TestClient
+from zengine.models import User
+from zengine.log import getlogger
+
+RESPONSES = {"get_login_form": {
+    'forms': {'model': {'username': None,
+                        'password': None},
+              'form': ['username', 'password'],
+              'schema': {'required': ['username',
+                                      'password'],
+                         'type': 'object',
+                         'properties': {
+                             'username': {
+                                 'type': 'string',
+                                 'title': 'Username'},
+                             'password': {
+                                 'type': 'password',
+                                 'title': 'Password'}},
+                         'title': 'LoginForm'}},
+    'is_login': False},
+    "successful_login": {u'msg': u'Success',
+                         u'is_login': True}}
+
+# encrypted form of test password (123)
+user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
+            'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
+
+username='test_user'
+
+class BaseTestCase:
+    client = None
+    log = getlogger()
+
+    @classmethod
+    def create_user(self):
+        self.client.user, new = User.objects.get_or_create({"password": user_pass},
+                                                           username=username)
+    @classmethod
+    def prepare_client(self, workflow_name, reset=False, login=True):
+        """
+        setups the workflow, logs in if necessary
+
+        :param workflow_name: change or set workflow name
+        :param reset: create a new client
+        :param login: login to system
+        :return:
+        """
+        if not self.client or reset:
+            self.client = TestClient(workflow_name)
+        if login and self.client.user is None:
+            self.create_user()
+            self._do_login()
+        self.client.set_workflow(workflow_name)
+
+    @classmethod
+    def _do_login(self):
+        """
+        logs in the test user with test client
+
+        """
+        self.client.set_workflow("login")
+        resp = self.client.post()
+        output = resp.json
+        resp.raw()
+        del output['token']
+        assert output == RESPONSES["get_login_form"]
+        data = {"username": username, "password": "123", "cmd": "do"}
+        resp = self.client.post(**data)
+        resp.raw()
+        output = resp.json
+        del output['token']
+        assert output == RESPONSES["successful_login"]

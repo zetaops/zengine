@@ -5,6 +5,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import falcon
 from pyoko import field
 from zengine.lib.views import SimpleView
 from zengine.lib.exceptions import HTTPUnauthorized
@@ -32,8 +33,11 @@ class Login(SimpleView):
                 self.current.input['username'],
                 self.current.input['password'])
             self.current.task_data['IS'].login_successful = auth_result
-        except IndexError:
-            raise HTTPUnauthorized("","Login failed")
+        except:
+            self.current.log.exception("Wrong username or another error occured")
+            self.current.task_data['IS'].login_successful = False
+        if not self.current.task_data['IS'].login_successful:
+            self.current.response.status = falcon.HTTP_403
 
     def show_view(self):
         self.current.output['forms'] = LoginForm().serialize()

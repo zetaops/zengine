@@ -22,6 +22,7 @@ from SpiffWorkflow.storage import DictionarySerializer
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
 from falcon import Request, Response
+import falcon
 import lazy_object_proxy
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache, cache
@@ -79,6 +80,7 @@ class Current(object):
         self.response = kwargs.pop('response', None)
         self.session = self.request.env['session']
         self.spec = None
+        self.user_id = None
         self.workflow = None
         self.task_type = ''
         self.task_data = {}
@@ -104,6 +106,14 @@ class Current(object):
         log.info("\n\nWFCACHE: %s" % self.wfcache.get())
         self.set_task_data()
         self.permissions = []
+
+    @property
+    def is_auth(self):
+        if self.user_id is None:
+            self.user_id = self.session.get('user_id', '')
+        return bool(self.user_id)
+
+
 
     def has_permission(self, perm):
         return self.auth.has_permission(perm)
@@ -251,6 +261,7 @@ class ZEngine(object):
 
     def start_engine(self, **kwargs):
         self.current = Current(**kwargs)
+        self.check_for_authentication()
         log.info("::::::::::: ENGINE STARTED :::::::::::\n"
                  "\tCMD:%s\n"
                  "\tSUBCMD:%s" % (self.current.input.get('cmd'), self.current.input.get('subcmd')))
@@ -307,3 +318,10 @@ class ZEngine(object):
                             # raise if cant find the activity in the last path
                             raise
             self.activities[self.current.activity](self.current)
+
+    def check_for_authentication(self):
+        auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
+        if auth_required and not self.current.is_auth:
+            self.current.log.info("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
+            raise falcon.HTTPUnauthorized("Login required", "")
+

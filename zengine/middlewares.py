@@ -18,7 +18,6 @@ class CORS(object):
                 origin
             )
         else:
-            print("FOOFOFOFOFO", origin)
             raise falcon.HTTPForbidden("Denied", "Origin not in ALLOWED_ORIGINS: %s" % origin)
             response.status = falcon.HTTP_403
 
@@ -83,6 +82,8 @@ class JSONTranslator(object):
         if 'result' not in req.context:
             return
         req.context['result']['is_login'] = 'user_id' in req.env['session']
-        resp.body = json.dumps(req.context['result'])
-        print(resp.status)
+        # print(":::::body: %s\n\n:::::result: %s" % (resp.body, req.context['result']))
+        if resp.body is None and req.context['result']:
+            resp.body = json.dumps(req.context['result'])
+
 

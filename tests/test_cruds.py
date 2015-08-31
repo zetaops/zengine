@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 from time import sleep
 from pyoko.model import model_registry
-from base_test_case import BaseTestCase, username
+from zengine.lib.test_utils import BaseTestCase, username
 
 RESPONSES = {}
 
@@ -20,6 +20,7 @@ class TestCase(BaseTestCase):
 
         # calling the crud view without any model should list available models
         resp = self.client.post()
+        resp.raw()
         assert resp.json['models'] == [m.__name__ for m in
                                        model_registry.get_base_models()]
         model_name = resp.json['models'][0]
