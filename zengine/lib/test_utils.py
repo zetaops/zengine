@@ -1,5 +1,6 @@
 # -*-  coding: utf-8 -*-
 import os
+from time import sleep
 from werkzeug.test import Client
 from zengine.server import app
 
@@ -75,7 +76,7 @@ class TestClient(object):
 
 
 from zengine.lib.test_utils import TestClient
-from zengine.models import User
+from zengine.models import User, Permission
 from zengine.log import getlogger
 
 RESPONSES = {"get_login_form": {
@@ -102,7 +103,7 @@ user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
             'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
 
 username='test_user'
-
+base_test_permissions = ['crud']
 class BaseTestCase:
     client = None
     log = getlogger()
@@ -111,6 +112,15 @@ class BaseTestCase:
     def create_user(self):
         self.client.user, new = User.objects.get_or_create({"password": user_pass},
                                                            username=username)
+        if new:
+
+            for perm in base_test_permissions:
+                permission = Permission(name=perm, code=perm).save()
+                self.client.user.Permissions(permission=permission)
+                self.client.user.save()
+            sleep(1)
+
+
     @classmethod
     def prepare_client(self, workflow_name, reset=False, login=True):
         """

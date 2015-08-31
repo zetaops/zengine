@@ -262,6 +262,8 @@ class ZEngine(object):
     def start_engine(self, **kwargs):
         self.current = Current(**kwargs)
         self.check_for_authentication()
+        self.check_for_permission()
+        self.check_for_crud_permission()
         log.info("::::::::::: ENGINE STARTED :::::::::::\n"
                  "\tCMD:%s\n"
                  "\tSUBCMD:%s" % (self.current.input.get('cmd'), self.current.input.get('subcmd')))
@@ -294,6 +296,8 @@ class ZEngine(object):
         while self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.update_task(task)
+                self.check_for_permission()
+                self.check_for_crud_permission()
                 self.log_wf_state()
                 self.run_activity()
                 self.workflow.complete_task_from_id(self.current.task.id)
@@ -325,3 +329,25 @@ class ZEngine(object):
             self.current.log.info("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
             raise falcon.HTTPUnauthorized("Login required", "")
 
+    def check_for_crud_permission(self):
+        if 'model' in self.current.input:
+            if 'cmd' in self.current.input:
+                permission = "%s.%s" % (self.current.input["model"], self.current.input['cmd'])
+            else:
+                permission = self.current.input["model"]
+            if permission in settings.ANONYMOUS_WORKFLOWS:
+                return
+            if not self.current.has_permission(permission):
+                raise falcon.HTTPForbidden("Permission denied",
+                                           "You don't have required permission: %s" % permission)
+
+    def check_for_permission(self):
+        if self.current.task:
+            permission = "%s.%s" % (self.current.workflow_name, self.current.name)
+        else:
+            permission = self.current.workflow_name
+        if permission in settings.ANONYMOUS_WORKFLOWS:
+            return
+        if not self.current.has_permission(permission):
+            raise falcon.HTTPForbidden("Permission denied",
+                                       "You don't have required permission: %s" % permission)

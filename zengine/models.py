@@ -39,7 +39,4 @@ class User(Model):
         return pbkdf2_sha512.verify(raw_password, self.password)
 
     def get_permissions(self):
-        return []
-
-    def has_permission(self, perm):
-        return False
+        return (p.permission.code for p in self.Permissions)
