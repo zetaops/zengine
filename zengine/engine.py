@@ -235,13 +235,12 @@ class ZEngine(object):
 
         :return: path of the workflow spec file (BPMN diagram)
         """
-        path = "%s/%s.bpmn" % (settings.WORKFLOW_PACKAGES_PATH, self.current.workflow_name)
-        if not os.path.exists(path):
-            zengine_path = os.path.dirname(os.path.realpath(__file__))
-            path = "%s/workflows/%s.bpmn" % (zengine_path, self.current.workflow_name)
-            if not os.path.exists(path):
-                raise RuntimeError("BPMN file cannot found: %s" % self.current.workflow_name)
-        return path
+        for pth in settings.WORKFLOW_PACKAGES_PATHS:
+            path = "%s/%s.bpmn" % (pth, self.current.workflow_name)
+            if os.path.exists(path):
+                return path
+        raise RuntimeError("BPMN file cannot found: %s" % self.current.workflow_name)
+
 
 
     def get_worfklow_spec(self):
