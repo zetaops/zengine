@@ -76,9 +76,17 @@ class Current(object):
 
     def __init__(self, **kwargs):
         self.workflow_name = kwargs.pop('workflow_name', '')
-        self.request = kwargs.pop('request', None)
-        self.response = kwargs.pop('response', None)
-        self.session = self.request.env['session']
+        self.request = kwargs.pop('request', {})
+        self.response = kwargs.pop('response', {})
+        try:
+            self.session = self.request.env['session']
+            self.input = self.request.context['data']
+            self.output = self.request.context['result']
+        except AttributeError:
+            # this is happens when we play with the engine from python shell
+            self.session = {}
+            self.input = {}
+            self.output = {}
         self.spec = None
         self.user_id = None
         self.workflow = None
@@ -88,8 +96,7 @@ class Current(object):
         self.log = log
         self.name = ''
         self.activity = ''
-        self.input = self.request.context['data']
-        self.output = self.request.context['result']
+
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self.session))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
@@ -335,6 +342,7 @@ class ZEngine(object):
                 permission = "%s.%s" % (self.current.input["model"], self.current.input['cmd'])
             else:
                 permission = self.current.input["model"]
+            log.info("CHECK CRUD PERM: %s" % permission)
             if permission in settings.ANONYMOUS_WORKFLOWS:
                 return
             if not self.current.has_permission(permission):
@@ -346,6 +354,7 @@ class ZEngine(object):
             permission = "%s.%s" % (self.current.workflow_name, self.current.name)
         else:
             permission = self.current.workflow_name
+        log.info("CHECK PERM: %s" % permission)
         if permission in settings.ANONYMOUS_WORKFLOWS:
             return
         if not self.current.has_permission(permission):
