@@ -113,11 +113,10 @@ class BaseTestCase:
         self.client.user, new = User.objects.get_or_create({"password": user_pass},
                                                            username=username)
         if new:
-
             for perm in base_test_permissions:
                 permission = Permission(name=perm, code=perm).save()
                 self.client.user.Permissions(permission=permission)
-                self.client.user.save()
+            self.client.user.save()
             sleep(1)
 
 

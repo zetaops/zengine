@@ -30,7 +30,7 @@ DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
 ANONYMOUS_WORKFLOWS = ['login', 'login.*']
 
 # PYOKO SETTINGS
-DEFAULT_BUCKET_TYPE = 'zengine_models'
+DEFAULT_BUCKET_TYPE = os.environ.get('RIAK_SERVER', 'zengine_models')
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
 RIAK_PROTOCOL = os.environ.get('RIAK_PROTOCOL', 'http')
 RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
