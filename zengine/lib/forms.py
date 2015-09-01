@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from pyoko.field import DATE_FORMAT
 
 __author__ = 'Evren Esat Ozkan'
@@ -17,7 +17,7 @@ class JsonForm(Form):
             "model": {}
         }
         for itm in self._serialize():
-            if isinstance(itm['value'], datetime):
+            if isinstance(itm['value'], (date, datetime)):
                 itm['value'] = itm['value'].strftime(DATE_FORMAT)
             result["schema"]["properties"][itm['name']] = {'type': itm['type'],
                                                            'title': itm['title']}

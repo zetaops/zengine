@@ -33,7 +33,7 @@ from zengine.lib.views import crud_view
 
 log = getlogger()
 
-ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do']
+ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
 
 
 class InMemoryPackager(Packager):
