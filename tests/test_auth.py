@@ -17,9 +17,7 @@ class TestCase(BaseTestCase):
         # resp.raw()
 
         # wrong username
-        resp = self.client.post(**{"username": "test_loser",
-                                   "password": "123",
-                                   "cmd": "do"})
+        resp = self.client.post(username="test_loser", password="123", cmd="do")
         # resp.raw()
 
 

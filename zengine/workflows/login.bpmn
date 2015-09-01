@@ -4,7 +4,7 @@
     <bpmn2:startEvent id="StartEvent_1">
       <bpmn2:outgoing>SequenceFlow_1</bpmn2:outgoing>
     </bpmn2:startEvent>
-    <bpmn2:userTask id="show_login_form" camunda:assignee="views.Login" name="show login">
+    <bpmn2:userTask id="show_login_form" camunda:assignee="auth.Login" name="show login">
       <bpmn2:extensionElements>
         <camunda:properties>
           <camunda:property/>
@@ -16,7 +16,7 @@
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="SequenceFlow_1" name="" sourceRef="StartEvent_1" targetRef="show_login_form"/>
     <bpmn2:sequenceFlow id="SequenceFlow_7" name="" sourceRef="show_login_form" targetRef="authenticate"/>
-    <bpmn2:serviceTask id="authenticate" camunda:class="views.Login" name="authenticate">
+    <bpmn2:serviceTask id="authenticate" camunda:class="auth.Login" name="authenticate">
       <bpmn2:incoming>SequenceFlow_7</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_8</bpmn2:outgoing>
     </bpmn2:serviceTask>
@@ -37,7 +37,7 @@
     <bpmn2:endEvent id="EndEvent_1">
       <bpmn2:incoming>SequenceFlow_2</bpmn2:incoming>
     </bpmn2:endEvent>
-    <bpmn2:serviceTask id="show_dashboard" camunda:class="views.dashboard" name="show_dashboard">
+    <bpmn2:serviceTask id="show_dashboard" camunda:class="auth.dashboard" name="show_dashboard">
       <bpmn2:incoming>login_successful</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_2</bpmn2:outgoing>
     </bpmn2:serviceTask>
