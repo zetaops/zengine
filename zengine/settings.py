@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 # path of the activity modules which will be invoked by workflow tasks
 ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.activities']
 # absolute path to the workflow packages
-WORKFLOW_PACKAGES_PATH = os.path.join(BASE_DIR, 'workflows')
+WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'workflows')]
 
 AUTH_BACKEND = 'zengine.auth_backend.AuthBackend'
 
@@ -27,10 +27,10 @@ LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
 DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
 
 # workflows that dosen't require logged in user
-ANONYMOUS_WORKFLOWS = ['login', 'login.*']
+ANONYMOUS_WORKFLOWS = ['login', 'login']
 
 # PYOKO SETTINGS
-DEFAULT_BUCKET_TYPE = os.environ.get('RIAK_SERVER', 'zengine_models')
+DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
 RIAK_PROTOCOL = os.environ.get('RIAK_PROTOCOL', 'http')
 RIAK_PORT = os.environ.get('RIAK_PORT', 8098)

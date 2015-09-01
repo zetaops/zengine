@@ -9,43 +9,7 @@ from falcon import HTTPNotFound
 
 from pyoko.model import Model, model_registry
 from zengine.lib.forms import JsonForm
-
-__author__ = "Evren Esat Ozkan"
-
-
-class BaseView(object):
-    """
-    this class constitute a base for all view classes.
-    """
-
-    def __init__(self, current=None):
-        if current:
-            self.set_current(current)
-
-    def set_current(self, current):
-        self.current = current
-        self.input = current.input
-        self.output = current.output
-        self.cmd = current.task_data['cmd']
-        self.subcmd = current.input.get('subcmd')
-        self.do = self.subcmd in ['do_show', 'do_list', 'do_edit', 'do_add']
-        self.next_task = self.subcmd.split('_')[1] if self.do else None
-
-    def go_next_task(self):
-        if self.next_task:
-            self.current.set_task_data(self.next_task)
-
-
-class SimpleView(BaseView):
-    """
-    simple form based views can be build  up on this class.
-    we call self.%s_view() method with %s substituted with self.input['cmd']
-    self.show_view() will be called if client doesn't give any cmd
-    """
-
-    def __init__(self, current):
-        super(SimpleView, self).__init__(current)
-        self.__class__.__dict__["%s_view" % (self.cmd or 'show')](self)
+from zengine.views.base import BaseView
 
 
 class CrudView(BaseView):
@@ -85,7 +49,7 @@ class CrudView(BaseView):
 
     def list_models(self):
         self.output["models"] = [m.__name__ for m in
-                       model_registry.get_base_models()]
+                                 model_registry.get_base_models()]
 
     def show_view(self):
         self.output['object'] = self.object.clean_value()
@@ -101,13 +65,12 @@ class CrudView(BaseView):
         self.output['objects'] = []
         for obj in query:
             if ('just_deleted_object_key' in self.current.task_data and
-                self.current.task_data['just_deleted_object_key'] == obj.key):
+                        self.current.task_data['just_deleted_object_key'] == obj.key):
                 del self.current.task_data['just_deleted_object_key']
                 continue
 
             data = obj.clean_value()
             self.output['objects'].append({"data": data, "key": obj.key})
-
 
         if 'just_added_object' in self.current.task_data:
             self.output['objects'].append(self.current.task_data['just_added_object'].copy())

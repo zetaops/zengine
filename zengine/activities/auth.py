@@ -7,7 +7,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import falcon
 from pyoko import field
-from zengine.lib.views import SimpleView
+from zengine.views.base import SimpleView
 from zengine.lib.exceptions import HTTPUnauthorized
 from zengine.lib.forms import JsonForm
 
@@ -34,10 +34,12 @@ class Login(SimpleView):
                 self.current.input['password'])
             self.current.task_data['IS'].login_successful = auth_result
         except:
-            self.current.log.exception("Wrong username or another error occured")
+            self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['IS'].login_successful = False
         if not self.current.task_data['IS'].login_successful:
             self.current.response.status = falcon.HTTP_403
 
     def show_view(self):
         self.current.output['forms'] = LoginForm().serialize()
+
+
