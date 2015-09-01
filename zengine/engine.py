@@ -29,7 +29,7 @@ from zengine.lib.cache import Cache, cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.utils import get_object_from_path
 from zengine.log import getlogger
-from zengine.lib.views import crud_view
+from zengine.views.crud import crud_view
 
 log = getlogger()
 
@@ -83,7 +83,8 @@ class Current(object):
             self.input = self.request.context['data']
             self.output = self.request.context['result']
         except AttributeError:
-            # this is happens when we play with the engine from python shell
+            # when we want to use engine functions independently,
+            # we need to create a fake current object
             self.session = {}
             self.input = {}
             self.output = {}
@@ -228,20 +229,20 @@ class ZEngine(object):
 
     def find_workflow_path(self):
         """
-        tries to find the path of the workflow diagram file.
-        first looks to the defined WORKFLOW_PACKAGES_PATH,
-        if it cannot be found there, fallbacks to zengine/workflows
-        directory for default workflows that shipped with zengine
-
+        tries to find the path of the workflow diagram file
+        in WORKFLOW_PACKAGES_PATHS
         :return: path of the workflow spec file (BPMN diagram)
         """
         for pth in settings.WORKFLOW_PACKAGES_PATHS:
             path = "%s/%s.bpmn" % (pth, self.current.workflow_name)
             if os.path.exists(path):
                 return path
-        raise RuntimeError("BPMN file cannot found: %s" % self.current.workflow_name)
+        err_msg = "BPMN file cannot found: %s" % self.current.workflow_name
+        log.error(err_msg)
+        raise RuntimeError(err_msg)
 
-
+    def get_task_specs(self):
+        return self.workflow.spec.task_specs
 
     def get_worfklow_spec(self):
         """
