@@ -19,8 +19,7 @@ class JsonForm(Form):
         for itm in self._serialize():
             if isinstance(itm['value'], (date, datetime)):
                 itm['value'] = itm['value'].strftime(DATE_FORMAT)
-            result["schema"]["properties"][itm['name']] = {'type': itm['type'],
-                                                           'title': itm['title']}
+            result["schema"]["properties"][itm['name']] = itm
             result["model"][itm['name']] = itm['value'] or itm['default']
             result["form"].append(itm['name'])
             if itm['required']:
