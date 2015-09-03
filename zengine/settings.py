@@ -37,7 +37,7 @@ RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
 
 REDIS_SERVER = os.environ.get('REDIS_SERVER')
 
-ALLOWED_ORIGINS = ['http://127.0.0.1:8080', 'http://127.0.0.1:9001']
+ALLOWED_ORIGINS = ['http://127.0.0.1:8080', 'http://127.0.0.1:9001', 'http://ulakbus.net']
 
 ENABLED_MIDDLEWARES = [
     'zengine.middlewares.CORS',
