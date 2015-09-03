@@ -5,7 +5,6 @@ from werkzeug.test import Client
 from zengine.server import app
 
 
-
 def get_worfklow_path(wf_name):
     return "%s/workflows/%s.zip" % (
         os.path.dirname(os.path.realpath(__file__)), wf_name)
@@ -13,6 +12,7 @@ def get_worfklow_path(wf_name):
 
 from pprint import pprint
 import json
+
 
 # TODO: TestClient and BaseTestCase should be moved to Zengine,
 # but without automatic handling of user logins
@@ -79,31 +79,14 @@ from zengine.lib.test_utils import TestClient
 from zengine.models import User, Permission
 from zengine.log import getlogger
 
-RESPONSES = {"get_login_form": {
-    'forms': {'model': {'username': None,
-                        'password': None},
-              'form': ['username', 'password'],
-              'schema': {'required': ['username',
-                                      'password'],
-                         'type': 'object',
-                         'properties': {
-                             'username': {
-                                 'type': 'string',
-                                 'title': 'Username'},
-                             'password': {
-                                 'type': 'password',
-                                 'title': 'Password'}},
-                         'title': 'LoginForm'}},
-    'is_login': False},
-    "successful_login": {u'msg': u'Success',
-                         u'is_login': True}}
-
 # encrypted form of test password (123)
 user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
             'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
 
-username='test_user'
-base_test_permissions = ['crud']
+username = 'test_user'
+base_test_permissions = ['crud', 'can_see_everything']
+
+
 class BaseTestCase:
     client = None
     log = getlogger()
@@ -118,7 +101,6 @@ class BaseTestCase:
                 self.client.user.Permissions(permission=permission)
             self.client.user.save()
             sleep(1)
-
 
     @classmethod
     def prepare_client(self, workflow_name, reset=False, login=True):
@@ -140,18 +122,13 @@ class BaseTestCase:
     @classmethod
     def _do_login(self):
         """
-        logs in the test user with test client
+        logs in the test user
 
         """
         self.client.set_workflow("login")
         resp = self.client.post()
-        output = resp.json
-        resp.raw()
-        del output['token']
-        assert output == RESPONSES["get_login_form"]
-        data = {"username": username, "password": "123", "cmd": "do"}
-        resp = self.client.post(**data)
-        resp.raw()
-        output = resp.json
-        del output['token']
-        assert output == RESPONSES["successful_login"]
+        assert resp.json['forms']['schema']['title'] == 'LoginForm'
+        assert not resp.json['is_login']
+        resp = self.client.post(username=username, password="123", cmd="do")
+        assert resp.json['is_login']
+        assert resp.json['msg'] == 'Success'
