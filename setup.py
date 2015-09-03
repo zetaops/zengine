@@ -17,4 +17,7 @@ setup(
         'git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow',
         'git+https://github.com/zetaops/pyoko.git#egg=pyoko',
         ],
+    package_data = {
+        'zengine': ['workflows/*.bpmn'],
+    }
 )
