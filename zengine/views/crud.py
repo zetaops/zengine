@@ -82,7 +82,7 @@ class CrudView(BaseView):
             self._save_object()
             self.go_next_task()
         else:
-            self.output['forms'] = JsonForm(self.object).serialize()
+            self.output['forms'] = JsonForm(self.object, all=True).serialize()
             self.output['client_cmd'] = 'add_object'
 
     def add_view(self):
@@ -90,7 +90,7 @@ class CrudView(BaseView):
             self._save_object()
             self.go_next_task()
         else:
-            self.output['forms'] = JsonForm(self.model_class()).serialize()
+            self.output['forms'] = JsonForm(self.model_class(), all=True).serialize()
             self.output['client_cmd'] = 'add_object'
 
     def _save_object(self, data=None):
