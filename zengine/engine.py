@@ -24,10 +24,10 @@ from beaker.session import Session
 from falcon import Request, Response
 import falcon
 import lazy_object_proxy
+from pyoko.lib.utils import get_object_from_path
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache, cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
-from zengine.lib.utils import get_object_from_path
 from zengine.log import getlogger
 from zengine.views.crud import crud_view
 

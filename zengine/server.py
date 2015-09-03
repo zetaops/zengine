@@ -17,10 +17,10 @@ can simply read json data from current.input and write back to current.output
 
 import falcon
 from beaker.middleware import SessionMiddleware
+from pyoko.lib.utils import get_object_from_path
 
 from zengine.config import settings
 from zengine.engine import ZEngine
-from zengine.lib.utils import get_object_from_path
 
 falcon_app = falcon.API(middleware=[get_object_from_path(mw_class)()
                                     for mw_class in settings.ENABLED_MIDDLEWARES])

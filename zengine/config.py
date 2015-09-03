@@ -10,7 +10,7 @@ from beaker.cache import _backends
 import os
 import beaker
 from beaker_extensions import redis_
-from zengine.lib.utils import get_object_from_path
+from pyoko.lib.utils import get_object_from_path
 
 settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 

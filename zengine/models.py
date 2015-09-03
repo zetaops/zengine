@@ -15,6 +15,7 @@ from passlib.hash import pbkdf2_sha512
 class Permission(Model):
     name = field.String("Name", index=True)
     code = field.String("Code Name", index=True)
+    description = field.String("Description", index=True)
 
 
 class User(Model):
