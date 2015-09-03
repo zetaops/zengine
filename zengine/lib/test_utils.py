@@ -84,7 +84,7 @@ user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
             'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
 
 username = 'test_user'
-base_test_permissions = ['crud']
+base_test_permissions = ['crud', 'can_see_everything']
 
 
 class BaseTestCase:
