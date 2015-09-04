@@ -34,55 +34,61 @@ serialized_empty_user = {
                'type': 'object'}}
 serialized_user = {'form': ['username', 'password', 'Permissions'],
                    'model': {'Permissions': '!',
-                             'password': u'$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVqxkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q',
+                             'password': u'$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVol'
+                                         u'NmPsHVqxkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeU'
+                                         u'p4DD4ClhxP/Q',
                              'username': u'test_user'},
-                   'schema': {'properties': {'Permissions': {'default': None,
-                                                             'fields': [{'default': None,
-                                                                         'name': 'permissions.idx',
-                                                                         'required': True,
-                                                                         'title': '',
-                                                                         'type': 'string',
-                                                                         'value': u'898dc81cb37a46c3985d6de9a88dbd90'}],
-                                                             'models': [
-                                                                 {'content': [{'default': None,
-                                                                               'name': 'code',
-                                                                               'required': True,
-                                                                               'title': 'Code Name',
-                                                                               'type': 'string',
-                                                                               'value': u'crud'},
-                                                                              {'default': None,
-                                                                               'name': 'name',
-                                                                               'required': True,
-                                                                               'title': 'Name',
-                                                                               'type': 'string',
-                                                                               'value': u'crud'}],
-                                                                  'default': None,
-                                                                  'model_name': 'Permission',
-                                                                  'name': 'permission_id',
-                                                                  'required': None,
-                                                                  'title': 'Permission',
-                                                                  'type': 'model',
-                                                                  'value': u'PTYFPcUHQAcE6a0hFxU9OI8n3LI'}],
-                                                             'name': 'Permissions',
-                                                             'required': None,
-                                                             'title': 'Permissions',
-                                                             'type': 'ListNode',
-                                                             'value': '!'},
-                                             'password': {'default': None,
-                                                          'name': 'password',
-                                                          'required': True,
-                                                          'title': 'Password',
-                                                          'type': 'password',
-                                                          'value': u'$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVqxkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'},
-                                             'username': {'default': None,
-                                                          'name': 'username',
-                                                          'required': True,
-                                                          'title': 'Username',
-                                                          'type': 'string',
-                                                          'value': u'test_user'}},
-                              'required': ['username', 'password'],
-                              'title': 'User',
-                              'type': 'object'}}
+                   'schema': {'properties': {
+                       'Permissions':
+                           {'default': None,
+                            'fields': [{'default': None,
+                                        'name': 'permissions.idx',
+                                        'required': True,
+                                        'title': '',
+                                        'type': 'string',
+                                        'value': u'898dc81cb37a46c3985d6de9a88dbd90'}],
+                            'models': [
+                                {'content': [{'default': None,
+                                              'name': 'code',
+                                              'required': True,
+                                              'title': 'Code Name',
+                                              'type': 'string',
+                                              'value': u'crud'},
+                                             {'default': None,
+                                              'name': 'name',
+                                              'required': True,
+                                              'title': 'Name',
+                                              'type': 'string',
+                                              'value': u'crud'}],
+                                 'default': None,
+                                 'model_name': 'Permission',
+                                 'name': 'permission_id',
+                                 'required': None,
+                                 'title': 'Permission',
+                                 'type': 'model',
+                                 'value': u'PTYFPcUHQAcE6a0hFxU9OI8n3LI'}],
+                            'name': 'Permissions',
+                            'required': None,
+                            'title': 'Permissions',
+                            'type': 'ListNode',
+                            'value': '!'},
+                       'password': {'default': None,
+                                    'name': 'password',
+                                    'required': True,
+                                    'title': 'Password',
+                                    'type': 'password',
+                                    'value': u'$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h'
+                                             u'1/eVolNmPsHVqxkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lU'
+                                             u'GTmv7xlklDeUp4DD4ClhxP/Q'},
+                       'username': {'default': None,
+                                    'name': 'username',
+                                    'required': True,
+                                    'title': 'Username',
+                                    'type': 'string',
+                                    'value': u'test_user'}},
+                       'required': ['username', 'password'],
+                       'title': 'User',
+                       'type': 'object'}}
 
 
 class TestCase(BaseTestCase):
@@ -102,4 +108,9 @@ class TestCase(BaseTestCase):
         # print("\n\n=====================================\n\n")
         # pprint(serialized_form)
         # print("\n\n=====================================\n\n")
-        assert serialized_user == serialized_form
+        assert len(serialized_user['form']) == 3
+        perms = serialized_user['schema']['properties']['Permissions']
+        assert perms['fields'][0]['name'] == 'permissions.idx'
+        assert perms['models'][0]['content'][0]['value'] == 'crud'
+        username = serialized_user['schema']['properties']['username']
+        assert username['value'] == 'test_user'
