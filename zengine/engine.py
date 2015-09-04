@@ -29,6 +29,7 @@ from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache, cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import getlogger
+from zengine.permissions import NO_PERM_TASKS
 from zengine.views.crud import crud_view
 
 log = getlogger()
@@ -337,6 +338,7 @@ class ZEngine(object):
             raise falcon.HTTPUnauthorized("Login required", "")
 
     def check_for_crud_permission(self):
+        # TODO: this should placed in to CrudView
         if 'model' in self.current.input:
             if 'cmd' in self.current.input:
                 permission = "%s.%s" % (self.current.input["model"], self.current.input['cmd'])
@@ -350,13 +352,16 @@ class ZEngine(object):
                                            "You don't have required permission: %s" % permission)
 
     def check_for_permission(self):
+        # TODO: Works but not beautiful, needs review!
         if self.current.task:
             permission = "%s.%s" % (self.current.workflow_name, self.current.name)
         else:
             permission = self.current.workflow_name
         log.info("CHECK PERM: %s" % permission)
-        if permission in settings.ANONYMOUS_WORKFLOWS:
+        if (permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS)) or
+                any('.' + perm in permission for perm in NO_PERM_TASKS)):
             return
+        log.info("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
             raise falcon.HTTPForbidden("Permission denied",
                                        "You don't have required permission: %s" % permission)

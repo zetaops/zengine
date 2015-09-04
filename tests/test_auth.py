@@ -20,10 +20,8 @@ class TestCase(BaseTestCase):
         resp = self.client.post(username="test_loser", password="123", cmd="do")
         # resp.raw()
 
-
         self.client.set_workflow('logout')
         resp = self.client.post()
-
-        # resp.raw()
+        resp.raw()
         # not logged in so cannot logout, should got an error
         assert resp.code == falcon.HTTP_401

@@ -1,21 +1,21 @@
 # -*-  coding: utf-8 -*-
 import os
 from time import sleep
+import falcon
+from falcon.errors import HTTPForbidden
 from werkzeug.test import Client
 from zengine.server import app
+from pprint import pprint
+import json
+from zengine.lib.test_utils import TestClient
+from zengine.models import User, Permission
+from zengine.log import getlogger
 
 
 def get_worfklow_path(wf_name):
     return "%s/workflows/%s.zip" % (
         os.path.dirname(os.path.realpath(__file__)), wf_name)
 
-
-from pprint import pprint
-import json
-
-
-# TODO: TestClient and BaseTestCase should be moved to Zengine,
-# but without automatic handling of user logins
 
 class RWrapper(object):
     def __init__(self, *args):
@@ -26,7 +26,11 @@ class RWrapper(object):
             self.json = json.loads(self.content[0])
         except:
             self.json = {}
+
         self.token = self.json.get('token')
+
+        if self.code == falcon.HTTP_403:
+            self.raw()
 
     def raw(self):
         pprint(self.code)
@@ -75,16 +79,11 @@ class TestClient(object):
         return response_wrapper
 
 
-from zengine.lib.test_utils import TestClient
-from zengine.models import User, Permission
-from zengine.log import getlogger
-
 # encrypted form of test password (123)
 user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
             'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
 
 username = 'test_user'
-base_test_permissions = ['crud', 'can_see_everything']
 
 
 class BaseTestCase:
@@ -96,9 +95,8 @@ class BaseTestCase:
         self.client.user, new = User.objects.get_or_create({"password": user_pass},
                                                            username=username)
         if new:
-            for perm in base_test_permissions:
-                permission = Permission(name=perm, code=perm).save()
-                self.client.user.Permissions(permission=permission)
+            for perm in Permission.objects.raw("code:crud* OR code:login* OR code:User*"):
+                self.client.user.Permissions(permission=perm)
             self.client.user.save()
             sleep(1)
 

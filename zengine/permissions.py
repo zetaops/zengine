@@ -38,7 +38,7 @@ class CustomPermissions(object):
 
 add_perm = CustomPermissions()
 
-
+NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway')
 
 def get_workflow_permissions(permission_list=None):
     # [('code_name', 'name', 'description'),...]
@@ -58,8 +58,7 @@ def get_workflow_permissions(permission_list=None):
             # print(wf_name)
             # pprint(workflow.spec.task_specs)
             for name, task_spec in workflow.spec.task_specs.items():
-                if any(no_perm_task in name for no_perm_task in
-                       ('End', 'Root', 'Start', 'Gateway')):
+                if any(no_perm_task in name for no_perm_task in NO_PERM_TASKS):
                     continue
                 permissions.append(("%s.%s" % (wf_name, name),
                                     "%s %s of %s" % (name,

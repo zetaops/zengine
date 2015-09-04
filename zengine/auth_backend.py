@@ -8,6 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 from zengine.models import *
 
+
 class AuthBackend(object):
     """
     A minimal implementation of AuthBackend
@@ -27,8 +28,8 @@ class AuthBackend(object):
         return self.get_user().get_permissions()
 
     def has_permission(self, perm):
-        return True
-        return perm in self.get_user().get_permissions()
+        user = self.get_user()
+        return user.superuser or perm in user.get_permissions()
 
     def authenticate(self, username, password):
         user = User.objects.filter(username=username).get()
