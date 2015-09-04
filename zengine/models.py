@@ -21,6 +21,7 @@ class Permission(Model):
 class User(Model):
     username = field.String("Username", index=True)
     password = field.String("Password")
+    superuser = field.Boolean("Super user", default=False)
 
     class Permissions(ListNode):
         permission = Permission()

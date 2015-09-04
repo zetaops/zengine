@@ -7,14 +7,16 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
+from zengine.config import settings
+
 
 class UpdatePermissions(Command):
     CMD_NAME = 'update_permissions'
-    PERMISSION_MODEL_PATH = 'zengine.models.Permission'
+
     def run(self):
         from pyoko.lib.utils import get_object_from_path
         from zengine.permissions import get_all_permissions
-        model = get_object_from_path(self.PERMISSION_MODEL_PATH)
+        model = get_object_from_path(settings.PERMISSION_MODEL)
         perms = []
         new_perms = []
         for code, name, desc in get_all_permissions():
@@ -22,8 +24,26 @@ class UpdatePermissions(Command):
             perms.append(perm)
             if new:
                 new_perms.append(perm)
-        self.manager.report = "Total %s permission exist. " \
+        report = "Total %s permission exist. " \
                               "%s new permission record added.\n\n" % (len(perms), len(new_perms))
         if new_perms:
+            report += "\n + " + "\n + ".join([p.name for p in new_perms])
+        return report
 
-            self.manager.report += "\n + " + "\n + ".join([p.name for p in new_perms])
+
+class CreateUser(Command):
+    CMD_NAME = 'create_user'
+    PARAMS = [
+        ('username', True, 'Login username'),
+        ('password', True, 'Login password'),
+        ('super_user', False, 'Is super user'),
+              ]
+    def run(self):
+        from pyoko.lib.utils import get_object_from_path
+        User = get_object_from_path(settings.USER_MODEL)
+        user = User(username=self.manager.args.username,
+             superuser=self.manager.args.super_user
+             )
+        user.set_password(self.manager.args.password)
+        user.save()
+        return "New user created with ID: %s" % user.key

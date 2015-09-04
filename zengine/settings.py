@@ -18,6 +18,9 @@ WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'workflows')]
 
 AUTH_BACKEND = 'zengine.auth_backend.AuthBackend'
 
+PERMISSION_MODEL = 'zengine.models.Permission'
+USER_MODEL = 'zengine.models.User'
+
 # left blank to use StreamHandler aka stderr
 LOG_HANDLER = os.environ.get('LOG_HANDLER', 'file')
 
