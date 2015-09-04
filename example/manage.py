@@ -11,6 +11,3 @@ from zengine.management_commands import *
 environ['PYOKO_SETTINGS'] = 'example.settings'
 environ['ZENGINE_SETTINGS'] = 'example.settings'
 ManagementCommands()
-
-
-

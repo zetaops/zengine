@@ -7,7 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
-from zengine.config import settings
+
 
 
 class UpdatePermissions(Command):
@@ -16,6 +16,7 @@ class UpdatePermissions(Command):
     def run(self):
         from pyoko.lib.utils import get_object_from_path
         from zengine.permissions import get_all_permissions
+        from zengine.config import settings
         model = get_object_from_path(settings.PERMISSION_MODEL)
         perms = []
         new_perms = []
@@ -39,10 +40,11 @@ class CreateUser(Command):
         ('super_user', False, 'Is super user'),
               ]
     def run(self):
+        from zengine.config import settings
         from pyoko.lib.utils import get_object_from_path
         User = get_object_from_path(settings.USER_MODEL)
         user = User(username=self.manager.args.username,
-             superuser=self.manager.args.super_user
+             superuser=bool(self.manager.args.super_user)
              )
         user.set_password(self.manager.args.password)
         user.save()
