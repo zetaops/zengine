@@ -7,7 +7,6 @@ from werkzeug.test import Client
 from zengine.server import app
 from pprint import pprint
 import json
-from zengine.lib.test_utils import TestClient
 from zengine.models import User, Permission
 from zengine.log import getlogger
 
