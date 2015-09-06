@@ -92,7 +92,7 @@ def get_all_permissions():
 
 CustomPermission.add_multi(
     # ('code_name', 'human_readable_name', 'description'),
-    ('can_manage_user_perms', 'Able to manage user permissions',
+    [
+        ('can_manage_user_perms', 'Able to manage user permissions',
      'This perm authorizes a person for management of related permissions'),
-
-)
+    ])

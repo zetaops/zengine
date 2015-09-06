@@ -16,9 +16,9 @@ class Permission(Model):
     code = field.String("Code Name", index=True)
     description = field.String("Description", index=True)
 
-    def row_level_access(self, current):
-        if not current.has_permission("can_manage_user_perms"):
-            self.objects = self.objects.exclude(code="User*")
+    # def row_level_access(self, current):
+    #     if not current.has_permission("can_manage_user_perms"):
+    #         self.objects = self.objects.exclude(code="User*")
 
 class User(Model):
     username = field.String("Username", index=True)
