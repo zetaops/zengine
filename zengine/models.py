@@ -11,12 +11,14 @@ from pyoko import field
 from pyoko.model import Model, ListNode
 from passlib.hash import pbkdf2_sha512
 
-
 class Permission(Model):
     name = field.String("Name", index=True)
     code = field.String("Code Name", index=True)
     description = field.String("Description", index=True)
 
+    def row_level_access(self, current):
+        if not current.has_permission("can_manage_user_perms"):
+            self.objects = self.objects.exclude(code="User*")
 
 class User(Model):
     username = field.String("Username", index=True)
@@ -25,6 +27,7 @@ class User(Model):
 
     class Permissions(ListNode):
         permission = Permission()
+
 
     def __unicode__(self):
         return "User %s" % self.username

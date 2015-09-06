@@ -10,7 +10,7 @@ import glob
 import os
 
 
-class CustomPermissions(object):
+class CustomPermission(object):
     """
     CustomPermissions registry
     Use "add_perm" object to create and use custom permissions
@@ -18,17 +18,18 @@ class CustomPermissions(object):
     """
     registry = {}
 
-    def __call__(self, code_name, name='', description=''):
+    @classmethod
+    def add_multi(cls, perm_list):
+        for perm in perm_list:
+            cls.add(*perm)
+
+    @classmethod
+    def add(cls, code_name, name='', description=''):
         """
         create a custom permission
-
-        :param code_name:
-        :param name:
-        :param description:
-        :return:
         """
-        if code_name not in self.registry:
-            self.registry[code_name] = (code_name, name or code_name, description)
+        if code_name not in cls.registry:
+            cls.registry[code_name] = (code_name, name or code_name, description)
         return code_name
 
     @classmethod
@@ -36,9 +37,8 @@ class CustomPermissions(object):
         return cls.registry.values()
 
 
-add_perm = CustomPermissions()
-
 NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway')
+
 
 def get_workflow_permissions(permission_list=None):
     # [('code_name', 'name', 'description'),...]
@@ -88,4 +88,11 @@ def get_model_permissions(permission_list=None):
 def get_all_permissions():
     permissions = get_workflow_permissions()
     get_model_permissions(permissions)
-    return permissions + CustomPermissions.get_permissions()
+    return permissions + CustomPermission.get_permissions()
+
+CustomPermission.add_multi(
+    # ('code_name', 'human_readable_name', 'description'),
+    ('can_manage_user_perms', 'Able to manage user permissions',
+     'This perm authorizes a person for management of related permissions'),
+
+)

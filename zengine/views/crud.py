@@ -35,7 +35,7 @@ class CrudView(BaseView):
             self.object_id = self.input.get('object_id')
             if self.object_id:
                 try:
-                    self.object = self.model_class.objects.get(self.object_id)
+                    self.object = self.model_class(current).objects.get(self.object_id)
                     if self.object.deleted:
                         raise HTTPNotFound()
                 except:
