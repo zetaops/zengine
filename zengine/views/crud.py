@@ -68,9 +68,7 @@ class CrudView(BaseView):
                         self.current.task_data['just_deleted_object_key'] == obj.key):
                 del self.current.task_data['just_deleted_object_key']
                 continue
-
-            data = obj.clean_value()
-            self.output['objects'].append({"data": data, "key": obj.key})
+            self.output['objects'].append({"data": obj._field_values, "key": obj.key})
 
         if 'just_added_object' in self.current.task_data:
             self.output['objects'].append(self.current.task_data['just_added_object'].copy())

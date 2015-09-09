@@ -298,7 +298,7 @@ class ZEngine(object):
     def run(self):
         """
         main loop of the workflow engine
-        runs all READY tasks, calls their activities, saves wf state,
+        runs all READY tasks, calls their diagrams, saves wf state,
         breaks if current task is a UserTask or EndTask
         """
         while self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
