@@ -45,11 +45,11 @@ class CrudView(BaseView):
                 self.object = self.model_class(current)
             current.log.info('Calling %s_view of %s' % (
                 (self.cmd or 'list'), self.model_class.__name__))
+            self.form = JsonForm(self.object, all=True)
             self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
 
     def list_models(self):
-        self.output["models"] = [m.__name__ for m in
-                                 model_registry.get_base_models()]
+        self.output["models"] = [m.__name__ for m in model_registry.get_base_models()]
 
     def show_view(self):
         self.output['object'] = self.object.clean_value()
@@ -76,23 +76,18 @@ class CrudView(BaseView):
         self.output
 
     def edit_view(self):
-        if self.do:
-            self._save_object()
-            self.go_next_task()
-        else:
-            self.output['forms'] = JsonForm(self.object, all=True).serialize()
-            self.output['client_cmd'] = 'add_object'
+        self.add_view()
 
     def add_view(self):
         if self.do:
             self._save_object()
             self.go_next_task()
         else:
-            self.output['forms'] = JsonForm(self.model_class(), all=True).serialize()
+            self.output['forms'] = self.form.serialize()
             self.output['client_cmd'] = 'add_object'
 
     def _save_object(self, data=None):
-        self.object.set_data(data or self.current.input['form'])
+        self.form.deserialize(data or self.current.input['form'])
         self.object.save()
         if self.next_task == 'list':  # to overcome 1s riak-solr delay
             self.current.task_data['just_added_object'] = {

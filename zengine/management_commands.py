@@ -29,8 +29,8 @@ class UpdatePermissions(Command):
         if len(perms) == len(new_perms):
             report = ''
         else:
-            report = "Total %s permission exist. " % len(perms)
-        report += "%s new permission record added.\n\n" % len(new_perms)
+            report = "\nTotal %s permission exist. " % len(perms)
+        report += "\n%s new permission record added.\n\n" % len(new_perms)
         if new_perms:
             report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
         return report
