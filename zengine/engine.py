@@ -28,7 +28,7 @@ from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import getlogger
 from zengine.auth.permissions import NO_PERM_TASKS
-from zengine.workflows.crud import crud_view
+from zengine.views.crud import crud_view
 
 log = getlogger()
 
@@ -63,7 +63,7 @@ class Condition(object):
 
 class Current(object):
     """
-    This object holds and passes the whole state of the app to task activites
+    This object holds and passes the whole state of the app to task methods (views/tasks)
 
     :type task: Task | None
     :type response: Response | None

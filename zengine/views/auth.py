@@ -6,9 +6,9 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import falcon
+
 from pyoko import field
-from zengine.workflows.base import SimpleView
-from zengine.lib.exceptions import HTTPUnauthorized
+from zengine.views.base import SimpleView
 from zengine.lib.forms import JsonForm
 
 

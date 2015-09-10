@@ -18,6 +18,6 @@ setup(
         'git+https://github.com/zetaops/pyoko.git#egg=pyoko',
         ],
     package_data = {
-        'zengine': ['workflows/*.bpmn'],
+        'zengine': ['diagrams/*.bpmn'],
     }
 )

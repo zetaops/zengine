@@ -11,11 +11,6 @@ from zengine.models import User, Permission
 from zengine.log import getlogger
 
 
-def get_worfklow_path(wf_name):
-    return "%s/workflows/%s.zip" % (
-        os.path.dirname(os.path.realpath(__file__)), wf_name)
-
-
 class RWrapper(object):
     def __init__(self, *args):
         self.content = list(args[0])
