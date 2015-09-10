@@ -9,7 +9,7 @@ from falcon import HTTPNotFound
 
 from pyoko.model import Model, model_registry
 from zengine.lib.forms import JsonForm
-from zengine.views.base import BaseView
+from zengine.workflows.base import BaseView
 
 
 class CrudView(BaseView):

@@ -6,9 +6,7 @@
 
 from __future__ import print_function, absolute_import, division
 from __future__ import division
-import importlib
 from io import BytesIO
-from importlib import import_module
 import os
 from uuid import uuid4
 
@@ -18,19 +16,19 @@ from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
     CompactWorkflowSerializer
 from SpiffWorkflow import Task
 from SpiffWorkflow.specs import WorkflowSpec
-from SpiffWorkflow.storage import DictionarySerializer
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
 from falcon import Request, Response
 import falcon
 import lazy_object_proxy
+
 from pyoko.lib.utils import get_object_from_path
 from zengine.config import settings, AuthBackend
-from zengine.lib.cache import Cache, cache
+from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import getlogger
-from zengine.permissions import NO_PERM_TASKS
-from zengine.views.crud import crud_view
+from zengine.auth.permissions import NO_PERM_TASKS
+from zengine.workflows.crud import crud_view
 
 log = getlogger()
 
@@ -169,7 +167,7 @@ class ZEngine(object):
     def __init__(self):
         self.use_compact_serializer = True
         self.current = None
-        self.activities = {'crud_view': crud_view}
+        self.workflow_methods = {'crud_view': crud_view}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
@@ -317,11 +315,11 @@ class ZEngine(object):
         imports, caches and calls the associated activity of the current task
         """
         if self.current.activity:
-            if self.current.activity not in self.activities:
+            if self.current.activity not in self.workflow_methods:
                 for activity_package in settings.ACTIVITY_MODULES_IMPORT_PATHS:
                     try:
                         full_path = "%s.%s" % (activity_package, self.current.activity)
-                        self.activities[self.current.activity] = get_object_from_path(full_path)
+                        self.workflow_methods[self.current.activity] = get_object_from_path(full_path)
                         break
                     except:
                         number_of_paths = len(settings.ACTIVITY_MODULES_IMPORT_PATHS)
@@ -329,7 +327,7 @@ class ZEngine(object):
                         if index_no + 1 == number_of_paths:
                             # raise if cant find the activity in the last path
                             raise
-            self.activities[self.current.activity](self.current)
+            self.workflow_methods[self.current.activity](self.current)
 
     def check_for_authentication(self):
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS

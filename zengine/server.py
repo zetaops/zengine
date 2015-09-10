@@ -48,21 +48,3 @@ class Connector(object):
 
 workflow_connector = Connector()
 falcon_app.add_route('/{wf_name}/', workflow_connector)
-
-
-def runserver(port=9001, addr='0.0.0.0'):
-    """
-    Useful for debugging problems in your API; works with pdb.set_trace()
-
-    :param port: listen on this port
-    :param addr: listen on this ip addr
-    :return:
-    """
-    from wsgiref import simple_server
-    httpd = simple_server.make_server(addr, port, app)
-    httpd.serve_forever()
-
-
-
-if __name__ == '__main__':
-    runserver()

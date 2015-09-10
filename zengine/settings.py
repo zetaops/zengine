@@ -12,11 +12,11 @@ import os.path
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # path of the activity modules which will be invoked by workflow tasks
-ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.diagrams']
+ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.workflows']
 # absolute path to the workflow packages
-WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'workflows')]
+WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'diagrams')]
 
-AUTH_BACKEND = 'zengine.auth_backend.AuthBackend'
+AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
 PERMISSION_MODEL = 'zengine.models.Permission'
 USER_MODEL = 'zengine.models.User'

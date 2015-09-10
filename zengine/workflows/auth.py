@@ -7,7 +7,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import falcon
 from pyoko import field
-from zengine.views.base import SimpleView
+from zengine.workflows.base import SimpleView
 from zengine.lib.exceptions import HTTPUnauthorized
 from zengine.lib.forms import JsonForm
 

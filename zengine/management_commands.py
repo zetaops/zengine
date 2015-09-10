@@ -15,7 +15,7 @@ class UpdatePermissions(Command):
 
     def run(self):
         from pyoko.lib.utils import get_object_from_path
-        from zengine.permissions import get_all_permissions
+        from zengine.auth.permissions import get_all_permissions
         from zengine.config import settings
         model = get_object_from_path(settings.PERMISSION_MODEL)
         perms = []
@@ -53,3 +53,20 @@ class CreateUser(Command):
         return "New user created with ID: %s" % user.key
 
 
+class RunServer(Command):
+    CMD_NAME = 'runserver'
+    HELP = 'Run the development server'
+    PARAMS = [
+        {'name': 'addr', 'default': '127.0.0.1', 'help': 'Listening address. Defaults to 127.0.0.1'},
+        {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
+    ]
+
+    def run(self):
+        from wsgiref import simple_server
+        from zengine.server import app
+        httpd = simple_server.make_server(self.manager.args.addr, int(self.manager.args.port), app)
+        print("Development server started on http://%s:%s. \n\nPress Ctrl+C to stop\n" % (
+            self.manager.args.addr,
+            self.manager.args.port)
+              )
+        httpd.serve_forever()
