@@ -20,6 +20,8 @@ class AuthBackend(object):
         self.session = session
 
     def get_user(self):
+        # FIXME: Should return a proper AnonymousUser object
+        # (instead of unsaved User instance)
         return (User.objects.get(self.session['user_id'])
                 if 'user_id' in self.session
                 else User())
