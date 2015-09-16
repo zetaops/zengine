@@ -87,7 +87,7 @@ class CrudView(BaseView):
             self.output['client_cmd'] = 'add_object'
 
     def _save_object(self, data=None):
-        self.form.deserialize(data or self.current.input['form'])
+        self.object = self.form.deserialize(data or self.current.input['form'])
         self.object.save()
         if self.next_task == 'list':  # to overcome 1s riak-solr delay
             self.current.task_data['just_added_object'] = {
