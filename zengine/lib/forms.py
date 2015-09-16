@@ -6,7 +6,7 @@ from pyoko.form import Form
 class JsonForm(Form):
     def serialize(self):
         result = {
-            "schema": {
+                "schema": {
                 "title": self.title,
                 "type": "object",
                 "properties": {},
@@ -18,8 +18,12 @@ class JsonForm(Form):
         for itm in self._serialize():
             if isinstance(itm['value'], (date, datetime)):
                 itm['value'] = itm['value'].strftime(DATE_FORMAT)
-            result["schema"]["properties"][itm['name']] = { 'type': itm['type'],
-                                                            'title': itm['title']}
+            item_props = {'type': itm['type'], 'title': itm['title']}
+            if 'schema' in itm:
+                item_props['schema'] = itm['schema']
+            result["schema"]["properties"][itm['name']] = item_props
+
+
             result["model"][itm['name']] = itm['value'] or itm['default']
             result["form"].append(itm['name'])
             if itm['required']:
