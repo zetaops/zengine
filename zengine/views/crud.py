@@ -49,7 +49,8 @@ class CrudView(BaseView):
             self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
 
     def list_models(self):
-        self.output["models"] = [m.__name__ for m in model_registry.get_base_models()]
+        self.output["models"] = [(m.Meta.verbose_name, m.__name__)
+                                 for m in model_registry.get_base_models()]
 
     def show_view(self):
         self.output['object'] = self.object.clean_value()
