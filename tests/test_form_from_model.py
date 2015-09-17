@@ -27,5 +27,5 @@ class TestCase(BaseTestCase):
 
         # perms = serialized_form['schema']['properties']['Permissions']
         # assert perms['models'][0]['content'][0]['value'] == 'crud'
-        username = serialized_form['schema']['properties']['username']
-        assert username['value'] == 'test_user'
+
+        assert serialized_form['model']['username'] == 'test_user'
