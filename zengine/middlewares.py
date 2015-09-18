@@ -1,9 +1,9 @@
 import json
 import falcon
 from zengine.config import settings
+from zengine.log import getlogger
 
-__author__ = 'Evren Esat Ozkan'
-
+log = getlogger()
 
 class CORS(object):
     """
@@ -69,8 +69,12 @@ class JSONTranslator(object):
                                         'A valid JSON document is required.')
 
         try:
-            req.context['data'] = json.loads(body.decode('utf-8'))
-
+            json_data = body.decode('utf-8')
+            req.context['data'] = json.loads(json_data)
+            try:
+                log.info("REQUEST DATA: %s" % json_data)
+            except:
+                log.exception("ERR: REQUEST DATA CANT BE LOGGED ")
         except (ValueError, UnicodeDecodeError):
             raise falcon.HTTPError(falcon.HTTP_753,
                                    'Malformed JSON',
@@ -85,5 +89,11 @@ class JSONTranslator(object):
         # print(":::::body: %s\n\n:::::result: %s" % (resp.body, req.context['result']))
         if resp.body is None and req.context['result']:
             resp.body = json.dumps(req.context['result'])
+
+
+        try:
+            log.info("RESPONSE: %s" % resp.body)
+        except:
+            log.exception("ERR: RESPONSE CANT BE LOGGED ")
 
 

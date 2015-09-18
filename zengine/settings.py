@@ -22,7 +22,8 @@ PERMISSION_MODEL = 'zengine.models.Permission'
 USER_MODEL = 'zengine.models.User'
 
 # left blank to use StreamHandler aka stderr
-LOG_HANDLER = os.environ.get('LOG_HANDLER', 'file')
+# set 'file' for logging in to 'LOG_DIR'
+LOG_HANDLER = os.environ.get('LOG_HANDLER')
 
 # logging dir for file handler
 LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
