@@ -1,9 +1,9 @@
 from datetime import datetime, date
 from pyoko.field import DATE_FORMAT, DATE_TIME_FORMAT
 
-from pyoko.form import Form
+from pyoko.form import ModelForm
 
-class JsonForm(Form):
+class JsonForm(ModelForm):
     def serialize(self):
         result = {
                 "schema": {
