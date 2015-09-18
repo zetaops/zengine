@@ -5,6 +5,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import datetime
 from falcon import HTTPNotFound
 
 from pyoko.model import Model, model_registry
@@ -52,9 +53,28 @@ class CrudView(BaseView):
         self.output["models"] = [(m.Meta.verbose_name_plural, m.__name__)
                                  for m in model_registry.get_base_models()]
 
+        self.output["app_models"] = [(app, [(m.Meta.verbose_name_plural, m.__name__)
+                                            for m in models])
+                                 for app, models  in model_registry.get_models_by_apps()]
+
     def show_view(self):
-        self.output['object'] = self.object.clean_value()
+        self.output['object'] = self.form.serialize()['model']
         self.output['client_cmd'] = 'show_object'
+
+    def get_list_obj(self, mdl):
+        result = [mdl.key]
+        if mdl.Meta.list_fields:
+            for f in mdl.Meta.list_fields:
+                field = getattr(mdl, f)
+                if callable(field):
+                    result.append(field())
+                elif isinstance(field, (datetime.date, datetime.datetime)):
+                    result.append(mdl._fields[f].clean_value(field))
+                else:
+                    result.append(field)
+        else:
+            result.append(unicode(mdl))
+        return result
 
     def list_view(self):
         # TODO: add pagination
@@ -63,17 +83,29 @@ class CrudView(BaseView):
         if 'filters' in self.input:
             query = query.filter(**self.input['filters'])
         self.output['client_cmd'] = 'list_objects'
+        self.output['nobjects'] = []
         self.output['objects'] = []
-        for obj in query:
-            if ('just_deleted_object_key' in self.current.task_data and
-                        self.current.task_data['just_deleted_object_key'] == obj.key):
-                del self.current.task_data['just_deleted_object_key']
-                continue
-            self.output['objects'].append({"data": obj.clean_field_values(), "key": obj.key})
+        if self.object.Meta.list_fields:  # add list headers
+            list_headers = []
+            for f in self.object.Meta.list_fields:
+                if callable(getattr(self.object, f)):
+                    list_headers.append(getattr(self.object, f).title)
+                else:
+                    list_headers.append(self.object._fields[f].title)
+            self.output['nobjects'].append(list_headers)
 
-        if 'just_added_object' in self.current.task_data:
-            self.output['objects'].append(self.current.task_data['just_added_object'].copy())
-            del self.current.task_data['just_added_object']
+        for obj in query:
+            if ('deleted_obj' in self.current.task_data and self.current.task_data[
+                'deleted_obj'] == obj.key):
+                del self.current.task_data['deleted_obj']
+                continue
+            self.output['nobjects'].append(self.get_list_obj(obj))
+            self.output['objects'].append({"data": obj.clean_field_values(), "key": obj.key})
+        if 'added_obj' in self.current.task_data:
+            new_obj = self.object.objects.get(self.current.task_data['added_obj'])
+            self.output['nobjects'].insert(0, self.get_list_obj(new_obj))
+            self.output['objects'].insert(0, {"data": new_obj.clean_field_values(), "key": new_obj.key})
+            del self.current.task_data['added_obj']
         self.output
 
     def edit_view(self):
@@ -91,14 +123,12 @@ class CrudView(BaseView):
         self.object = self.form.deserialize(data or self.current.input['form'])
         self.object.save()
         if self.next_task == 'list':  # to overcome 1s riak-solr delay
-            self.current.task_data['just_added_object'] = {
-                'key': self.object.key,
-                'data': self.object.clean_value()}
+            self.current.task_data['added_obj'] = self.object.key
 
     def delete_view(self):
         # TODO: add confirmation dialog
         if self.next_task == 'list':  # to overcome 1s riak-solr delay
-            self.current.task_data['just_deleted_object_key'] = self.object.key
+            self.current.task_data['deleted_obj'] = self.object.key
         self.object.delete()
         del self.current.input['object_id']
         self.go_next_task()
