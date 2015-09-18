@@ -17,8 +17,7 @@ import logging
 from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
 from SpiffWorkflow.bpmn.parser.ProcessParser import ProcessParser
 from zengine.lib.utils import DotDict
-
-LOG = logging.getLogger(__name__)
+from zengine.log import log
 
 
 class CamundaBMPNParser(BpmnParser):
@@ -50,7 +49,7 @@ class CamundaProcessParser(ProcessParser):
             for nod in self._get_input_nodes(node):
                 data.update(self._parse_input_node(nod))
         except Exception as e:
-            LOG.exception("Error while processing node: %s" % node)
+            log.exception("Error while processing node: %s" % node)
         return data
 
     @staticmethod

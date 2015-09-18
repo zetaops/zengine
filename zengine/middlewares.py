@@ -1,9 +1,8 @@
 import json
 import falcon
 from zengine.config import settings
-from zengine.log import getlogger
+from zengine.log import log
 
-log = getlogger()
 
 class CORS(object):
     """

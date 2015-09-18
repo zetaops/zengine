@@ -26,11 +26,10 @@ from pyoko.lib.utils import get_object_from_path
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
-from zengine.log import getlogger
+from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS
 from zengine.views.crud import crud_view
 
-log = getlogger()
 
 ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
 

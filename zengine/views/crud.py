@@ -10,10 +10,9 @@ from falcon import HTTPNotFound
 
 from pyoko.model import Model, model_registry
 from zengine.lib.forms import JsonForm
-from zengine.log import getlogger
+from zengine.log import log
 from zengine.views.base import BaseView
 
-log = getlogger()
 
 class CrudView(BaseView):
     """
@@ -97,21 +96,23 @@ class CrudView(BaseView):
                     list_headers.append(self.object._fields[f].title)
             self.output['nobjects'].append(list_headers)
         make_it_brief = brief or not self.object.Meta.list_fields
+        if make_it_brief:
+            self.output['nobjects'].append('-1')
         for obj in query:
-            if ('deleted_obj' in self.current.task_data and self.current.task_data[
-                'deleted_obj'] == obj.key):
-                del self.current.task_data['deleted_obj']
-                continue
+            # if ('deleted_obj' in self.current.task_data and self.current.task_data[
+            #     'deleted_obj'] == obj.key):
+            #     del self.current.task_data['deleted_obj']
+            #     continue
             self.output['nobjects'].append(self.get_list_obj(obj, make_it_brief))
             self.output['objects'].append({"data": obj.clean_field_values(), "key": obj.key})
-        if 'added_obj' in self.current.task_data:
-            try:
-                    new_obj = self.object.objects.get(self.current.task_data['added_obj'])
-                    self.output['nobjects'].insert(0, self.get_list_obj(new_obj, make_it_brief))
-                    self.output['objects'].insert(0, {"data": new_obj.clean_field_values(), "key": new_obj.key})
-            except:
-                log.exception("ERROR while adding newly created object to object listing")
-            del self.current.task_data['added_obj']
+        # if 'added_obj' in self.current.task_data:
+        #     try:
+        #             new_obj = self.object.objects.get(self.current.task_data['added_obj'])
+        #             self.output['nobjects'].insert(0, self.get_list_obj(new_obj, make_it_brief))
+        #             self.output['objects'].insert(0, {"data": new_obj.clean_field_values(), "key": new_obj.key})
+        #     except:
+        #         log.exception("ERROR while adding newly created object to object listing")
+        #     del self.current.task_data['added_obj']
         self.output
 
     def edit_view(self):

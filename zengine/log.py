@@ -30,3 +30,4 @@ def getlogger():
     # add ch to logger
     logger.addHandler(ch)
     return logger
+log = getlogger()
