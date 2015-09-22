@@ -99,29 +99,37 @@ class CrudView(BaseView):
         if make_it_brief:
             self.output['nobjects'].append('-1')
         for obj in query:
-            # if ('deleted_obj' in self.current.task_data and self.current.task_data[
-            #     'deleted_obj'] == obj.key):
-            #     del self.current.task_data['deleted_obj']
-            #     continue
+            if ('deleted_obj' in self.current.task_data and self.current.task_data[
+                'deleted_obj'] == obj.key):
+                del self.current.task_data['deleted_obj']
+                continue
             self.output['nobjects'].append(self.get_list_obj(obj, make_it_brief))
             self.output['objects'].append({"data": obj.clean_field_values(), "key": obj.key})
-        # if 'added_obj' in self.current.task_data:
-        #     try:
-        #             new_obj = self.object.objects.get(self.current.task_data['added_obj'])
-        #             self.output['nobjects'].insert(0, self.get_list_obj(new_obj, make_it_brief))
-        #             self.output['objects'].insert(0, {"data": new_obj.clean_field_values(), "key": new_obj.key})
-        #     except:
-        #         log.exception("ERROR while adding newly created object to object listing")
-        #     del self.current.task_data['added_obj']
+        if 'added_obj' in self.current.task_data:
+            try:
+                    new_obj = self.object.objects.get(self.current.task_data['added_obj'])
+                    self.output['nobjects'].insert(1, self.get_list_obj(new_obj, make_it_brief))
+                    self.output['objects'].insert(0, {"data": new_obj.clean_field_values(), "key": new_obj.key})
+            except:
+                log.exception("ERROR while adding newly created object to object listing")
+            del self.current.task_data['added_obj']
         self.output
 
     def edit_view(self):
-        self.add_view()
+        if self.do:
+            self._save_object()
+            self.go_next_task()
+        else:
+            self.output['forms'] = self.form.serialize()
+            self.output['client_cmd'] = 'edit_object'
+
 
     def add_view(self):
         if self.do:
             self._save_object()
             self.go_next_task()
+            if self.next_task == 'list':  # to overcome 1s riak-solr delay
+                self.current.task_data['added_obj'] = self.object.key
         else:
             self.output['forms'] = self.form.serialize()
             self.output['client_cmd'] = 'add_object'
@@ -129,8 +137,7 @@ class CrudView(BaseView):
     def _save_object(self, data=None):
         self.object = self.form.deserialize(data or self.current.input['form'])
         self.object.save()
-        if self.next_task == 'list':  # to overcome 1s riak-solr delay
-            self.current.task_data['added_obj'] = self.object.key
+
 
     def delete_view(self):
         # TODO: add confirmation dialog
