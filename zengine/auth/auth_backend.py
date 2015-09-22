@@ -6,6 +6,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from pyoko.exceptions import ObjectDoesNotExist
 from zengine.models import *
 
 
@@ -34,8 +35,11 @@ class AuthBackend(object):
         return user.superuser or perm in user.get_permissions()
 
     def authenticate(self, username, password):
-        user = User.objects.filter(username=username).get()
-        is_login_ok = user.check_password(password)
-        if is_login_ok:
-            self.session['user_id'] = user.key
-        return is_login_ok
+        try:
+            user = User.objects.filter(username=username).get()
+            is_login_ok = user.check_password(password)
+            if is_login_ok:
+                self.session['user_id'] = user.key
+            return is_login_ok
+        except ObjectDoesNotExist:
+            pass
