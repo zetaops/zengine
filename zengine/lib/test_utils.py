@@ -8,7 +8,7 @@ from zengine.server import app
 from pprint import pprint
 import json
 from zengine.models import User, Permission
-from zengine.log import getlogger
+from zengine.log import log
 
 
 class RWrapper(object):
@@ -82,7 +82,7 @@ username = 'test_user'
 
 class BaseTestCase:
     client = None
-    log = getlogger()
+    # log = getlogger()
 
     @classmethod
     def create_user(self):
