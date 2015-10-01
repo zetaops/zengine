@@ -15,10 +15,10 @@ def getlogger():
 
     # create console handler and set level to debug
     if settings.LOG_HANDLER == 'file':
-        ch = logging.FileHandler(filename="%szengine.log" % settings.LOG_DIR, mode="w")
+        ch = logging.FileHandler(filename=settings.LOG_FILE, mode="w")
     else:
         ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    # ch.setLevel(logging.DEBUG)
 
     # create formatter
     formatter = logging.Formatter(

@@ -28,6 +28,8 @@ LOG_HANDLER = os.environ.get('LOG_HANDLER')
 # logging dir for file handler
 LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
 
+LOG_FILE = os.environ.get('LOG_FILE', '/tmp/zengine.log')
+
 DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
 
 # workflows that dosen't require logged in user
