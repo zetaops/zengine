@@ -96,8 +96,8 @@ class CrudView(BaseView):
 
     def _process_list_search(self, query):
         if 'query' in self.input:
-            query = self.input['query']
-            search_string = ' OR '.join(['%s:%s' %(f, query) for f in self.object.Meta.list_fields])
+            query_string = self.input['query']
+            search_string = ' OR '.join(['%s:*%s*' %(f, query_string) for f in self.object.Meta.list_fields])
             return query.raw(search_string)
         return query
 
