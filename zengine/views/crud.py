@@ -97,7 +97,8 @@ class CrudView(BaseView):
     def _process_list_search(self, query):
         if 'query' in self.input:
             query_string = self.input['query']
-            search_string = ' OR '.join(['%s:*%s*' %(f, query_string) for f in self.object.Meta.list_fields])
+            search_string = ' OR '.join(
+                ['%s:*%s*' % (f, query_string) for f in self.object.Meta.list_fields])
             return query.raw(search_string)
         return query
 
@@ -111,8 +112,8 @@ class CrudView(BaseView):
         self.output['nobjects'] = []
         self._make_list_header()
         for obj in query:
-            if ('deleted_obj' in self.current.task_data and self.current.task_data[
-                'deleted_obj'] == obj.key):
+            if ('deleted_obj' in self.current.task_data and
+                    self.current.task_data['deleted_obj'] == obj.key):
                 del self.current.task_data['deleted_obj']
                 continue
             self.output['nobjects'].append(self._get_list_obj(obj))
