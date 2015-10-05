@@ -51,10 +51,10 @@ def get_workflow_permissions(permission_list=None):
             wf_name = os.path.splitext(os.path.basename(bpmn_diagram_path))[0]
             permissions.append((wf_name, wf_name, ""))
             engine.current = Current(workflow_name=wf_name)
-            try:
-                workflow = engine.load_or_create_workflow()
-            except:
-                log.exception("Workflow cannot be created.")
+            # try:
+            workflow = engine.load_or_create_workflow()
+            # except:
+            #     log.exception("Workflow cannot be created.")
             # print(wf_name)
             # pprint(workflow.spec.task_specs)
             for name, task_spec in workflow.spec.task_specs.items():

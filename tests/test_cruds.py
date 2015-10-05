@@ -26,36 +26,36 @@ class TestCase(BaseTestCase):
         model_name = 'User'
         # calling with just model name (without any cmd) equals to cmd="list"
         resp = self.client.post(model=model_name, filters={"username": username})
-        assert 'objects' in resp.json
-        list_objects = resp.json['objects']
-        if list_objects:
-            assert list_objects[0]['data']['username'] == username
+        assert 'nobjects' in resp.json
+        assert resp.json['nobjects'][1][1] == username
 
-        resp = self.client.post(model=model_name)
+        resp = self.client.post(model=model_name, cmd='list')
         # count number of records
-        num_of_objects = len(resp.json['objects'])
+        num_of_objects = len(resp.json['nobjects']) - 1
 
         # add a new employee record, then go to list view (do_list subcmd)
         self.client.post(model=model_name, cmd='add')
         resp = self.client.post(model=model_name,
                                 cmd='add',
-                                subcmd="do_list",
+                                subcmd="do_show",
                                 form=dict(username="fake_user", password="123"))
+        assert resp.json['object']['username'] == 'fake_user'
 
         # we should have 1 more object relative to previous listing
-        assert num_of_objects + 1 == len(resp.json['objects'])
+        # assert num_of_objects + 1 == len(resp.json['nobjects']) - 1
         # since we are searching for a just created record, we have to wait
         sleep(1)
-        resp = self.client.post(model=model_name, filters={"username": "fake_user"})
+        # resp = self.client.post(model=model_name, filters={"username": "fake_user"})
 
         # delete the first object then go to list view
         resp = self.client.post(model=model_name,
                                 cmd='delete',
                                 subcmd="do_list",
-                                object_id=resp.json['objects'][0]['key'])
+                                object_id=resp.json['object']['key'])
 
+        # resp = self.client.post(model=model_name, cmd='list')
         # number of objects should be equal to starting point
-        assert num_of_objects == len(resp.json['objects'])
+        assert num_of_objects == len(resp.json['nobjects']) - 1
 
 
 
