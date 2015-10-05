@@ -26,6 +26,9 @@ class User(Model):
     password = field.String("Password")
     superuser = field.Boolean("Super user", default=False)
 
+    class Meta:
+        list_fields = ['username', 'superuser']
+
     class Permissions(ListNode):
         permission = Permission()
 
