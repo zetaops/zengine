@@ -18,22 +18,25 @@ class UpdatePermissions(Command):
         from zengine.auth.permissions import get_all_permissions
         from zengine.config import settings
         model = get_object_from_path(settings.PERMISSION_MODEL)
-        perms = []
+        existing_perms = []
         new_perms = []
         for code, name, desc in get_all_permissions():
             perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
-            perms.append(perm)
             if new:
                 new_perms.append(perm)
+            else:
+                existing_perms.append(perm)
 
-        if len(perms) == len(new_perms):
-            report = ''
-        else:
-            report = "\nTotal %s permission exist. " % len(perms)
-        report += "\n%s new permission record added.\n\n" % len(new_perms)
+        report = "\n\n%s permission(s) were found in DB. " % len(existing_perms)
         if new_perms:
+            report += "\n%s new permission record added. " % len(new_perms)
+        else:
+            report += 'No new perms added. '
+
+        if new_perms:
+            report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
             report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
-        return report
+        print(report + "\n")
 
 
 class CreateUser(Command):
@@ -50,7 +53,7 @@ class CreateUser(Command):
         user = User(username=self.manager.args.username, superuser=self.manager.args.super)
         user.set_password(self.manager.args.password)
         user.save()
-        return "New user created with ID: %s" % user.key
+        print("New user created with ID: %s" % user.key)
 
 
 class RunServer(Command):
