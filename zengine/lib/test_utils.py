@@ -92,7 +92,7 @@ class BaseTestCase:
             for perm in Permission.objects.raw("code:crud* OR code:login* OR code:User*"):
                 self.client.user.Permissions(permission=perm)
             self.client.user.save()
-            sleep(1)
+            sleep(2)
 
     @classmethod
     def prepare_client(self, workflow_name, reset=False, login=True):

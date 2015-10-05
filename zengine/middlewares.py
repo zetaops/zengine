@@ -85,13 +85,12 @@ class JSONTranslator(object):
         if 'result' not in req.context:
             return
         req.context['result']['is_login'] = 'user_id' in req.env['session']
-        # print(":::::body: %s\n\n:::::result: %s" % (resp.body, req.context['result']))
         if resp.body is None and req.context['result']:
             resp.body = json.dumps(req.context['result'])
 
 
         try:
-            log.info("RESPONSE: %s" % resp.body)
+            log.debug("RESPONSE: %s" % resp.body)
         except:
             log.exception("ERR: RESPONSE CANT BE LOGGED ")
 
