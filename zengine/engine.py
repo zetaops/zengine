@@ -109,7 +109,7 @@ class Current(object):
             log.info("TOKEN NEW: %s " % self.token)
 
         self.wfcache = Cache(key=self.token, json=True)
-        log.info("\n\nWFCACHE: %s" % self.wfcache.get())
+        log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
         self.set_task_data()
         self.permissions = []
 
@@ -159,7 +159,7 @@ class Current(object):
                 self.task_data['cmd'] = self.input['cmd']
             else:
                 self.task_data['cmd'] = None
-        self.task_data['object_id'] = self.input.get('object_id', None)
+            self.task_data['object_id'] = self.input.get('object_id', None)
 
 
 class ZEngine(object):
@@ -269,7 +269,7 @@ class ZEngine(object):
         self.check_for_authentication()
         self.check_for_permission()
         self.check_for_crud_permission()
-        log.info("::::::::::: ENGINE STARTED :::::::::::\n"
+        log.debug("::::::::::: ENGINE STARTED :::::::::::\n"
                  "\tCMD:%s\n"
                  "\tSUBCMD:%s" % (self.current.input.get('cmd'), self.current.input.get('subcmd')))
         self.workflow = self.load_or_create_workflow()
@@ -290,7 +290,7 @@ class ZEngine(object):
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
         output += "\n\tTOKEN: %s" % self.current.token
-        log.info(output + "\n= = = = = =\n")
+        log.debug(output + "\n= = = = = =\n")
 
     def run(self):
         """
@@ -331,7 +331,7 @@ class ZEngine(object):
     def check_for_authentication(self):
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
-            self.current.log.info("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
+            self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
             raise falcon.HTTPUnauthorized("Login required", "")
 
     def check_for_crud_permission(self):
@@ -341,7 +341,7 @@ class ZEngine(object):
                 permission = "%s.%s" % (self.current.input["model"], self.current.input['cmd'])
             else:
                 permission = self.current.input["model"]
-            log.info("CHECK CRUD PERM: %s" % permission)
+            log.debug("CHECK CRUD PERM: %s" % permission)
             if permission in settings.ANONYMOUS_WORKFLOWS:
                 return
             if not self.current.has_permission(permission):
@@ -354,11 +354,11 @@ class ZEngine(object):
             permission = "%s.%s" % (self.current.workflow_name, self.current.name)
         else:
             permission = self.current.workflow_name
-        log.info("CHECK PERM: %s" % permission)
+        log.debug("CHECK PERM: %s" % permission)
         if (permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS)) or
                 any('.' + perm in permission for perm in NO_PERM_TASKS)):
             return
-        log.info("REQUIRE PERM: %s" % permission)
+        log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
             raise falcon.HTTPForbidden("Permission denied",
                                        "You don't have required permission: %s" % permission)

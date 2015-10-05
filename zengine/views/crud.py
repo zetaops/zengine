@@ -34,7 +34,7 @@ class CrudView(BaseView):
         else:
             self.model_class = model_registry.get_model(current.input['model'])
 
-            self.object_id = self.input.get('object_id')
+            self.object_id = self.input.get('object_id') or self.current.task_data.get('object_id')
             if self.object_id:
                 try:
                     self.object = self.model_class(current).objects.get(self.object_id)
@@ -60,6 +60,7 @@ class CrudView(BaseView):
 
     def show_view(self):
         self.output['object'] = self.form.serialize()['model']
+        self.output['object']['key'] = self.object.key
         self.output['client_cmd'] = 'show_object'
 
     def _get_list_obj(self, mdl):
@@ -149,6 +150,7 @@ class CrudView(BaseView):
     def _save_object(self, data=None):
         self.object = self.form.deserialize(data or self.current.input['form'])
         self.object.save()
+        self.current.task_data['object_id'] = self.object.key
 
     def delete_view(self):
         # TODO: add confirmation dialog
@@ -156,6 +158,7 @@ class CrudView(BaseView):
             self.current.task_data['deleted_obj'] = self.object.key
         self.object.delete()
         del self.current.input['object_id']
+        del self.current.task_data['object_id']
         self.go_next_task()
 
 
