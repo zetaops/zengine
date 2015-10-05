@@ -1,15 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd" id="_u87A0GnjEeWc9YwH6Ct-eg" exporter="camunda modeler" exporterVersion="2.7.0" targetNamespace="http://activiti.org/bpmn">
+<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://activiti.org/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd" id="_u87A0GnjEeWc9YwH6Ct-eg" exporter="camunda modeler" exporterVersion="2.7.0" targetNamespace="http://activiti.org/bpmn">
   <bpmn2:collaboration id="_Collaboration_2">
-    <bpmn2:participant id="_Participant_2" name="Pool" processRef="lane"/>
+    <bpmn2:participant id="_Participant_2" name="Pool" processRef="multi_user"/>
   </bpmn2:collaboration>
-  <bpmn2:process id="lane" isExecutable="false">
+  <bpmn2:process id="multi_user" isExecutable="false">
     <bpmn2:laneSet id="LaneSet_7" name="Lane Set 7">
-      <bpmn2:lane id="Lane_7" name="Lane 7">
+      <bpmn2:lane id="Danisman" name="Danışman">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property value="qwe,asd" name="perms"/>
+          </camunda:properties>
+        </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>ServiceTask_1</bpmn2:flowNodeRef>
       </bpmn2:lane>
-      <bpmn2:lane id="Lane_8" name="Lane 8">
+      <bpmn2:lane id="ogrenci" name="Ogrenci">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property value="foo,bar" name="perms"/>
+          </camunda:properties>
+        </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>StartEvent_1</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>UserTask_1</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>ServiceTask_2</bpmn2:flowNodeRef>
@@ -49,10 +59,10 @@
       <bpmndi:BPMNShape id="_BPMNShape_Participant_2" bpmnElement="_Participant_2" isHorizontal="true">
         <dc:Bounds height="409.0" width="540.0" x="180.0" y="0.0"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_Lane_8" bpmnElement="Lane_7" isHorizontal="true">
+      <bpmndi:BPMNShape id="_BPMNShape_Lane_8" bpmnElement="Danisman" isHorizontal="true">
         <dc:Bounds height="205.0" width="510.0" x="210.0" y="0.0"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_Lane_9" bpmnElement="Lane_8" isHorizontal="true">
+      <bpmndi:BPMNShape id="_BPMNShape_Lane_9" bpmnElement="ogrenci" isHorizontal="true">
         <dc:Bounds height="205.0" width="510.0" x="210.0" y="204.0"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="_BPMNShape_StartEvent_4" bpmnElement="StartEvent_1">

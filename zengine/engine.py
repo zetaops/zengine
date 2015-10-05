@@ -268,6 +268,7 @@ class ZEngine(object):
         self.current = Current(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
+        self.check_for_lane_permission()
         self.check_for_crud_permission()
         log.debug("::::::::::: ENGINE STARTED :::::::::::\n"
                  "\tCMD:%s\n"
@@ -347,6 +348,15 @@ class ZEngine(object):
             if not self.current.has_permission(permission):
                 raise falcon.HTTPForbidden("Permission denied",
                                            "You don't have required permission: %s" % permission)
+
+    def check_for_lane_permission(self):
+        # TODO: Cache lane_data in app memory
+        if 'lane_data' in self.current.spec.data:
+            lane_data = self.current.spec.data['lane_data']
+            if 'perms' in lane_data:
+                perms = lane_data['perms'].split(',')
+
+
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
