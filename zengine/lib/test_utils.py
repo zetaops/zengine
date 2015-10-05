@@ -86,10 +86,11 @@ class BaseTestCase:
 
     @classmethod
     def create_user(self):
-        self.client.user, new = User.objects.get_or_create({"password": user_pass},
+        self.client.user, new = User.objects.get_or_create({"password": user_pass,
+                                                            "superuser": True},
                                                            username=username)
         if new:
-            for perm in Permission.objects.raw("code:crud* OR code:login* OR code:User*"):
+            for perm in Permission.objects.raw("*:*"):
                 self.client.user.Permissions(permission=perm)
             self.client.user.save()
             sleep(2)
