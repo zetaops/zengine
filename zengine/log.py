@@ -11,7 +11,7 @@ from zengine.config import settings
 def getlogger():
     # create logger
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG if settings.DEBUG else logging.INFO)
 
     # create console handler and set level to debug
     if settings.LOG_HANDLER == 'file':

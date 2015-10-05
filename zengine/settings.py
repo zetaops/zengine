@@ -34,7 +34,7 @@ DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
 
 # workflows that dosen't require logged in user
 ANONYMOUS_WORKFLOWS = ['login', 'login.']
-
+DEBUG = os.environ.get('DEBUG', True)
 # PYOKO SETTINGS
 DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
