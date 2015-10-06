@@ -5,19 +5,20 @@
   </bpmn2:collaboration>
   <bpmn2:process id="multi_user" isExecutable="false">
     <bpmn2:laneSet id="LaneSet_7" name="Lane Set 7">
-      <bpmn2:lane id="Danisman" name="Danışman">
+      <bpmn2:lane id="danisman" name="danisman">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property value="qwe,asd" name="perms"/>
+            <camunda:property value="danisman" name="perms"/>
+            <camunda:property value="self == ogrenci.danisman" name="relations"/>
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>ServiceTask_1</bpmn2:flowNodeRef>
       </bpmn2:lane>
-      <bpmn2:lane id="ogrenci" name="Ogrenci">
+      <bpmn2:lane id="ogrenci" name="ogrenci">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property value="foo,bar" name="perms"/>
+            <camunda:property value="ders_secebilir" name="perms"/>
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>StartEvent_1</bpmn2:flowNodeRef>
@@ -59,7 +60,7 @@
       <bpmndi:BPMNShape id="_BPMNShape_Participant_2" bpmnElement="_Participant_2" isHorizontal="true">
         <dc:Bounds height="409.0" width="540.0" x="180.0" y="0.0"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_Lane_8" bpmnElement="Danisman" isHorizontal="true">
+      <bpmndi:BPMNShape id="_BPMNShape_Lane_8" bpmnElement="danisman" isHorizontal="true">
         <dc:Bounds height="205.0" width="510.0" x="210.0" y="0.0"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="_BPMNShape_Lane_9" bpmnElement="ogrenci" isHorizontal="true">
