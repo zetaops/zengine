@@ -7,7 +7,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import falcon
-from zengine.lib.test_utils import BaseTestCase
+import pytest
+from zengine.lib.test_utils import BaseTestCase, RWrapper
 
 
 class TestCase(BaseTestCase):
@@ -17,11 +18,13 @@ class TestCase(BaseTestCase):
         # resp.raw()
 
         # wrong username
-        resp = self.client.post(username="test_loser", password="123", cmd="do")
+        with pytest.raises(falcon.errors.HTTPForbidden):
+            self.client.post(username="test_loser", password="123", cmd="do")
         # resp.raw()
 
         self.client.set_workflow('logout')
-        resp = self.client.post()
-        resp.raw()
+
         # not logged in so cannot logout, should got an error
-        assert resp.code == falcon.HTTP_401
+        with pytest.raises(falcon.errors.HTTPUnauthorized):
+            self.client.post()
+
