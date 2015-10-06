@@ -12,8 +12,6 @@ from SpiffWorkflow.bpmn.parser.util import full_attr
 
 __author__ = "Evren Esat Ozkan"
 
-
-import logging
 from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
 from SpiffWorkflow.bpmn.parser.ProcessParser import ProcessParser
 from zengine.lib.utils import DotDict
@@ -61,6 +59,7 @@ class CamundaProcessParser(ProcessParser):
                     if gchild.tag.endswith("inputOutput"):
                         children = gchild.getchildren()
                         return children
+        return []
 
     def _get_lane_perms(self, node):
         """
@@ -106,5 +105,3 @@ class CamundaProcessParser(ProcessParser):
     @classmethod
     def _parse_script(cls, elm):
         return elm.get('scriptFormat'), elm.text
-
-

@@ -9,7 +9,7 @@
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property value="danisman" name="perms"/>
-            <camunda:property value="self == ogrenci.danisman" name="relations"/>
+            <camunda:property value="self == ogrenci" name="relations"/>
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
