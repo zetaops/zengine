@@ -2,7 +2,7 @@
 import os
 from time import sleep
 import falcon
-from falcon.errors import HTTPForbidden
+from falcon import errors
 from werkzeug.test import Client
 from zengine.server import app
 from pprint import pprint
@@ -11,7 +11,17 @@ from zengine.models import User, Permission
 from zengine.log import log
 
 
+CODE_EXCEPTION = {
+    falcon.HTTP_400: errors.HTTPBadRequest,
+    falcon.HTTP_401: errors.HTTPUnauthorized,
+    falcon.HTTP_403: errors.HTTPForbidden,
+    falcon.HTTP_404: errors.HTTPNotFound,
+    falcon.HTTP_406: errors.HTTPNotAcceptable,
+    falcon.HTTP_500: errors.HTTPInternalServerError,
+    falcon.HTTP_503: errors.HTTPServiceUnavailable,
+                  }
 class RWrapper(object):
+
     def __init__(self, *args):
         self.content = list(args[0])
         self.code = args[1]
@@ -23,8 +33,14 @@ class RWrapper(object):
 
         self.token = self.json.get('token')
 
-        if self.code == falcon.HTTP_403:
+        if int(self.code[:3]) >= 400:
             self.raw()
+            if self.code in CODE_EXCEPTION:
+                raise CODE_EXCEPTION[self.code](title=self.json.get('title'),
+                                                description=self.json.get('description'))
+            else:
+                raise falcon.HTTPError(title=self.json.get('title'),
+                                       description=self.json.get('description'))
 
     def raw(self):
         pprint(self.code)
@@ -45,9 +61,9 @@ class TestClient(object):
         self.user = None
         self.token = None
 
-    def set_workflow(self, workflow):
+    def set_workflow(self, workflow, token=''):
         self.workflow = workflow
-        self.token = ''
+        self.token = token
 
     def post(self, conf=None, **data):
         """
@@ -85,18 +101,18 @@ class BaseTestCase:
     # log = getlogger()
 
     @classmethod
-    def create_user(self):
-        self.client.user, new = User.objects.get_or_create({"password": user_pass,
+    def create_user(cls):
+        cls.client.user, new = User.objects.get_or_create({"password": user_pass,
                                                             "superuser": True},
                                                            username=username)
         if new:
             for perm in Permission.objects.raw("*:*"):
-                self.client.user.Permissions(permission=perm)
-            self.client.user.save()
+                cls.client.user.Permissions(permission=perm)
+            cls.client.user.save()
             sleep(2)
 
     @classmethod
-    def prepare_client(self, workflow_name, reset=False, login=True):
+    def prepare_client(cls, workflow_name, reset=False, user=None, login=None, token=''):
         """
         setups the workflow, logs in if necessary
 
@@ -105,12 +121,22 @@ class BaseTestCase:
         :param login: login to system
         :return:
         """
-        if not self.client or reset:
-            self.client = TestClient(workflow_name)
-        if login and self.client.user is None:
-            self.create_user()
-            self._do_login()
-        self.client.set_workflow(workflow_name)
+
+        if not cls.client or reset or user:
+            cls.client = TestClient(workflow_name)
+            login = True if login is None else login
+
+        if not (cls.client.user or user):
+            cls.create_user()
+            login = True if login is None else login
+        elif user:
+            cls.client.user = user
+            login = True if login is None else login
+
+        if login:
+            cls._do_login()
+
+        cls.client.set_workflow(workflow_name, token)
 
     @classmethod
     def _do_login(self):
@@ -122,6 +148,7 @@ class BaseTestCase:
         resp = self.client.post()
         assert resp.json['forms']['schema']['title'] == 'LoginForm'
         assert not resp.json['is_login']
-        resp = self.client.post(username=username, password="123", cmd="do")
+        resp = self.client.post(username=self.client.user.username,
+                                password="123", cmd="do")
         assert resp.json['is_login']
         # assert resp.json['msg'] == 'Success'

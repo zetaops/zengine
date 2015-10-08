@@ -23,13 +23,13 @@ import falcon
 import lazy_object_proxy
 
 from pyoko.lib.utils import get_object_from_path
+from pyoko.model import super_context
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS
 from zengine.views.crud import crud_view
-
 
 ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
 
@@ -93,9 +93,12 @@ class Current(object):
         self.task_data = {}
         self.task = None
         self.log = log
-        self.name = ''
+        self.pool = {}
+        self.task_name = ''
         self.activity = ''
-
+        self.lane_perms = []
+        self.lane_relations = ''
+        self.lane_name = ''
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self.session))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
@@ -110,16 +113,25 @@ class Current(object):
 
         self.wfcache = Cache(key=self.token, json=True)
         log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
+        log.debug("\n\nINPUT DATA: %s" % self.input)
         self.set_task_data()
         self.permissions = []
+
+    def set_lane_data(self):
+        # TODO: Cache lane_data in app memory
+        if 'lane_data' in self.spec.data:
+            self.lane_name = self.spec.lane
+            lane_data = self.spec.data['lane_data']
+            if 'perms' in lane_data:
+                self.lane_perms = lane_data['perms'].split(',')
+            if 'relations' in lane_data:
+                self.lane_relations = lane_data['relations']
 
     @property
     def is_auth(self):
         if self.user_id is None:
             self.user_id = self.session.get('user_id', '')
         return bool(self.user_id)
-
-
 
     def has_permission(self, perm):
         return self.auth.has_permission(perm)
@@ -136,8 +148,9 @@ class Current(object):
         self.task.data.update(self.task_data)
         self.task_type = task.task_spec.__class__.__name__
         self.spec = task.task_spec
-        self.name = task.get_name()
+        self.task_name = task.get_name()
         self.activity = getattr(self.spec, 'service_class', '')
+        self.set_lane_data()
 
     def set_task_data(self, internal_cmd=None):
         """
@@ -170,19 +183,24 @@ class ZEngine(object):
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
+        self.user_model = get_object_from_path(settings.USER_MODEL)
 
-    def save_workflow(self, wf_name, serialized_wf_instance):
+    def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
         """
         if we aren't come to the end of the wf,
         saves the wf state and data to cache
         """
-        if self.current.name.startswith('End'):
+        if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
         else:
             task_data = self.current.task_data.copy()
             task_data['IS_srlzd'] = self.current.task_data['IS'].__dict__
             del task_data['IS']
-            self.current.wfcache.set((serialized_wf_instance, task_data))
+            wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
+            wf_cache['pool'] = self.current.pool
+            if self.current.lane_name:
+                wf_cache['pool'][self.current.lane_name] = self.current.user_id
+            self.current.wfcache.set(wf_cache)
 
     def load_workflow_from_cache(self):
         """
@@ -190,11 +208,12 @@ class ZEngine(object):
         updates the self.current.task_data
         """
         if not self.current.new_token:
-            serialized_workflow, task_data = self.current.wfcache.get()
-            task_data['IS'] = Condition(**task_data.pop('IS_srlzd'))
-            self.current.task_data = task_data
+            wf_cache = self.current.wfcache.get()
+            wf_cache['data']['IS'] = Condition(**wf_cache['data'].pop('IS_srlzd'))
+            self.current.task_data = wf_cache['data']
             self.current.set_task_data()
-            return serialized_workflow
+            self.current.pool = wf_cache['pool']
+            return wf_cache['wf_state']
 
     def _load_workflow(self):
         """
@@ -206,7 +225,7 @@ class ZEngine(object):
 
     def deserialize_workflow(self, serialized_wf):
         return CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
-                                                              workflow_spec=self.workflow_spec)
+                                                                workflow_spec=self.workflow_spec)
 
     def serialize_workflow(self):
         self.workflow.refresh_waiting_tasks()
@@ -214,7 +233,6 @@ class ZEngine(object):
                                                               include_spec=False)
 
     def create_workflow(self):
-        self.workflow_spec = self.get_worfklow_spec()
         return BpmnWorkflow(self.workflow_spec)
 
     def load_or_create_workflow(self):
@@ -222,6 +240,7 @@ class ZEngine(object):
         Tries to load the previously serialized (and saved) workflow
         Creates a new one if it can't
         """
+        self.workflow_spec = self.get_worfklow_spec()
         return self._load_workflow() or self.create_workflow()
         # self.current.update(workflow=self.workflow)
 
@@ -262,17 +281,21 @@ class ZEngine(object):
         calls the real save method if we pass the beggining of the wf
         """
         if not self.current.task_type.startswith('Start'):
-            self.save_workflow(self.current.workflow_name, self.serialize_workflow())
+            self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
 
     def start_engine(self, **kwargs):
         self.current = Current(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
         self.check_for_crud_permission()
-        log.debug("::::::::::: ENGINE STARTED :::::::::::\n"
-                 "\tCMD:%s\n"
-                 "\tSUBCMD:%s" % (self.current.input.get('cmd'), self.current.input.get('subcmd')))
         self.workflow = self.load_or_create_workflow()
+        log.debug("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
+                  "\tWF: %s (Possible) TASK:%s\n"
+                  "\tCMD:%s\n"
+                  "\tSUBCMD:%s" % (
+                        self.workflow.name,
+                        self.workflow.get_tasks(Task.READY),
+                      self.current.input.get('cmd'), self.current.input.get('subcmd')))
         self.current.workflow = self.workflow
 
     def log_wf_state(self):
@@ -282,13 +305,14 @@ class ZEngine(object):
         output = '\n- - - - - -\n'
         output += "WORKFLOW: %s" % self.current.workflow_name.upper()
 
-        output += "\nTASK: %s ( %s )\n" % (self.current.name, self.current.task_type)
+        output += "\nTASK: %s ( %s )\n" % (self.current.task_name, self.current.task_type)
         output += "DATA:"
         for k, v in self.current.task_data.items():
             if v:
                 output += "\n\t%s: %s" % (k, v)
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
+        output += "\n\tPOOL: %s" % self.current.pool
         output += "\n\tTOKEN: %s" % self.current.token
         log.debug(output + "\n= = = = = =\n")
 
@@ -298,11 +322,13 @@ class ZEngine(object):
         runs all READY tasks, calls their diagrams, saves wf state,
         breaks if current task is a UserTask or EndTask
         """
-        while self.current.task_type != 'UserTask' and not self.current.task_type.startswith('End'):
+        while (self.current.task_type != 'UserTask' and
+               not self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.update_task(task)
                 self.check_for_permission()
                 self.check_for_crud_permission()
+                self.check_for_lane_permission()
                 self.log_wf_state()
                 self.run_activity()
                 self.workflow.complete_task_from_id(self.current.task.id)
@@ -318,7 +344,8 @@ class ZEngine(object):
                 for activity_package in settings.ACTIVITY_MODULES_IMPORT_PATHS:
                     try:
                         full_path = "%s.%s" % (activity_package, self.current.activity)
-                        self.workflow_methods[self.current.activity] = get_object_from_path(full_path)
+                        self.workflow_methods[self.current.activity] = get_object_from_path(
+                            full_path)
                         break
                     except:
                         number_of_paths = len(settings.ACTIVITY_MODULES_IMPORT_PATHS)
@@ -348,10 +375,31 @@ class ZEngine(object):
                 raise falcon.HTTPForbidden("Permission denied",
                                            "You don't have required permission: %s" % permission)
 
+    def check_for_lane_permission(self):
+        # TODO: Cache lane_data in app memory
+        if self.current.lane_perms:
+            log.debug("HAS LANE PERMS: %s" % self.current.lane_perms)
+            for perm in self.current.lane_perms:
+                if not self.current.has_permission(perm):
+                    raise falcon.HTTPForbidden("Permission denied",
+                                               "You don't have required permission: %s" % perm)
+        if self.current.lane_relations:
+            context = {'self': self.current.user}
+            log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
+            for lane_name, user_id in self.current.pool.items():
+                if user_id:
+                    context[lane_name] = lazy_object_proxy.Proxy(
+                        lambda: self.user_model(super_context).objects.get(user_id))
+            if not eval(self.current.lane_relations, context):
+                log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
+                raise falcon.HTTPForbidden(
+                    "Permission denied",
+                    "You don't have required permission: %s" % self.current.lane_relations)
+
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
         if self.current.task:
-            permission = "%s.%s" % (self.current.workflow_name, self.current.name)
+            permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)

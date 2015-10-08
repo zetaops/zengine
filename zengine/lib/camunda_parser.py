@@ -12,8 +12,6 @@ from SpiffWorkflow.bpmn.parser.util import full_attr
 
 __author__ = "Evren Esat Ozkan"
 
-
-import logging
 from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
 from SpiffWorkflow.bpmn.parser.ProcessParser import ProcessParser
 from zengine.lib.utils import DotDict
@@ -37,6 +35,7 @@ class CamundaProcessParser(ProcessParser):
         """
         spec = super(CamundaProcessParser, self).parse_node(node)
         spec.data = self.parse_input_data(node)
+        spec.data['lane_data'] = self._get_lane_perms(node)
         spec.defines = spec.data
         service_class = node.get(full_attr('assignee'))
         if service_class:
@@ -61,6 +60,23 @@ class CamundaProcessParser(ProcessParser):
                         children = gchild.getchildren()
                         return children
         return []
+
+    def _get_lane_perms(self, node):
+        """
+        parses the following XML and returns ['foo', 'bar']
+             <bpmn2:lane id="Lane_8" name="Lane 8">
+                <bpmn2:extensionElements>
+                    <camunda:properties>
+                        <camunda:property value="foo,bar" name="perms"/>
+                    </camunda:properties>
+                </bpmn2:extensionElements>
+            </bpmn2:lane>
+        """
+        lane_name = self.get_lane(node.get('id'))
+        lane_data = {}
+        for a in self.xpath(".//bpmn:lane[@name='%s']/*/*/" % lane_name):
+            lane_data[a.attrib['name']] = a.attrib['value'].strip()
+        return lane_data
 
     @classmethod
     def _parse_input_node(cls, node):
@@ -89,5 +105,3 @@ class CamundaProcessParser(ProcessParser):
     @classmethod
     def _parse_script(cls, elm):
         return elm.get('scriptFormat'), elm.text
-
-
