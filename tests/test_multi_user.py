@@ -14,7 +14,7 @@ from zengine.models import User
 
 
 class TestCase(BaseTestCase):
-    def test_multi_user(self):
+    def test_multi_user_mono(self):
         self.prepare_client('multi_user')
         resp = self.client.post()
         resp.raw()
