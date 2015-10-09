@@ -48,7 +48,8 @@ ALLOWED_ORIGINS = [
     'http://127.0.0.1:9001',
     'http://ulakbus.net',
     'http://www.ulakbus.net'
-]
+] + os.environ.get('ALLOWED_ORIGINS','').split(',')
+
 
 ENABLED_MIDDLEWARES = [
     'zengine.middlewares.CORS',
