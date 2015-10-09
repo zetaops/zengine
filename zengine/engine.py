@@ -99,7 +99,7 @@ class Current(object):
         self.lane_perms = []
         self.lane_relations = ''
         self.lane_name = ''
-        self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self.session))
+        self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
         if 'token' in self.input:
@@ -112,10 +112,17 @@ class Current(object):
             log.info("TOKEN NEW: %s " % self.token)
 
         self.wfcache = Cache(key=self.token, json=True)
+        self.msg_cache = Cache(key="MSG%s" % self.user_id, json=True)
         log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.set_task_data()
         self.permissions = []
+
+    def set_message(self, title, msg, typ):
+        self.msg_cache.add([title, msg, typ])
+
+    def get_messages(self, title, msg, typ):
+        self.msg_cache.get_all()
 
     def set_lane_data(self):
         # TODO: Cache lane_data in app memory
@@ -178,6 +185,7 @@ class Current(object):
 class ZEngine(object):
     def __init__(self):
         self.use_compact_serializer = True
+        self.old_lane = ''
         self.current = None
         self.workflow_methods = {'crud_view': crud_view}
         self.workflow = BpmnWorkflow
@@ -197,9 +205,9 @@ class ZEngine(object):
             task_data['IS_srlzd'] = self.current.task_data['IS'].__dict__
             del task_data['IS']
             wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
-            wf_cache['pool'] = self.current.pool
             if self.current.lane_name:
-                wf_cache['pool'][self.current.lane_name] = self.current.user_id
+                self.current.pool[self.current.lane_name] = self.current.user_id
+            wf_cache['pool'] = self.current.pool
             self.current.wfcache.set(wf_cache)
 
     def load_workflow_from_cache(self):
@@ -322,6 +330,7 @@ class ZEngine(object):
         runs all READY tasks, calls their diagrams, saves wf state,
         breaks if current task is a UserTask or EndTask
         """
+        # FIXME: raise if first task after line change isn't a UserTask
         while (self.current.task_type != 'UserTask' and
                not self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
@@ -333,7 +342,17 @@ class ZEngine(object):
                 self.run_activity()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
+                self.catch_line_change()
         self.current.output['token'] = self.current.token
+
+    def catch_line_change(self):
+        if self.current.lane_name:
+            if self.current.lane_name != self.old_lane:
+                if (self.current.lane_name in self.current.pool and
+                            self.current.pool[self.current.lane_name] != self.current.user_id):
+                    pass
+
+            self.old_lane = self.current.lane_name
 
     def run_activity(self):
         """
