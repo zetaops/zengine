@@ -68,3 +68,11 @@ class Cache:
 
     def decr(self, delta=1):
         return cache.decr(self._key(), delta=delta)
+
+    def add(self, val):
+        # add to list
+        return cache.lpush(self._key(), val)
+
+    def get_all(self):
+        # get all list items
+        return cache.lrange(self._key(), 0, -1)
