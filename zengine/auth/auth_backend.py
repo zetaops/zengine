@@ -17,15 +17,18 @@ class AuthBackend(object):
     :param session: Session object
     """
 
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, current):
+        self.session = current.session
+        self.current = current
 
     def get_user(self):
         # FIXME: Should return a proper AnonymousUser object
         # (instead of unsaved User instance)
-        return (User.objects.get(self.session['user_id'])
-                if 'user_id' in self.session
-                else User())
+        if 'user_id' in self.session:
+            self.current.user_id = self.session['user_id']
+            return User.objects.get(self.session['user_id'])
+        else:
+            return User()
 
     def get_permissions(self):
         return self.get_user().get_permissions()
