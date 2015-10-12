@@ -8,7 +8,7 @@ This BPMN parser module takes the following extension elements from Camunda's ou
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from SpiffWorkflow.bpmn.parser.util import full_attr
+from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS
 
 __author__ = "Evren Esat Ozkan"
 
@@ -35,12 +35,23 @@ class CamundaProcessParser(ProcessParser):
         """
         spec = super(CamundaProcessParser, self).parse_node(node)
         spec.data = self.parse_input_data(node)
-        spec.data['lane_data'] = self._get_lane_perms(node)
+        spec.data['lane_data'] = self._get_lane_properties(node)
+        spec.description = self.get_description()
         spec.defines = spec.data
         service_class = node.get(full_attr('assignee'))
         if service_class:
             self.parsed_nodes[node.get('id')].service_class = node.get(full_attr('assignee'))
         return spec
+
+    def get_description(self):
+        ns = {'ns': '{%s}' % BPMN_MODEL_NS}
+        desc = (
+            self.doc_xpath('.//{ns}collaboration/{ns}documentation'.format(**ns)) or
+            self.doc_xpath('.//{ns}process/{ns}documentation'.format(**ns)) or
+            self.doc_xpath('.//{ns}collaboration/{ns}participant/{ns}documentation'.format(**ns))
+        )
+        if desc:
+            return desc[0].findtext('.')
 
     def parse_input_data(self, node):
         data = DotDict()
@@ -61,9 +72,9 @@ class CamundaProcessParser(ProcessParser):
                         return children
         return []
 
-    def _get_lane_perms(self, node):
+    def _get_lane_properties(self, node):
         """
-        parses the following XML and returns ['foo', 'bar']
+        parses the following XML and returns {'perms': 'foo,bar'}
              <bpmn2:lane id="Lane_8" name="Lane 8">
                 <bpmn2:extensionElements>
                     <camunda:properties>
