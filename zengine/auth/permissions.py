@@ -34,7 +34,7 @@ class CustomPermission(object):
 
     @classmethod
     def get_permissions(cls):
-        return cls.registry.values()
+        return list(cls.registry.values())
 
 
 NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway')
