@@ -22,19 +22,23 @@ PERMISSION_MODEL = 'zengine.models.Permission'
 USER_MODEL = 'zengine.models.User'
 
 # left blank to use StreamHandler aka stderr
-# set 'file' for logging in to 'LOG_DIR'
+# set 'file' for logging 'LOG_FILE'
 LOG_HANDLER = os.environ.get('LOG_HANDLER')
 
 # logging dir for file handler
-LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
+# LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
 
+# log file
 LOG_FILE = os.environ.get('LOG_FILE', '/tmp/zengine.log')
 
 DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
 
 # workflows that dosen't require logged in user
 ANONYMOUS_WORKFLOWS = ['login', 'login.']
+
+# currently only affects logging level
 DEBUG = os.environ.get('DEBUG', True)
+
 # PYOKO SETTINGS
 DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
