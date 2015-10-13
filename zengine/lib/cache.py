@@ -43,7 +43,7 @@ class Cache:
         :return: cached value
         """
         d = cache.get(self._key())
-        return ((json.loads(d) if self.serialize_to_json else d)
+        return ((json.loads(d.decode('utf-8')) if self.serialize_to_json else d)
                 if d is not None
                 else default)
 

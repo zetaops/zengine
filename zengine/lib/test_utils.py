@@ -27,8 +27,9 @@ class RWrapper(object):
         self.code = args[1]
         self.headers = list(args[2])
         try:
-            self.json = json.loads(self.content[0])
+            self.json = json.loads(self.content[0].decode('utf-8'))
         except:
+            log.exception('ERROR at RWrapper JSON load')
             self.json = {}
 
         self.token = self.json.get('token')
