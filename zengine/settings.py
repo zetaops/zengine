@@ -48,19 +48,17 @@ RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
 REDIS_SERVER = os.environ.get('REDIS_SERVER', '127.0.0.1:6379')
 
 ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8080',
-    'http://127.0.0.1:9001',
-    'http://ulakbus.net',
-    'http://www.ulakbus.net'
-] + os.environ.get('ALLOWED_ORIGINS','').split(',')
-
+                      'http://127.0.0.1:8080',
+                      'http://127.0.0.1:9001',
+                      'http://ulakbus.net',
+                      'http://www.ulakbus.net'
+                  ] + os.environ.get('ALLOWED_ORIGINS', '').split(',')
 
 ENABLED_MIDDLEWARES = [
     'zengine.middlewares.CORS',
     'zengine.middlewares.RequireJSON',
     'zengine.middlewares.JSONTranslator',
 ]
-
 
 SESSION_OPTIONS = {
     'session.cookie_expires': True,
@@ -69,4 +67,3 @@ SESSION_OPTIONS = {
     'session.auto': True,
     'session.path': '/',
 }
-
