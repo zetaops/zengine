@@ -8,7 +8,8 @@
 # (GPLv3).  See LICENSE.txt for details.
 
 
-from .dispatcher import Signal
+from zengine.dispatch.dispatcher import Signal
 
 
 
+line_change = Signal(providing_args=["current"])

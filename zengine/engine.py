@@ -21,7 +21,7 @@ from beaker.session import Session
 from falcon import Request, Response
 import falcon
 import lazy_object_proxy
-
+from zengine import signals
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context
 from zengine.config import settings, AuthBackend
@@ -125,7 +125,7 @@ class Current(object):
         self.msg_cache.get_all()
 
     def set_lane_data(self):
-        # TODO: Cache lane_data in app memory
+        # TODO: Cache lane_data in process
         if 'lane_data' in self.spec.data:
             self.lane_name = self.spec.lane
             lane_data = self.spec.data['lane_data']
@@ -350,8 +350,7 @@ class ZEngine(object):
             if self.current.lane_name != self.old_lane:
                 if (self.current.lane_name in self.current.pool and
                             self.current.pool[self.current.lane_name] != self.current.user_id):
-                    pass
-
+                    signals.line_change.send(sender=self, current=self.current)
             self.old_lane = self.current.lane_name
 
     def run_activity(self):
