@@ -23,7 +23,7 @@ import falcon
 import lazy_object_proxy
 from zengine import signals
 from pyoko.lib.utils import get_object_from_path
-from pyoko.model import super_context
+from pyoko.model import super_context, model_registry
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
@@ -96,8 +96,9 @@ class Current(object):
         self.pool = {}
         self.task_name = ''
         self.activity = ''
-        self.lane_perms = []
+        self.lane_permissions = []
         self.lane_relations = ''
+        self.lane_owners = None
         self.lane_name = ''
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
@@ -130,9 +131,14 @@ class Current(object):
             self.lane_name = self.spec.lane
             lane_data = self.spec.data['lane_data']
             if 'perms' in lane_data:
-                self.lane_perms = lane_data['perms'].split(',')
+                self.lane_permissions = lane_data['permissions'].split(',')
             if 'relations' in lane_data:
                 self.lane_relations = lane_data['relations']
+            if 'owners' in lane_data:
+                model_name = lane_data['owners'].split('.')[0]
+                model = model_registry.get_model(model_name)
+                # this maps: Personel.filter(bolum=ogrenci))
+                self.lane_owners = eval(lane_data['owners'], {model_name: model.objects})
 
     @property
     def is_auth(self):
@@ -347,11 +353,17 @@ class ZEngine(object):
 
     def catch_line_change(self):
         if self.current.lane_name:
+            # lane changed
             if self.current.lane_name != self.old_lane:
-                if (self.current.lane_name in self.current.pool and
-                            self.current.pool[self.current.lane_name] != self.current.user_id):
-                    signals.line_change.send(sender=self, current=self.current)
-            self.old_lane = self.current.lane_name
+                # old_lane found in current.pool which means it's saved previously and
+                # old_lane's user could be different from the current one
+                if (self.old_lane in self.current.pool and
+                            self.current.pool[self.old_lane] != self.current.user_id):
+                    signals.line_user_change.send(sender=self,
+                                             current=self.current,
+                                             old_lane=self.old_lane
+                                             )
+                self.old_lane = self.current.lane_name
 
     def run_activity(self):
         """

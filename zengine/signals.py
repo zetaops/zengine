@@ -11,5 +11,6 @@
 from zengine.dispatch.dispatcher import Signal
 
 
-
-line_change = Signal(providing_args=["current"])
+# emitted when lane changed to another user on a multi-lane workflow
+# doesn't trigger if both lanes are owned by the same user
+line_user_change = Signal(providing_args=["current", "old_lane"])
