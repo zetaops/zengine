@@ -35,16 +35,16 @@ class TestCase(BaseTestCase):
         return user
 
     def test_multi_user_with_fail(self):
-        def Mock(sender, current, old_lane, possible_owners_query):
-            possible_owners = []
-            for po in possible_owners_query:
-                possible_owners.append(po.user)
-            return current, old_lane, possible_owners
+        def mock(sender, *args, **kwargs):
+            self.current = kwargs['current']
+            self.old_lane = kwargs['old_lane']
+            self.owner = kwargs['possible_owners'][0]
 
-        line_user_change.connect()
+        line_user_change.connect(mock)
         wf_name = 'multi_user'
         self.prepare_client(wf_name)
         resp = self.client.post()
+        assert self.owner == self.client.user
         wf_token = self.client.token
         new_user = self.create_wrong_user()
         self.prepare_client(wf_name, user=new_user, token=wf_token)

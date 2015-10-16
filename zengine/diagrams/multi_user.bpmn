@@ -11,8 +11,8 @@
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property value="danisman" name="permissions"/>
-            <camunda:property value="danisman == ogrenci" name="relations"/>
-            <camunda:property value="User.filter()" name="owners"/>
+            <camunda:property value="self == ogrenci" name="relations"/>
+            <camunda:property value="User.filter(username='test_user')" name="owners"/>
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
@@ -21,7 +21,7 @@
       <bpmn2:lane id="ogrenci" name="ogrenci">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property value="ders_secebilir" name="permissions"/>
+            <camunda:property value="ders_secebilir" name="perms"/>
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>StartEvent_1</bpmn2:flowNodeRef>

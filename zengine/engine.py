@@ -215,7 +215,7 @@ class ZEngine(object):
 
     def get_pool_context(self):
         # TODO: Add in-process caching
-        context = {self.current.lane_name: self.current.user}
+        context = {self.current.lane_name: self.current.user, 'self': self.current.user}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
             context[model_name] = model_registry.get_model(model_name).objects
@@ -359,21 +359,26 @@ class ZEngine(object):
                 self._save_workflow()
                 self.catch_line_change()
         self.current.output['token'] = self.current.token
+        # look for incoming ready task(s)
+        for task in self.workflow.get_tasks(state=Task.READY):
+            self.current.update_task(task)
+            self.catch_line_change()
+
 
     def catch_line_change(self):
         if self.current.lane_name:
-            # lane changed
-            if self.current.lane_name != self.old_lane:
+            if self.old_lane and self.current.lane_name != self.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
+                    # if self.current.lane_owners
                     possible_owners = eval(self.current.lane_owners, self.get_pool_context())
                     signals.line_user_change.send(sender=self,
                                                   current=self.current,
                                                   old_lane=self.old_lane,
                                                   possible_owners=possible_owners
                                                   )
-                self.old_lane = self.current.lane_name
+            self.old_lane = self.current.lane_name
 
     def run_activity(self):
         """
