@@ -98,6 +98,7 @@ class Current(object):
         self.activity = ''
         self.lane_permissions = []
         self.lane_relations = ''
+        self.old_lane = ''
         self.lane_owners = None
         self.lane_name = ''
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
@@ -188,7 +189,6 @@ class Current(object):
 class ZEngine(object):
     def __init__(self):
         self.use_compact_serializer = True
-        self.old_lane = ''
         self.current = None
         self.workflow_methods = {'crud_view': crud_view}
         self.workflow = BpmnWorkflow
@@ -367,7 +367,7 @@ class ZEngine(object):
 
     def catch_line_change(self):
         if self.current.lane_name:
-            if self.old_lane and self.current.lane_name != self.old_lane:
+            if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
@@ -375,10 +375,10 @@ class ZEngine(object):
                     possible_owners = eval(self.current.lane_owners, self.get_pool_context())
                     signals.line_user_change.send(sender=self,
                                                   current=self.current,
-                                                  old_lane=self.old_lane,
+                                                  old_lane=self.current.old_lane,
                                                   possible_owners=possible_owners
                                                   )
-            self.old_lane = self.current.lane_name
+            self.current.old_lane = self.current.lane_name
 
     def run_activity(self):
         """
