@@ -130,15 +130,12 @@ class Current(object):
         if 'lane_data' in self.spec.data:
             self.lane_name = self.spec.lane
             lane_data = self.spec.data['lane_data']
-            if 'perms' in lane_data:
+            if 'permissions' in lane_data:
                 self.lane_permissions = lane_data['permissions'].split(',')
             if 'relations' in lane_data:
                 self.lane_relations = lane_data['relations']
             if 'owners' in lane_data:
-                model_name = lane_data['owners'].split('.')[0]
-                model = model_registry.get_model(model_name)
-                # this maps: Personel.filter(bolum=ogrenci))
-                self.lane_owners = eval(lane_data['owners'], {model_name: model.objects})
+                self.lane_owners = lane_data['owners']
 
     @property
     def is_auth(self):
@@ -216,6 +213,18 @@ class ZEngine(object):
             wf_cache['pool'] = self.current.pool
             self.current.wfcache.set(wf_cache)
 
+    def get_pool_context(self):
+        # TODO: Add in-process caching
+        context = {self.current.lane_name: self.current.user}
+        if self.current.lane_owners:
+            model_name = self.current.lane_owners.split('.')[0]
+            context[model_name] = model_registry.get_model(model_name).objects
+        for lane_name, user_id in self.current.pool.items():
+            if user_id:
+                context[lane_name] = lazy_object_proxy.Proxy(
+                    lambda: self.user_model(super_context).objects.get(user_id))
+        return context
+
     def load_workflow_from_cache(self):
         """
         loads the serialized wf state and data from cache
@@ -282,7 +291,7 @@ class ZEngine(object):
 
         :return: workflow spec package
         """
-        # TODO: convert from in-memory to redis based caching
+        # TODO: convert from in-process to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
             path = self.find_workflow_path()
             spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
@@ -307,8 +316,8 @@ class ZEngine(object):
                   "\tWF: %s (Possible) TASK:%s\n"
                   "\tCMD:%s\n"
                   "\tSUBCMD:%s" % (
-                        self.workflow.name,
-                        self.workflow.get_tasks(Task.READY),
+                      self.workflow.name,
+                      self.workflow.get_tasks(Task.READY),
                       self.current.input.get('cmd'), self.current.input.get('subcmd')))
         self.current.workflow = self.workflow
 
@@ -338,7 +347,7 @@ class ZEngine(object):
         """
         # FIXME: raise if first task after line change isn't a UserTask
         while (self.current.task_type != 'UserTask' and
-               not self.current.task_type.startswith('End')):
+                   not self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.update_task(task)
                 self.check_for_permission()
@@ -355,14 +364,15 @@ class ZEngine(object):
         if self.current.lane_name:
             # lane changed
             if self.current.lane_name != self.old_lane:
-                # old_lane found in current.pool which means it's saved previously and
-                # old_lane's user could be different from the current one
-                if (self.old_lane in self.current.pool and
-                            self.current.pool[self.old_lane] != self.current.user_id):
+                # if lane_name not found in pool or it's user different from the current(old) user
+                if (self.current.lane_name not in self.current.pool or
+                            self.current.pool[self.current.lane_name] != self.current.user_id):
+                    possible_owners = eval(self.current.lane_owners, self.get_pool_context())
                     signals.line_user_change.send(sender=self,
-                                             current=self.current,
-                                             old_lane=self.old_lane
-                                             )
+                                                  current=self.current,
+                                                  old_lane=self.old_lane,
+                                                  possible_owners=possible_owners
+                                                  )
                 self.old_lane = self.current.lane_name
 
     def run_activity(self):
@@ -407,19 +417,15 @@ class ZEngine(object):
 
     def check_for_lane_permission(self):
         # TODO: Cache lane_data in app memory
-        if self.current.lane_perms:
-            log.debug("HAS LANE PERMS: %s" % self.current.lane_perms)
-            for perm in self.current.lane_perms:
+        if self.current.lane_permissions:
+            log.debug("HAS LANE PERMS: %s" % self.current.lane_permissions)
+            for perm in self.current.lane_permissions:
                 if not self.current.has_permission(perm):
                     raise falcon.HTTPForbidden("Permission denied",
                                                "You don't have required permission: %s" % perm)
         if self.current.lane_relations:
-            context = {'self': self.current.user}
+            context = self.get_pool_context()
             log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
-            for lane_name, user_id in self.current.pool.items():
-                if user_id:
-                    context[lane_name] = lazy_object_proxy.Proxy(
-                        lambda: self.user_model(super_context).objects.get(user_id))
             if not eval(self.current.lane_relations, context):
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
                 raise falcon.HTTPForbidden(
