@@ -55,6 +55,7 @@
         </camunda:inputOutput>
       </bpmn2:extensionElements>
       <bpmn2:incoming>to_del</bpmn2:incoming>
+      <bpmn2:incoming>fin_to_delete</bpmn2:incoming>
       <bpmn2:outgoing>del_to_finish</bpmn2:outgoing>
     </bpmn2:serviceTask>
     <bpmn2:sequenceFlow id="to_del" name="" sourceRef="START_XOR" targetRef="delete_object">
@@ -68,6 +69,7 @@
       <bpmn2:outgoing>save_then_edit_arrow</bpmn2:outgoing>
       <bpmn2:outgoing>fin_list_arrow</bpmn2:outgoing>
       <bpmn2:outgoing>save_then_add_arrow</bpmn2:outgoing>
+      <bpmn2:outgoing>fin_to_delete</bpmn2:outgoing>
       <bpmn2:outgoing>fin_to_show</bpmn2:outgoing>
     </bpmn2:exclusiveGateway>
     <bpmn2:sequenceFlow id="save_failured_arrow" name="save_failured" sourceRef="FINISH_XOR" targetRef="add_or_edit_object"/>
@@ -91,6 +93,9 @@
       <bpmn2:outgoing>SequenceFlow_2</bpmn2:outgoing>
     </bpmn2:serviceTask>
     <bpmn2:sequenceFlow id="SequenceFlow_2" name="" sourceRef="redirect_dispatcher" targetRef="FINISH_XOR"/>
+    <bpmn2:sequenceFlow id="fin_to_delete" name="fin_to_delete" sourceRef="FINISH_XOR" targetRef="delete_object">
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">delete</bpmn2:conditionExpression>
+    </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="fin_to_show" name="fin_to_show" sourceRef="FINISH_XOR" targetRef="show_object">
       <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">object_id and show</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
@@ -268,6 +273,14 @@
         <di:waypoint xsi:type="dc:Point" x="1135.0" y="344.0"/>
         <bpmndi:BPMNLabel>
           <dc:Bounds height="6.0" width="6.0" x="1119.0" y="344.0"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_3" bpmnElement="fin_to_delete" sourceElement="_BPMNShape_ExclusiveGateway_6" targetElement="_BPMNShape_ServiceTask_11">
+        <di:waypoint xsi:type="dc:Point" x="1148.0" y="319.0"/>
+        <di:waypoint xsi:type="dc:Point" x="1088.0" y="199.0"/>
+        <di:waypoint xsi:type="dc:Point" x="902.0" y="224.0"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="17.0" width="67.0" x="1016.0" y="204.0"/>
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_14" bpmnElement="fin_to_show" sourceElement="_BPMNShape_ExclusiveGateway_6" targetElement="_BPMNShape_UserTask_4">
