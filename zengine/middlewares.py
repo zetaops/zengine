@@ -16,7 +16,10 @@ class CORS(object):
                 'Access-Control-Allow-Origin',
                 origin
             )
+
         else:
+            log.debug("CORS ERROR: %s not allowed, allowed hosts: %s" % (origin,
+                                                                         settings.ALLOWED_ORIGINS))
             raise falcon.HTTPForbidden("Denied", "Origin not in ALLOWED_ORIGINS: %s" % origin)
             response.status = falcon.HTTP_403
 
