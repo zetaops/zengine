@@ -14,7 +14,9 @@ can simply read json data from current.input and write back to current.output
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-
+import json
+import traceback
+from falcon.http_error import HTTPError
 import falcon
 from beaker.middleware import SessionMiddleware
 from pyoko.lib.utils import get_object_from_path
@@ -41,10 +43,18 @@ class Connector(object):
         self.on_post(req, resp, wf_name)
 
     def on_post(self, req, resp, wf_name):
-        self.engine.start_engine(request=req, response=resp,
-                                 workflow_name=wf_name)
-        self.engine.run()
-
+        try:
+            self.engine.start_engine(request=req, response=resp, workflow_name=wf_name)
+            self.engine.run()
+        except HTTPError:
+            raise
+        except:
+            if settings.DEBUG:
+                resp.status = falcon.HTTP_500
+                resp.body = json.dumps({'error': traceback.format_exc()})
+            else:
+                raise
 
 workflow_connector = Connector()
 falcon_app.add_route('/{wf_name}/', workflow_connector)
+# falcon_app.add_route('/menu/{wf_name}/', workflow_connector)

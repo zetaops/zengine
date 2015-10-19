@@ -10,8 +10,9 @@
       <bpmn2:lane id="danisman" name="danisman">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property value="danisman" name="perms"/>
+            <camunda:property value="danisman" name="permissions"/>
             <camunda:property value="self == ogrenci" name="relations"/>
+            <camunda:property value="User.filter(username='test_user')" name="owners"/>
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
