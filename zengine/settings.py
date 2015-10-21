@@ -25,6 +25,8 @@ USER_MODEL = 'zengine.models.User'
 # set 'file' for logging 'LOG_FILE'
 LOG_HANDLER = os.environ.get('LOG_HANDLER')
 
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG')
+
 # logging dir for file handler
 # LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
 
@@ -37,7 +39,8 @@ DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
 ANONYMOUS_WORKFLOWS = ['login', 'login.']
 
 # currently only affects logging level
-DEBUG = os.environ.get('DEBUG', True)
+DEBUG = bool(int(os.environ.get('DEBUG', 0)))
+
 
 # PYOKO SETTINGS
 DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
