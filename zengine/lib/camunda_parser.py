@@ -26,6 +26,12 @@ class CamundaBMPNParser(BpmnParser):
 
 # noinspection PyBroadException
 class CamundaProcessParser(ProcessParser):
+
+    def __init__(self, *args, **kwargs):
+        super(CamundaProcessParser, self).__init__(*args, **kwargs)
+        self.name = self.get_name()
+        self.description = self.get_description()
+
     def parse_node(self, node):
         """
         overrides ProcessParser.parse_node
@@ -36,7 +42,6 @@ class CamundaProcessParser(ProcessParser):
         spec = super(CamundaProcessParser, self).parse_node(node)
         spec.data = self.parse_input_data(node)
         spec.data['lane_data'] = self._get_lane_properties(node)
-        spec.description = self.get_description()
         spec.defines = spec.data
         service_class = node.get(full_attr('assignee'))
         if service_class:
@@ -52,6 +57,16 @@ class CamundaProcessParser(ProcessParser):
         )
         if desc:
             return desc[0].findtext('.')
+
+    def get_name(self):
+        ns = {'ns': '{%s}' % BPMN_MODEL_NS}
+        for path in ('.//{ns}process', './/{ns}collaboration', './/{ns}collaboration/{ns}participant/'):
+            tag = self.doc_xpath(path.format(**ns))
+            if tag:
+                name = tag[0].get('name')
+                if name:
+                    return name
+        return self.get_id()
 
     def parse_input_data(self, node):
         data = DotDict()

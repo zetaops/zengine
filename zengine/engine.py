@@ -326,7 +326,8 @@ class ZEngine(object):
         logging the state of the workflow and data
         """
         output = '\n- - - - - -\n'
-        output += "WORKFLOW: %s" % self.current.workflow_name.upper()
+        output += "WORKFLOW: %s ( %s )" % (self.current.workflow_name.upper(),
+                                           self.current.workflow.name)
 
         output += "\nTASK: %s ( %s )\n" % (self.current.task_name, self.current.task_type)
         output += "DATA:"
