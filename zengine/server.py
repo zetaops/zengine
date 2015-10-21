@@ -14,8 +14,11 @@ can simply read json data from current.input and write back to current.output
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import json
+import traceback
 
 import falcon
+from falcon.errors import HTTPError
 from beaker.middleware import SessionMiddleware
 from pyoko.lib.utils import get_object_from_path
 
@@ -27,24 +30,39 @@ falcon_app = falcon.API(middleware=[get_object_from_path(mw_class)()
 app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="session")
 
 
-class Connector(object):
+class crud_handler(object):
+    def on_get(self, req, resp, model_name):
+        self.on_post(req, resp, model_name)
+
+    @staticmethod
+    def on_post(req, resp, model_name):
+        req['data']['model'] = model_name
+        wf_connector(req, resp, 'crud')
+
+
+wf_engine = ZEngine()
+
+
+def wf_connector(req, resp, wf_name):
     """
-    this is object will be used to catch all requests from falcon
-    and map them to workflow engine.
-    a request to domain.com/show_dashboard/ will invoke a workflow
+    this will be used to catch all unhandled requests from falcon and
+    map them to workflow engine.
+    a request to http://HOST_NAME/show_dashboard/ will invoke a workflow
     named show_dashboard with the payload json data
     """
-    def __init__(self):
-        self.engine = ZEngine()
+    try:
+        wf_engine.start_engine(request=req, response=resp, workflow_name=wf_name)
+        wf_engine.run()
+    except HTTPError:
+        raise
+    except:
+        if settings.DEBUG:
+            resp.status = falcon.HTTP_500
+            resp.body = json.dumps({'error': traceback.format_exc()})
+        else:
+            raise
 
-    def on_get(self, req, resp, wf_name):
-        self.on_post(req, resp, wf_name)
 
-    def on_post(self, req, resp, wf_name):
-        self.engine.start_engine(request=req, response=resp,
-                                 workflow_name=wf_name)
-        self.engine.run()
-
-
-workflow_connector = Connector()
-falcon_app.add_route('/{wf_name}/', workflow_connector)
+falcon_app.add_route('/crud/{model_name}/', crud_handler)
+falcon_app.add_sink(wf_connector, '$/{wf_name}/')
+# falcon_app.add_route('/menu/{wf_name}/', workflow_connector)

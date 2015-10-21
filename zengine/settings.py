@@ -67,3 +67,8 @@ SESSION_OPTIONS = {
     'session.auto': True,
     'session.path': '/',
 }
+
+
+MENU_EXTRAS = [
+    #
+]

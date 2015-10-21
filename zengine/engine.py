@@ -62,18 +62,15 @@ class Condition(object):
 
 class Current(object):
     """
-    This object holds and passes the whole state of the app to task methods (views/tasks)
+    This object holds the whole state of the app for passing to view methods (views/tasks)
 
-    :type task: Task | None
     :type response: Response | None
     :type request: Request | None
     :type spec: WorkflowSpec | None
-    :type workflow: Workflow | None
     :type session: Session | None
     """
 
     def __init__(self, **kwargs):
-        self.workflow_name = kwargs.pop('workflow_name', '')
         self.request = kwargs.pop('request', {})
         self.response = kwargs.pop('response', {})
         try:
@@ -86,36 +83,14 @@ class Current(object):
             self.session = {}
             self.input = {}
             self.output = {}
-        self.spec = None
         self.user_id = None
-        self.workflow = None
-        self.task_type = ''
-        self.task_data = {}
-        self.task = None
         self.log = log
         self.pool = {}
-        self.task_name = ''
-        self.activity = ''
-        self.lane_perms = []
-        self.lane_relations = ''
-        self.lane_name = ''
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
-        if 'token' in self.input:
-            self.token = self.input['token']
-            log.info("TOKEN iNCOMiNG: %s " % self.token)
-            self.new_token = False
-        else:
-            self.token = uuid4().hex
-            self.new_token = True
-            log.info("TOKEN NEW: %s " % self.token)
-
-        self.wfcache = Cache(key=self.token, json=True)
-        self.msg_cache = Cache(key="MSG%s" % self.user_id, json=True)
-        log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
+        self.msg_cache = Cache(key="MSG_%s" % self.user_id, json=True)
         log.debug("\n\nINPUT DATA: %s" % self.input)
-        self.set_task_data()
         self.permissions = []
 
     def set_message(self, title, msg, typ):
@@ -123,16 +98,6 @@ class Current(object):
 
     def get_messages(self, title, msg, typ):
         self.msg_cache.get_all()
-
-    def set_lane_data(self):
-        # TODO: Cache lane_data in app memory
-        if 'lane_data' in self.spec.data:
-            self.lane_name = self.spec.lane
-            lane_data = self.spec.data['lane_data']
-            if 'perms' in lane_data:
-                self.lane_perms = lane_data['perms'].split(',')
-            if 'relations' in lane_data:
-                self.lane_relations = lane_data['relations']
 
     @property
     def is_auth(self):
@@ -145,6 +110,50 @@ class Current(object):
 
     def get_permissions(self):
         return self.auth.get_permissions()
+
+
+class WFCurrent(Current):
+    """
+    This object holds and passes the whole state of the app to task methods (views/tasks)
+    """
+
+    def __init__(self, **kwargs):
+        super(WFCurrent, self).__init__(**kwargs)
+        self.workflow_name = kwargs.pop('workflow_name', '')
+        self.spec = None
+        self.workflow = None
+        self.task_type = ''
+        self.task_data = {}
+        self.task = None
+        self.pool = {}
+        self.task_name = ''
+        self.activity = ''
+        self.lane_perms = []
+        self.lane_relations = ''
+        self.lane_name = ''
+
+        if 'token' in self.input:
+            self.token = self.input['token']
+            log.info("TOKEN iNCOMiNG: %s " % self.token)
+            self.new_token = False
+        else:
+            self.token = uuid4().hex
+            self.new_token = True
+            log.info("TOKEN NEW: %s " % self.token)
+
+        self.wfcache = Cache(key=self.token, json=True)
+        log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
+        self.set_task_data()
+
+    def set_lane_data(self):
+        # TODO: Cache lane_data in app memory
+        if 'lane_data' in self.spec.data:
+            self.lane_name = self.spec.lane
+            lane_data = self.spec.data['lane_data']
+            if 'perms' in lane_data:
+                self.lane_perms = lane_data['perms'].split(',')
+            if 'relations' in lane_data:
+                self.lane_relations = lane_data['relations']
 
     def update_task(self, task):
         """
@@ -292,7 +301,7 @@ class ZEngine(object):
             self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
 
     def start_engine(self, **kwargs):
-        self.current = Current(**kwargs)
+        self.current = WFCurrent(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
         self.check_for_crud_permission()
@@ -344,6 +353,10 @@ class ZEngine(object):
                 self._save_workflow()
                 self.catch_line_change()
         self.current.output['token'] = self.current.token
+        # look for incoming ready task(s)
+        for task in self.workflow.get_tasks(state=Task.READY):
+            self.current.update_task(task)
+            self.catch_line_change()
 
     def catch_line_change(self):
         if self.current.lane_name:

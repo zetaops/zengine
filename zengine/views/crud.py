@@ -7,6 +7,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import datetime
 from falcon import HTTPNotFound
+import six
 
 from pyoko.model import Model, model_registry
 from zengine.lib.forms import JsonForm
@@ -65,7 +66,7 @@ class CrudView(BaseView):
 
     def _get_list_obj(self, mdl):
         if self.brief:
-            return [mdl.key, unicode(mdl)]
+            return [mdl.key, unicode(mdl) if six.PY2 else mdl]
         else:
             result = [mdl.key]
             for f in self.object.Meta.list_fields:
@@ -91,6 +92,8 @@ class CrudView(BaseView):
             self.output['nobjects'].append('-1')
 
     def _process_list_filters(self, query):
+        if self.request.params:
+            return query.filter(**self.request.params)
         if 'filters' in self.input:
             return query.filter(**self.input['filters'])
         return query

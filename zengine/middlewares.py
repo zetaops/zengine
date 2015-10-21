@@ -56,7 +56,7 @@ class JSONTranslator(object):
         # See also: PEP 3333
         if req.content_length in (None, 0):
             # Nothing to do
-            req.context['data'] = {}
+            req.context['data'] = req.params.copy()
             req.context['result'] = {}
             return
         else:
@@ -80,6 +80,7 @@ class JSONTranslator(object):
                                    'Could not decode the request body. The '
                                    'JSON was incorrect or not encoded as '
                                    'UTF-8.')
+
 
     def process_response(self, req, resp, resource):
         if 'result' not in req.context:
