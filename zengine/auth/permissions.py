@@ -44,13 +44,13 @@ def get_workflow_permissions(permission_list=None):
     # [('code_name', 'name', 'description'),...]
     permissions = permission_list or []
     from zengine.config import settings
-    from zengine.engine import ZEngine, Current, log
+    from zengine.engine import ZEngine, WFCurrent, log
     engine = ZEngine()
     for package_dir in settings.WORKFLOW_PACKAGES_PATHS:
         for bpmn_diagram_path in glob.glob(package_dir + "/*.bpmn"):
             wf_name = os.path.splitext(os.path.basename(bpmn_diagram_path))[0]
             permissions.append((wf_name, wf_name, ""))
-            engine.current = Current(workflow_name=wf_name)
+            engine.current = WFCurrent(workflow_name=wf_name)
             # try:
             workflow = engine.load_or_create_workflow()
             # except:

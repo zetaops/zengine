@@ -92,8 +92,8 @@ class CrudView(BaseView):
             self.output['nobjects'].append('-1')
 
     def _process_list_filters(self, query):
-        if self.request.params:
-            return query.filter(**self.request.params)
+        if self.current.request.params:
+            return query.filter(**self.current.request.params)
         if 'filters' in self.input:
             return query.filter(**self.input['filters'])
         return query

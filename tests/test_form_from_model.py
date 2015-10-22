@@ -8,7 +8,7 @@ from zengine.lib.forms import JsonForm
 
 class TestCase(BaseTestCase):
     def test_serialize(self):
-        self.prepare_client('login')
+        self.prepare_client('/login/')
         serialized_form = JsonForm(User(), types={"password": "password"}, all=True).serialize()
         # print("=====================================")
         # pprint(serialized_form)

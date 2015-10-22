@@ -16,9 +16,8 @@ can simply read json data from current.input and write back to current.output
 # (GPLv3).  See LICENSE.txt for details.
 import json
 import traceback
-
+from falcon.http_error import HTTPError
 import falcon
-from falcon.errors import HTTPError
 from beaker.middleware import SessionMiddleware
 from pyoko.lib.utils import get_object_from_path
 
@@ -64,5 +63,5 @@ def wf_connector(req, resp, wf_name):
 
 
 falcon_app.add_route('/crud/{model_name}/', crud_handler)
-falcon_app.add_sink(wf_connector, '$/{wf_name}/')
+falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
 # falcon_app.add_route('/menu/{wf_name}/', workflow_connector)
