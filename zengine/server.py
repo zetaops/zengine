@@ -64,4 +64,3 @@ def wf_connector(req, resp, wf_name):
 
 falcon_app.add_route('/crud/{model_name}/', crud_handler)
 falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
-# falcon_app.add_route('/menu/{wf_name}/', workflow_connector)
