@@ -106,7 +106,7 @@ class Current(object):
         return bool(self.user_id)
 
     def has_permission(self, perm):
-        return self.auth.has_permission(perm)
+        return self.user.superuser or self.auth.has_permission(perm)
 
     def get_permissions(self):
         return self.auth.get_permissions()

@@ -19,7 +19,10 @@ class BaseView(object):
         self.current = current
         self.input = current.input
         self.output = current.output
-        self.cmd = current.task_data['cmd']
+        if hasattr(current, 'task_data'):
+            self.cmd = current.task_data['cmd']
+        else:
+            self.cmd = current.input.get('cmd')
         self.subcmd = current.input.get('subcmd')
         self.do = self.subcmd in ['do_show', 'do_list', 'do_edit', 'do_add']
         self.next_task = self.subcmd.split('_')[1] if self.do else None

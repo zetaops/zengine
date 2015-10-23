@@ -11,31 +11,21 @@ class CORS(object):
 
     def process_response(self, request, response, resource):
         origin = request.get_header('Origin')
-        if origin in settings.ALLOWED_ORIGINS or not origin:
-            response.set_header(
-                'Access-Control-Allow-Origin',
-                origin
-            )
-
+        if not settings.DEBUG:
+            if origin in settings.ALLOWED_ORIGINS or not origin:
+                response.set_header('Access-Control-Allow-Origin', origin)
+            else:
+                log.debug("CORS ERROR: %s not allowed, allowed hosts: %s" % (origin,
+                                                                             settings.ALLOWED_ORIGINS))
+                raise falcon.HTTPForbidden("Denied", "Origin not in ALLOWED_ORIGINS: %s" % origin)
+                response.status = falcon.HTTP_403
         else:
-            log.debug("CORS ERROR: %s not allowed, allowed hosts: %s" % (origin,
-                                                                         settings.ALLOWED_ORIGINS))
-            raise falcon.HTTPForbidden("Denied", "Origin not in ALLOWED_ORIGINS: %s" % origin)
-            response.status = falcon.HTTP_403
+            response.set_header('Access-Control-Allow-Origin', origin or '*')
 
-        response.set_header(
-            'Access-Control-Allow-Credentials',
-            "true"
-        )
-        response.set_header(
-            'Access-Control-Allow-Headers',
-            'Content-Type'
-        )
+        response.set_header('Access-Control-Allow-Credentials', "true")
+        response.set_header('Access-Control-Allow-Headers', 'Content-Type')
         # This could be overridden in the resource level
-        response.set_header(
-            'Access-Control-Allow-Methods',
-            'OPTIONS'
-        )
+        response.set_header('Access-Control-Allow-Methods', 'OPTIONS')
 
 
 class RequireJSON(object):
@@ -45,7 +35,9 @@ class RequireJSON(object):
                 'This API only supports responses encoded as JSON.',
                 href='http://docs.examples.com/api/json')
         if req.method in ('POST', 'PUT'):
-            if req.content_length != 0 and 'application/json' not in req.content_type and 'text/plain' not in req.content_type:
+            if req.content_length != 0 and \
+                            'application/json' not in req.content_type and \
+                            'text/plain' not in req.content_type:
                 raise falcon.HTTPUnsupportedMediaType(
                     'This API only supports requests encoded as JSON.',
                     href='http://docs.examples.com/api/json')
@@ -84,7 +76,6 @@ class JSONTranslator(object):
                                    'JSON was incorrect or not encoded as '
                                    'UTF-8.')
 
-
     def process_response(self, req, resp, resource):
         if 'result' not in req.context:
             return
@@ -92,10 +83,7 @@ class JSONTranslator(object):
         if resp.body is None and req.context['result']:
             resp.body = json.dumps(req.context['result'])
 
-
         try:
             log.debug("RESPONSE: %s" % resp.body)
         except:
             log.exception("ERR: RESPONSE CANT BE LOGGED ")
-
-

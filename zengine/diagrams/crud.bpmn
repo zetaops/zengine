@@ -4,7 +4,7 @@
     <bpmn2:documentation>sample crud description</bpmn2:documentation>
     <bpmn2:extensionElements>
       <camunda:properties>
-        <camunda:property value="everything" name="object"/>
+        <camunda:property value="other" name="object"/>
       </camunda:properties>
     </bpmn2:extensionElements>
     <bpmn2:startEvent id="StartEvent_1" name="start">

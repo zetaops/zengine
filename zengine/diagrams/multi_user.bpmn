@@ -4,7 +4,7 @@
     <bpmn2:documentation>multi coll desc</bpmn2:documentation>
     <bpmn2:extensionElements>
       <camunda:properties>
-        <camunda:property value="test" name="object"/>
+        <camunda:property value="other" name="object"/>
       </camunda:properties>
     </bpmn2:extensionElements>
     <bpmn2:participant id="_Participant_2" name="MultiiiiiPool name" processRef="multi_user">
