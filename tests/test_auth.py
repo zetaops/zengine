@@ -13,7 +13,7 @@ from zengine.lib.test_utils import BaseTestCase, RWrapper
 
 class TestCase(BaseTestCase):
     def test_login_fail(self):
-        self.prepare_client('login', reset=True, login=False)
+        self.prepare_client('/login/', reset=True, login=False)
         resp = self.client.post()
         # resp.raw()
 
@@ -22,7 +22,7 @@ class TestCase(BaseTestCase):
             self.client.post(username="test_loser", password="123", cmd="do")
         # resp.raw()
 
-        self.client.set_workflow('logout')
+        self.client.set_path('/logout/')
 
         # not logged in so cannot logout, should got an error
         with pytest.raises(falcon.errors.HTTPUnauthorized):

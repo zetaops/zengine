@@ -17,7 +17,7 @@ from zengine.signals import line_user_change
 
 class TestCase(BaseTestCase):
     def test_multi_user_mono(self):
-        self.prepare_client('multi_user')
+        self.prepare_client('/multi_user/')
         resp = self.client.post()
         resp.raw()
         resp = self.client.post()
@@ -41,7 +41,7 @@ class TestCase(BaseTestCase):
             self.owner = kwargs['possible_owners'][0]
 
         line_user_change.connect(mock)
-        wf_name = 'multi_user'
+        wf_name = '/multi_user/'
         self.prepare_client(wf_name)
         resp = self.client.post()
         assert self.owner == self.client.user

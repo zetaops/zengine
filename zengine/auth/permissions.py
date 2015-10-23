@@ -40,31 +40,34 @@ class CustomPermission(object):
 NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway')
 
 
-def get_workflow_permissions(permission_list=None):
-    # [('code_name', 'name', 'description'),...]
-    permissions = permission_list or []
+def get_workflows():
     from zengine.config import settings
-    from zengine.engine import ZEngine, Current, log
-    engine = ZEngine()
+    from zengine.engine import ZEngine, WFCurrent
+    workflows = []
     for package_dir in settings.WORKFLOW_PACKAGES_PATHS:
         for bpmn_diagram_path in glob.glob(package_dir + "/*.bpmn"):
             wf_name = os.path.splitext(os.path.basename(bpmn_diagram_path))[0]
-            permissions.append((wf_name, wf_name, ""))
-            engine.current = Current(workflow_name=wf_name)
-            # try:
-            workflow = engine.load_or_create_workflow()
-            # except:
-            #     log.exception("Workflow cannot be created.")
-            # print(wf_name)
-            # pprint(workflow.spec.task_specs)
-            for name, task_spec in workflow.spec.task_specs.items():
-                if any(no_perm_task in name for no_perm_task in NO_PERM_TASKS):
-                    continue
-                permissions.append(("%s.%s" % (wf_name, name),
-                                    "%s %s of %s" % (name,
-                                                     task_spec.__class__.__name__,
-                                                     wf_name),
-                                    ""))
+            engine = ZEngine()
+            engine.current = WFCurrent(workflow_name=wf_name)
+            workflows.append(engine.load_or_create_workflow())
+    return workflows
+
+
+
+def get_workflow_permissions(permission_list=None):
+    # [('code_name', 'name', 'description'),...]
+    permissions = permission_list or []
+    for wf in get_workflows():
+        wf_name = wf.spec.name
+        permissions.append((wf_name, wf_name, ""))
+        for name, task_spec in wf.spec.task_specs.items():
+            if any(no_perm_task in name for no_perm_task in NO_PERM_TASKS):
+                continue
+            permissions.append(("%s.%s" % (wf_name, name),
+                                "%s %s of %s" % (name,
+                                                 task_spec.__class__.__name__,
+                                                 wf_name),
+                                ""))
     return permissions
 
 

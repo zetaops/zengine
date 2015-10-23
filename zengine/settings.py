@@ -70,3 +70,7 @@ SESSION_OPTIONS = {
     'session.auto': True,
     'session.path': '/',
 }
+
+VIEW_URLS = [
+    # ('falcon URI template', 'python path to view method/class'),
+]

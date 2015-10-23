@@ -51,19 +51,19 @@ class RWrapper(object):
 
 
 class TestClient(object):
-    def __init__(self, workflow):
+    def __init__(self, path):
         """
         this is a wsgi test client based on werkzeug.test.Client
 
-        :param str workflow: workflow name
+        :param str path: Request uri
         """
-        self.workflow = workflow
+        self.set_path(path, None)
         self._client = Client(app, response_wrapper=RWrapper)
         self.user = None
-        self.token = None
+        self.path = ''
 
-    def set_workflow(self, workflow, token=''):
-        self.workflow = workflow
+    def set_path(self, path, token=''):
+        self.path = path
         self.token = token
 
     def post(self, conf=None, **data):
@@ -84,7 +84,7 @@ class TestClient(object):
             if 'token' not in data and self.token:
                 data['token'] = self.token
             data = json.dumps(data)
-        response_wrapper = self._client.post(self.workflow, data=data, **conf)
+        response_wrapper = self._client.post(self.path, data=data, **conf)
         # update client token from response
         self.token = response_wrapper.token
         return response_wrapper
@@ -113,18 +113,18 @@ class BaseTestCase:
             sleep(2)
 
     @classmethod
-    def prepare_client(cls, workflow_name, reset=False, user=None, login=None, token=''):
+    def prepare_client(cls, path, reset=False, user=None, login=None, token=''):
         """
-        setups the workflow, logs in if necessary
+        setups the path, logs in if necessary
 
-        :param workflow_name: change or set workflow name
+        :param path: change or set path
         :param reset: create a new client
         :param login: login to system
         :return:
         """
 
         if not cls.client or reset or user:
-            cls.client = TestClient(workflow_name)
+            cls.client = TestClient(path)
             login = True if login is None else login
 
         if not (cls.client.user or user):
@@ -137,7 +137,7 @@ class BaseTestCase:
         if login:
             cls._do_login()
 
-        cls.client.set_workflow(workflow_name, token)
+        cls.client.set_path(path, token)
 
     @classmethod
     def _do_login(self):
@@ -145,7 +145,7 @@ class BaseTestCase:
         logs in the test user
 
         """
-        self.client.set_workflow("login")
+        self.client.set_path("/login/")
         resp = self.client.post()
         assert resp.json['forms']['schema']['title'] == 'LoginForm'
         assert not resp.json['is_login']

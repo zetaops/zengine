@@ -8,7 +8,7 @@ This BPMN parser module takes the following extension elements from Camunda's ou
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS
+from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_NS
 
 __author__ = "Evren Esat Ozkan"
 
@@ -29,8 +29,9 @@ class CamundaProcessParser(ProcessParser):
 
     def __init__(self, *args, **kwargs):
         super(CamundaProcessParser, self).__init__(*args, **kwargs)
-        self.name = self.get_name()
-        self.description = self.get_description()
+        self.spec.wf_name = self.get_name()
+        self.spec.wf_description = self.get_description()
+        self.spec.wf_properties = self.get_wf_properties()
 
     def parse_node(self, node):
         """
@@ -57,6 +58,14 @@ class CamundaProcessParser(ProcessParser):
         )
         if desc:
             return desc[0].findtext('.')
+
+    def get_wf_properties(self):
+        ns = {'ns': '{%s}' % BPMN_MODEL_NS, 'as': '{%s}' % ATTRIBUTE_NS}
+        wf_data = {}
+        for path in ('.//{ns}collaboration/*/*/{as}property','.//{ns}process/*/*/{as}property'):
+            for a in self.doc_xpath(path.format(**ns)):
+                wf_data[a.attrib['name']] = a.attrib['value'].strip()
+        return wf_data
 
     def get_name(self):
         ns = {'ns': '{%s}' % BPMN_MODEL_NS}

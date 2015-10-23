@@ -62,18 +62,15 @@ class Condition(object):
 
 class Current(object):
     """
-    This object holds and passes the whole state of the app to task methods (views/tasks)
+    This object holds the whole state of the app for passing to view methods (views/tasks)
 
-    :type task: Task | None
     :type response: Response | None
     :type request: Request | None
     :type spec: WorkflowSpec | None
-    :type workflow: Workflow | None
     :type session: Session | None
     """
 
     def __init__(self, **kwargs):
-        self.workflow_name = kwargs.pop('workflow_name', '')
         self.request = kwargs.pop('request', {})
         self.response = kwargs.pop('response', {})
         try:
@@ -86,13 +83,48 @@ class Current(object):
             self.session = {}
             self.input = {}
             self.output = {}
-        self.spec = None
         self.user_id = None
+        self.log = log
+        self.pool = {}
+        self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
+        self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
+
+        self.msg_cache = Cache(key="MSG_%s" % self.user_id, json=True)
+        log.debug("\n\nINPUT DATA: %s" % self.input)
+        self.permissions = []
+
+    def set_message(self, title, msg, typ):
+        self.msg_cache.add([title, msg, typ])
+
+    def get_messages(self, title, msg, typ):
+        self.msg_cache.get_all()
+
+    @property
+    def is_auth(self):
+        if self.user_id is None:
+            self.user_id = self.session.get('user_id', '')
+        return bool(self.user_id)
+
+    def has_permission(self, perm):
+        return self.user.superuser or self.auth.has_permission(perm)
+
+    def get_permissions(self):
+        return self.auth.get_permissions()
+
+
+class WFCurrent(Current):
+    """
+    This object holds and passes the whole state of the app to task methods (views/tasks)
+    """
+
+    def __init__(self, **kwargs):
+        super(WFCurrent, self).__init__(**kwargs)
+        self.workflow_name = kwargs.pop('workflow_name', '')
+        self.spec = None
         self.workflow = None
         self.task_type = ''
         self.task_data = {}
         self.task = None
-        self.log = log
         self.pool = {}
         self.task_name = ''
         self.activity = ''
@@ -101,8 +133,6 @@ class Current(object):
         self.old_lane = ''
         self.lane_owners = None
         self.lane_name = ''
-        self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
-        self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
         if 'token' in self.input:
             self.token = self.input['token']
@@ -114,17 +144,8 @@ class Current(object):
             log.info("TOKEN NEW: %s " % self.token)
 
         self.wfcache = Cache(key=self.token, json=True)
-        self.msg_cache = Cache(key="MSG%s" % self.user_id, json=True)
         log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
-        log.debug("\n\nINPUT DATA: %s" % self.input)
         self.set_task_data()
-        self.permissions = []
-
-    def set_message(self, title, msg, typ):
-        self.msg_cache.add([title, msg, typ])
-
-    def get_messages(self, title, msg, typ):
-        self.msg_cache.get_all()
 
     def set_lane_data(self):
         # TODO: Cache lane_data in process
@@ -137,18 +158,6 @@ class Current(object):
                 self.lane_relations = lane_data['relations']
             if 'owners' in lane_data:
                 self.lane_owners = lane_data['owners']
-
-    @property
-    def is_auth(self):
-        if self.user_id is None:
-            self.user_id = self.session.get('user_id', '')
-        return bool(self.user_id)
-
-    def has_permission(self, perm):
-        return self.auth.has_permission(perm)
-
-    def get_permissions(self):
-        return self.auth.get_permissions()
 
     def update_task(self, task):
         """
@@ -307,7 +316,7 @@ class ZEngine(object):
             self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
 
     def start_engine(self, **kwargs):
-        self.current = Current(**kwargs)
+        self.current = WFCurrent(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
         self.check_for_crud_permission()
@@ -364,7 +373,6 @@ class ZEngine(object):
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current.update_task(task)
             self.catch_line_change()
-
 
     def catch_line_change(self):
         if self.current.lane_name:
