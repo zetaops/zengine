@@ -91,4 +91,4 @@ falcon_app.add_route('/crud/{model_name}/', crud_handler)
 for url, view_path in settings.VIEW_URLS:
     falcon_app.add_route(url, view_connector(get_object_from_path(view_path)))
 
-falcon_app.add_sink(wf_connector, '/wf/(?P<wf_name>.*)')
+falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
