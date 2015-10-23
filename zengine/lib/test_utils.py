@@ -9,7 +9,7 @@ from pprint import pprint
 import json
 from zengine.models import User, Permission
 from zengine.log import log
-
+from pyoko.model import super_context
 
 CODE_EXCEPTION = {
     falcon.HTTP_400: errors.HTTPBadRequest,
@@ -19,9 +19,10 @@ CODE_EXCEPTION = {
     falcon.HTTP_406: errors.HTTPNotAcceptable,
     falcon.HTTP_500: errors.HTTPInternalServerError,
     falcon.HTTP_503: errors.HTTPServiceUnavailable,
-                  }
-class RWrapper(object):
+}
 
+
+class RWrapper(object):
     def __init__(self, *args):
         self.content = list(args[0])
         self.code = args[1]
@@ -95,19 +96,29 @@ user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
             'xkji/.BH0Q0GQFXEwtFvVwdwgxX4KcN/G9lUGTmv7xlklDeUp4DD4ClhxP/Q'
 
 username = 'test_user'
+import sys
+
+sys.TEST_MODELS_RESET = False
 
 
 class BaseTestCase:
     client = None
-    # log = getlogger()
+
+    @staticmethod
+    def cleanup():
+        if not sys.TEST_MODELS_RESET:
+            for mdl in [User, Permission]:
+                mdl(super_context).objects._clear_bucket()
+            sys.TEST_MODELS_RESET = True
 
     @classmethod
     def create_user(cls):
-        cls.client.user, new = User.objects.get_or_create({"password": user_pass,
-                                                            "superuser": True},
-                                                           username=username)
+        cls.cleanup()
+        cls.client.user, new = User(super_context).objects.get_or_create({"password": user_pass,
+                                                                          "superuser": True},
+                                                                         username=username)
         if new:
-            for perm in Permission.objects.raw("*:*"):
+            for perm in Permission(super_context).objects.raw("*:*"):
                 cls.client.user.Permissions(permission=perm)
             cls.client.user.save()
             sleep(2)
