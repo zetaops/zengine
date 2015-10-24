@@ -427,7 +427,7 @@ class ZEngine(object):
                 return
             if not self.current.has_permission(permission):
                 raise falcon.HTTPForbidden("Permission denied",
-                                           "You don't have required permission: %s" % permission)
+                                           "You don't have required model permission: %s" % permission)
 
     def check_for_lane_permission(self):
         # TODO: Cache lane_data in app memory
@@ -436,7 +436,7 @@ class ZEngine(object):
             for perm in self.current.lane_permissions:
                 if not self.current.has_permission(perm):
                     raise falcon.HTTPForbidden("Permission denied",
-                                               "You don't have required permission: %s" % perm)
+                                               "You don't have required lane permission: %s" % perm)
         if self.current.lane_relations:
             context = self.get_pool_context()
             log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
@@ -444,7 +444,7 @@ class ZEngine(object):
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
                 raise falcon.HTTPForbidden(
                     "Permission denied",
-                    "You don't have required permission: %s" % self.current.lane_relations)
+                    "You aren't qualified for this lane: %s" % self.current.lane_relations)
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
