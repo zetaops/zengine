@@ -92,3 +92,10 @@ for url, view_path in settings.VIEW_URLS:
     falcon_app.add_route(url, view_connector(get_object_from_path(view_path)))
 
 falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
+
+class Ping(object):
+    @staticmethod
+    def on_get(req, resp):
+        resp.body = 'OK'
+
+falcon_app.add_route('/ping', Ping)
