@@ -37,7 +37,7 @@ class CustomPermission(object):
         return list(cls.registry.values())
 
 # skip permmission checking for this taks types
-NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway', 'XOR')
+NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway', 'START_XOR')
 
 
 def get_workflows():
