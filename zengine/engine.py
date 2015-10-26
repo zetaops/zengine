@@ -96,9 +96,6 @@ class Current(object):
     def set_message(self, title, msg, typ):
         self.msg_cache.add([title, msg, typ])
 
-    def get_messages(self, title, msg, typ):
-        self.msg_cache.get_all()
-
     @property
     def is_auth(self):
         if self.user_id is None:
