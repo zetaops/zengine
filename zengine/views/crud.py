@@ -116,21 +116,26 @@ class CrudView(BaseView):
         self.output['nobjects'] = []
         self._make_list_header()
         for obj in query:
-            if ('deleted_obj' in self.current.task_data and
-                    self.current.task_data['deleted_obj'] == obj.key):
-                del self.current.task_data['deleted_obj']
+            if self._just_deleted_object(obj):
                 continue
             self.output['nobjects'].append(self._get_list_obj(obj))
-        self._process_just_created_object()
+        self._just_created_object(self.output['nobjects'])
 
-    def _process_just_created_object(self):
+    def _just_deleted_object(self, obj):
+        # compensate riak~solr sync delay
+        if ('deleted_obj' in self.current.task_data and
+            self.current.task_data['deleted_obj'] == obj.key):
+            del self.current.task_data['deleted_obj']
+
+
+    def _just_created_object(self, objects):
+        # compensate riak~solr sync delay
         if 'added_obj' in self.current.task_data:
-            try:
-                new_obj = self.object.objects.get(self.current.task_data['added_obj'])
-                self.output['nobjects'].insert(1, self._get_list_obj(new_obj))
-            except:
-                log.exception("ERROR while adding newly created object to object listing")
-            del self.current.task_data['added_obj']
+            key = self.current.task_data['added_obj']
+            if not any([o[0] == key for o in objects]):
+                obj = self.object.objects.get(key)
+                self.output['nobjects'].insert(1, self._get_list_obj(obj))
+                del self.current.task_data['added_obj']
 
     def edit_view(self):
         if self.do:
