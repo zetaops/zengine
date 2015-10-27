@@ -124,9 +124,9 @@ class CrudView(BaseView):
     def _just_deleted_object(self, obj):
         # compensate riak~solr sync delay
         if ('deleted_obj' in self.current.task_data and
-            self.current.task_data['deleted_obj'] == obj.key):
+                    self.current.task_data['deleted_obj'] == obj.key):
             del self.current.task_data['deleted_obj']
-
+            return True
 
     def _just_created_object(self, objects):
         # compensate riak~solr sync delay
