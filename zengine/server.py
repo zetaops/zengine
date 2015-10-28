@@ -30,12 +30,14 @@ app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="sessi
 
 
 class crud_handler(object):
-    def on_get(self, req, resp, model_name):
-        self.on_post(req, resp, model_name)
+    @staticmethod
+    def on_get(req, resp, model_name):
+        req.context['data']['model'] = model_name
+        wf_connector(req, resp, 'crud')
 
     @staticmethod
     def on_post(req, resp, model_name):
-        req['data']['model'] = model_name
+        req.context['data']['model'] = model_name
         wf_connector(req, resp, 'crud')
 
 
@@ -83,19 +85,22 @@ def view_connector(view):
                     resp.body = json.dumps({'error': traceback.format_exc()})
                 else:
                     raise
+
     return Caller
 
-falcon_app.add_route('/crud/{model_name}/', crud_handler)
 
+falcon_app.add_route('/crud/{model_name}/', crud_handler)
 
 for url, view_path in settings.VIEW_URLS:
     falcon_app.add_route(url, view_connector(get_object_from_path(view_path)))
 
 falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
 
+
 class Ping(object):
     @staticmethod
     def on_get(req, resp):
         resp.body = 'OK'
+
 
 falcon_app.add_route('/ping', Ping)
