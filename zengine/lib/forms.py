@@ -3,17 +3,22 @@ from pyoko.field import DATE_FORMAT, DATE_TIME_FORMAT
 
 from pyoko.form import Form
 
-class JsonForm(Form):
 
+class JsonForm(Form):
     def serialize(self):
         result = {
-                "schema": {
+            "schema": {
                 "title": self.Meta.title,
                 "type": "object",
                 "properties": {},
                 "required": []
             },
-            "form": [],
+            "form": [
+                {
+                    "type": "help",
+                    "helpvalue": getattr(self.Meta, 'help_text', '')
+                }
+            ],
             "model": {}
         }
         for itm in self._serialize():
@@ -29,11 +34,8 @@ class JsonForm(Form):
                 item_props['schema'] = itm['schema']
             result["schema"]["properties"][itm['name']] = item_props
 
-
             result["model"][itm['name']] = itm['value'] or itm['default']
             result["form"].append(itm['name'])
             if itm['required']:
                 result["schema"]["required"].append(itm['name'])
         return result
-
-

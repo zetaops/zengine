@@ -13,9 +13,8 @@ from zengine.lib.forms import JsonForm
 
 
 class LoginForm(JsonForm):
-    TYPE_OVERRIDES = {'password': 'password'}
     username = field.String("Username")
-    password = field.String("Password")
+    password = field.String("Password", type="password")
 
 
 def logout(current):
