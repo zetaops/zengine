@@ -76,3 +76,11 @@ class Cache:
     def get_all(self):
         # get all list items
         return cache.lrange(self._key(), 0, -1)
+
+    def remove_all(self):
+        # get all list items
+        return cache.ltrim(self._key(), 0, -1)
+
+    def remove_item(self, val):
+        # get all list items
+        return cache.lrem(self._key(), val)

@@ -93,8 +93,9 @@ class Current(object):
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
 
-    def set_message(self, title, msg, typ):
-        self.msg_cache.add([title, msg, typ])
+    def set_message(self, title, msg, typ, url=None):
+        self.msg_cache.add(
+            {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
 
     @property
     def is_auth(self):
