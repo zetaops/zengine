@@ -7,6 +7,7 @@
 from __future__ import print_function, absolute_import, division
 from __future__ import division
 from io import BytesIO
+import json
 import os
 from uuid import uuid4
 
@@ -89,13 +90,12 @@ class Current(object):
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
-        self.msg_cache = Cache(key="MSG_%s" % self.user_id, json=True)
+        self.msg_cache = Cache(key="MSG_%s" % self.user_id, serialize=True)
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
 
     def set_message(self, title, msg, typ, url=None):
-        self.msg_cache.add(
-            {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
+        self.msg_cache.add({'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
 
     @property
     def is_auth(self):
@@ -141,7 +141,7 @@ class WFCurrent(Current):
             self.new_token = True
             log.info("TOKEN NEW: %s " % self.token)
 
-        self.wfcache = Cache(key=self.token, json=True)
+        self.wfcache = Cache(key=self.token, serialize=True)
         log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
         self.set_task_data()
 
@@ -447,12 +447,11 @@ class ZEngine(object):
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
         if self.current.task:
-            print('|||||||||||||||||||====  %s' % self.current.task_type)
             permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
-        if (permission in NO_PERM_TASKS_TYPES or
+        if (self.current.task_type in NO_PERM_TASKS_TYPES or
                 permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))):
             return
         log.debug("REQUIRE PERM: %s" % permission)
