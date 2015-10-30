@@ -37,7 +37,7 @@ class CustomPermission(object):
         return list(cls.registry.values())
 
 # skip permmission checking for this taks types
-NO_PERM_TASKS = ('End', 'Root', 'Start', 'Gateway', 'START_XOR')
+NO_PERM_TASKS_TYPES = ('StartTask', 'StartEvent', 'UserTask', 'ExclusiveGateway')
 
 
 def get_workflows():
@@ -61,7 +61,7 @@ def get_workflow_permissions(permission_list=None):
         wf_name = wf.spec.name
         permissions.append((wf_name, wf_name, ""))
         for name, task_spec in wf.spec.task_specs.items():
-            if any(no_perm_task in name for no_perm_task in NO_PERM_TASKS):
+            if task_spec.__class__.__name__ in NO_PERM_TASKS_TYPES:
                 continue
             permissions.append(("%s.%s" % (wf_name, name),
                                 "%s %s of %s" % (name,

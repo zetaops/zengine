@@ -28,7 +28,7 @@ from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import log
-from zengine.auth.permissions import NO_PERM_TASKS
+from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.views.crud import crud_view
 
 ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
@@ -447,12 +447,13 @@ class ZEngine(object):
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
         if self.current.task:
+            print('|||||||||||||||||||====  %s' % self.current.task_type)
             permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
-        if (permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS)) or
-                any('.' + perm in permission for perm in NO_PERM_TASKS)):
+        if (permission in NO_PERM_TASKS_TYPES or
+                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))):
             return
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
