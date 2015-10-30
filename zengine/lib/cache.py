@@ -25,7 +25,7 @@ class Cache:
         self.args = args
 
         self._key_str = kwargs.pop('key', '')
-        self.serialize_to_json = kwargs.pop('json')
+        self.serialize = kwargs.pop('serialize')
 
     def _key(self):
         if not self._key_str:
@@ -43,7 +43,7 @@ class Cache:
         :return: cached value
         """
         d = cache.get(self._key())
-        return ((json.loads(d.decode('utf-8')) if self.serialize_to_json else d)
+        return ((json.loads(d.decode('utf-8')) if self.serialize else d)
                 if d is not None
                 else default)
 
@@ -56,7 +56,7 @@ class Cache:
         :return: val
         """
         cache.set(self._key(),
-                  (json.dumps(val) if self.serialize_to_json else val))
+                  (json.dumps(val) if self.serialize else val))
                   # lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
         return val
 
@@ -71,11 +71,12 @@ class Cache:
 
     def add(self, val):
         # add to list
-        return cache.lpush(self._key(), val)
+        return cache.lpush(self._key(), json.dumps(val) if self.serialize else val)
 
     def get_all(self):
         # get all list items
-        return cache.lrange(self._key(), 0, -1)
+        result = cache.lrange(self._key(), 0, -1)
+        return (json.loads(item.decode('utf-8')) for item in result if item) if self.serialize else result
 
     def remove_all(self):
         # get all list items
