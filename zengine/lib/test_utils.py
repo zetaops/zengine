@@ -160,7 +160,7 @@ class BaseTestCase:
         resp = self.client.post()
         assert resp.json['forms']['schema']['title'] == 'LoginForm'
         req_fields = resp.json['forms']['schema']['required']
-        assert any([(field in req_fields) for field in ('username', 'password')])
+        assert all([(field in req_fields) for field in ('username', 'password')])
         assert not resp.json['is_login']
         resp = self.client.post(username=self.client.user.username,
                                 password="123", cmd="do")
