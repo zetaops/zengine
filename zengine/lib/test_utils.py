@@ -159,6 +159,7 @@ class BaseTestCase:
         self.client.set_path("/login/")
         resp = self.client.post()
         assert resp.json['forms']['schema']['title'] == 'LoginForm'
+        assert resp.json['forms']['schema']['required'] == [u'username', u'password']
         assert not resp.json['is_login']
         resp = self.client.post(username=self.client.user.username,
                                 password="123", cmd="do")
