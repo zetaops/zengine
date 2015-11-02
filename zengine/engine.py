@@ -365,14 +365,14 @@ class ZEngine(object):
                 self.run_activity()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
-                self.catch_line_change()
+                self.catch_lane_change()
         self.current.output['token'] = self.current.token
         # look for incoming ready task(s)
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current.update_task(task)
-            self.catch_line_change()
+            self.catch_lane_change()
 
-    def catch_line_change(self):
+    def catch_lane_change(self):
         if self.current.lane_name:
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
@@ -380,7 +380,7 @@ class ZEngine(object):
                             self.current.pool[self.current.lane_name] != self.current.user_id):
                     # if self.current.lane_owners
                     possible_owners = eval(self.current.lane_owners, self.get_pool_context())
-                    signals.line_user_change.send(sender=self,
+                    signals.lane_user_change.send(sender=self,
                                                   current=self.current,
                                                   old_lane=self.current.old_lane,
                                                   possible_owners=possible_owners

@@ -11,7 +11,7 @@ import falcon
 import pytest
 from zengine.lib.test_utils import BaseTestCase, user_pass
 from zengine.models import User
-from zengine.signals import line_user_change
+from zengine.signals import lane_user_change
 
 
 
@@ -40,7 +40,7 @@ class TestCase(BaseTestCase):
             self.old_lane = kwargs['old_lane']
             self.owner = kwargs['possible_owners'][0]
 
-        line_user_change.connect(mock)
+        lane_user_change.connect(mock)
         wf_name = '/multi_user/'
         self.prepare_client(wf_name)
         resp = self.client.post()
