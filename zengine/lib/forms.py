@@ -2,7 +2,10 @@ from datetime import datetime, date
 from pyoko.field import DATE_FORMAT, DATE_TIME_FORMAT
 
 from pyoko.form import Form
+from pyoko.db.connection import client
 
+def get_catalog_data(current):
+    pass
 
 class JsonForm(Form):
     def serialize(self):
