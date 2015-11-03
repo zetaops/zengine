@@ -84,4 +84,4 @@ class Cache:
 
     def remove_item(self, val):
         # get all list items
-        return cache.lrem(self._key(), val)
+        return cache.lrem(self._key(), json.dumps(val))
