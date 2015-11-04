@@ -64,10 +64,10 @@ def wf_connector(req, resp, wf_name):
             raise
 
 
-def view_connector(view):
+def view_connector(view_path):
     """
     """
-
+    view = get_object_from_path(view_path)
     class Caller(object):
         @staticmethod
         def on_get(req, resp, *args, **kwargs):
@@ -76,7 +76,10 @@ def view_connector(view):
         @staticmethod
         def on_post(req, resp, *args, **kwargs):
             try:
-                view(Current(request=req, response=resp), *args, **kwargs)
+                current = Current(request=req, response=resp)
+                if not (current.is_auth or view_path in settings.ANONYMOUS_WORKFLOWS):
+                    raise falcon.HTTPUnauthorized("Login required", view_path)
+                view(current, *args, **kwargs)
             except HTTPError:
                 raise
             except:
@@ -92,7 +95,7 @@ def view_connector(view):
 falcon_app.add_route('/crud/{model_name}/', crud_handler)
 
 for url, view_path in settings.VIEW_URLS:
-    falcon_app.add_route(url, view_connector(get_object_from_path(view_path)))
+    falcon_app.add_route(url, view_connector(view_path))
 
 falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
 
