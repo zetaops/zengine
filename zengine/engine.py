@@ -84,6 +84,8 @@ class Current(object):
             self.session = {}
             self.input = {}
             self.output = {}
+
+        self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
         self.user_id = None
         self.log = log
         self.pool = {}
@@ -112,7 +114,7 @@ class Current(object):
 
 class WFCurrent(Current):
     """
-    This object holds and passes the whole state of the app to task methods (views/tasks)
+    Workflow specific version of Current object
     """
 
     def __init__(self, **kwargs):

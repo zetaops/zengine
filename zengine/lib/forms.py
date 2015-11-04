@@ -1,11 +1,36 @@
+from collections import defaultdict
 from datetime import datetime, date
 from pyoko.field import DATE_FORMAT, DATE_TIME_FORMAT
 
 from pyoko.form import Form
-from pyoko.db.connection import client
+from zengine.lib.cache import Cache
 
-def get_catalog_data(current):
-    pass
+
+class CatalogData(object):
+    def __init__(self, current, key):
+        self.lang = current.lang_code
+        self.cache_key_tmp = 'CTDT_{key}_{lang_code}'
+
+    def get_from_db(self, key):
+        from pyoko.db.connection import client
+        data = client.bucket_type('catalog').bucket('ulakbus_settings_fixtures').get(key).data
+        self.parse_db_data(data, key)
+
+    def parse_db_data(self, data, key):
+        lang_dict = defaultdict(dict)
+        for k, v in data.items():
+            for lang_code, lang_val in v.items():
+                lang_dict[lang_code][k] = lang_val
+
+        for lang_code, lang_set in lang_dict.items():
+            Cache(self.cache_key_tmp.format(key=key, lang_code=lang_code)).set(lang_set)
+
+    def get_from_cache(self, key):
+        return Cache(self.cache_key_tmp.format(key=key, lang_code=self.lang)).get()
+
+    def get(self, key):
+        return self.get_from_cache(key) or self.get_from_db(key)
+
 
 class JsonForm(Form):
     def serialize(self):

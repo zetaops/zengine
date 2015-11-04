@@ -9,6 +9,8 @@
 
 import os.path
 
+DEFAULT_LANG = 'en'
+
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # path of the activity modules which will be invoked by workflow tasks
