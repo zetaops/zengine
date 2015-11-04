@@ -1,5 +1,6 @@
 import json
 import falcon
+import sys
 from zengine.config import settings
 from zengine.log import log
 
@@ -80,6 +81,9 @@ class JSONTranslator(object):
         if 'result' not in req.context:
             return
         req.context['result']['is_login'] = 'user_id' in req.env['session']
+        if settings.DEBUG:
+            req.context['result']['_debug_queries'] = sys._debug_solr_queries
+            sys._debug_solr_queries = []
         if resp.body is None and req.context['result']:
             resp.body = json.dumps(req.context['result'])
 

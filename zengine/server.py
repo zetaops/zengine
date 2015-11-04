@@ -30,6 +30,9 @@ app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="sessi
 
 
 class crud_handler(object):
+    """
+    this object redirects /ModelName/ type queries to /crud with ModelName as part of JSON payload
+    """
     @staticmethod
     def on_get(req, resp, model_name):
         req.context['data']['model'] = model_name
@@ -66,7 +69,9 @@ def wf_connector(req, resp, wf_name):
 
 def view_connector(view_path):
     """
+    A connector for non-workflow views
     """
+
     view = get_object_from_path(view_path)
     class Caller(object):
         @staticmethod
