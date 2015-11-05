@@ -152,7 +152,8 @@ class CrudView(BaseView):
     def add_view(self):
         if self.subcmd:
             self._save_object()
-            if self.next_task == 'list':  # to overcome 1s riak-solr delay
+            if self.subcmd:
+                # to overcome 1s riak-solr delay
                 self.current.task_data['added_obj'] = self.object.key
         else:
             self.output['forms'] = self.form.serialize()
