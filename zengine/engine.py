@@ -28,11 +28,10 @@ from pyoko.model import super_context, model_registry
 from zengine.config import settings, AuthBackend
 from zengine.lib.cache import Cache
 from zengine.lib.camunda_parser import CamundaBMPNParser
+from zengine.lib.exceptions import ZengineError
 from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.views.crud import crud_view
-
-ALLOWED_CLIENT_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
 
 
 class InMemoryPackager(Packager):
@@ -45,20 +44,6 @@ class InMemoryPackager(Packager):
         p.add_bpmn_files_by_glob(workflow_files)
         p.create_package()
         return s.getvalue()
-
-
-class Condition(object):
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-    def __getattr__(self, name):
-        return None
-
-    def __str__(self):
-        return str(self.__dict__)
-
-    def __repr__(self):
-        return str(self.__dict__)
 
 
 class Current(object):
@@ -97,7 +82,8 @@ class Current(object):
         self.permissions = []
 
     def set_message(self, title, msg, typ, url=None):
-        self.msg_cache.add({'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
+        self.msg_cache.add(
+            {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
 
     @property
     def is_auth(self):
@@ -176,19 +162,12 @@ class WFCurrent(Current):
         """
         updates task data according to client input
         internal_cmd overrides client cmd if exists
-        eihter way cmd should be one of ALLOWED_CLIENT_COMMANDS
         """
-        if 'IS' not in self.task_data:
-            self.task_data['IS'] = Condition()
-        for cmd in ALLOWED_CLIENT_COMMANDS:
-            self.task_data[cmd] = None
-        # this cmd coming from inside of the app
-        if internal_cmd and internal_cmd in ALLOWED_CLIENT_COMMANDS:
-            self.task_data[internal_cmd] = True
+        # this cmd coming from some other part of the app (view)
+        if internal_cmd:
             self.task_data['cmd'] = internal_cmd
         else:
-            if 'cmd' in self.input and self.input['cmd'] in ALLOWED_CLIENT_COMMANDS:
-                self.task_data[self.input['cmd']] = True
+            if 'cmd' in self.input:
                 self.task_data['cmd'] = self.input['cmd']
             else:
                 self.task_data['cmd'] = None
@@ -214,8 +193,6 @@ class ZEngine(object):
             self.current.wfcache.delete()
         else:
             task_data = self.current.task_data.copy()
-            task_data['IS_srlzd'] = self.current.task_data['IS'].__dict__
-            del task_data['IS']
             wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
             if self.current.lane_name:
                 self.current.pool[self.current.lane_name] = self.current.user_id
@@ -241,7 +218,6 @@ class ZEngine(object):
         """
         if not self.current.new_token:
             wf_cache = self.current.wfcache.get()
-            wf_cache['data']['IS'] = Condition(**wf_cache['data'].pop('IS_srlzd'))
             self.current.task_data = wf_cache['data']
             self.current.set_task_data()
             self.current.pool = wf_cache['pool']
@@ -368,13 +344,25 @@ class ZEngine(object):
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
                 self.catch_lane_change()
+                # self.cleanup_task_data()
         self.current.output['token'] = self.current.token
         # look for incoming ready task(s)
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current.update_task(task)
             self.catch_lane_change()
 
+    # def cleanup_task_data(self):
+    #     if ('cmd' in self.current.input and self.current.input[
+    #         'cmd'] in self.current.task_data):
+    #         if 'cmd' in self.current.task_data:
+    #             del self.current.task_data['cmd']
+    #         del self.current.task_data[self.current.input['cmd']]
+
     def catch_lane_change(self):
+        """
+        trigger a lane_user_change signal if we switched to a new lane
+        and new lane's user is different from current one
+        """
         if self.current.lane_name:
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
@@ -394,6 +382,7 @@ class ZEngine(object):
         imports, caches and calls the associated activity of the current task
         """
         if self.current.activity:
+            errors = []
             if self.current.activity not in self.workflow_methods:
                 for activity_package in settings.ACTIVITY_MODULES_IMPORT_PATHS:
                     try:
@@ -402,14 +391,22 @@ class ZEngine(object):
                             full_path)
                         break
                     except:
+                        errors.append(full_path)
                         number_of_paths = len(settings.ACTIVITY_MODULES_IMPORT_PATHS)
                         index_no = settings.ACTIVITY_MODULES_IMPORT_PATHS.index(activity_package)
                         if index_no + 1 == number_of_paths:
                             # raise if cant find the activity in the last path
-                            raise
+                            err_msg = "{activity} not found under these paths: {paths}".format(
+                                activity=self.current.activity, paths=errors)
+                            raise ZengineError(err_msg)
             self.workflow_methods[self.current.activity](self.current)
 
     def check_for_authentication(self):
+        """
+        checks current workflow against anonymous_workflows list,
+        raises HTTPUnauthorized error when wf needs an authenticated user
+        and current user isn't
+        """
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
             self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)

@@ -31,15 +31,15 @@ class Login(SimpleView):
             auth_result = self.current.auth.authenticate(
                 self.current.input['username'],
                 self.current.input['password'])
-            self.current.task_data['IS'].login_successful = auth_result
+            self.current.task_data['login_successful'] = auth_result
         except:
             self.current.log.exception("Wrong username or another error occurred")
-            self.current.task_data['IS'].login_successful = False
-        if not self.current.task_data['IS'].login_successful:
+            self.current.task_data['login_successful'] = False
+        if not self.current.task_data['login_successful']:
             self.current.response.status = falcon.HTTP_403
 
     def show_view(self):
-        self.current.output['forms'] = LoginForm().serialize()
+        self.current.output['forms'] = LoginForm(current=self.current).serialize()
 
 
 

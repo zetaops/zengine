@@ -14,6 +14,8 @@ from zengine.lib.forms import JsonForm
 from zengine.log import log
 from zengine.views.base import BaseView
 
+GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
+
 
 class CrudView(BaseView):
     """
@@ -48,8 +50,11 @@ class CrudView(BaseView):
                 self.object = self.model_class(current)
             current.log.info('Calling %s_view of %s' % (
                 (self.cmd or 'list'), self.model_class.__name__))
-            self.form = JsonForm(self.object, all=True)
-            self.__class__.__dict__['%s_view' % (self.cmd or 'list')](self)
+            self.form = JsonForm(self.object, all=True, current=current)
+            if not self.cmd:
+                current.task_data['cmd'] = 'list'
+                self.cmd = 'list'
+            self.__class__.__dict__['%s_view' % (self.cmd)](self)
 
     def list_models(self):
         self.output["models"] = [(m.Meta.verbose_name_plural, m.__name__)
@@ -138,17 +143,15 @@ class CrudView(BaseView):
                 del self.current.task_data['added_obj']
 
     def edit_view(self):
-        if self.do:
+        if self.subcmd:
             self._save_object()
-            self.go_next_task()
         else:
             self.output['forms'] = self.form.serialize()
             self.output['client_cmd'] = 'edit_object'
 
     def add_view(self):
-        if self.do:
+        if self.subcmd:
             self._save_object()
-            self.go_next_task()
             if self.next_task == 'list':  # to overcome 1s riak-solr delay
                 self.current.task_data['added_obj'] = self.object.key
         else:
@@ -162,12 +165,10 @@ class CrudView(BaseView):
 
     def delete_view(self):
         # TODO: add confirmation dialog
-        if self.next_task == 'list':  # to overcome 1s riak-solr delay
+        if self.subcmd == 'do_list':  # to overcome 1s riak-solr delay
             self.current.task_data['deleted_obj'] = self.object.key
         self.object.delete()
         del self.current.input['object_id']
         del self.current.task_data['object_id']
-        self.go_next_task()
-
 
 crud_view = CrudView()

@@ -73,12 +73,12 @@ def get_workflow_permissions(permission_list=None):
 
 def get_model_permissions(permission_list=None):
     from pyoko.model import model_registry
-    from zengine.engine import ALLOWED_CLIENT_COMMANDS
+    from zengine.views.crud import GENERIC_COMMANDS
     permissions = permission_list or []
     for model in model_registry.get_base_models():
         model_name = model.__name__
         permissions.append((model_name, model_name, ""))
-        for cmd in ALLOWED_CLIENT_COMMANDS:
+        for cmd in GENERIC_COMMANDS:
             if cmd in ['do']:
                 continue
             permissions.append(("%s.%s" % (model_name, cmd),

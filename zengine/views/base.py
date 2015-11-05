@@ -1,5 +1,7 @@
 # -*-  coding: utf-8 -*-
 """Base view classes"""
+
+
 # -
 # Copyright (C) 2015 ZetaOps Inc.
 #
@@ -19,17 +21,8 @@ class BaseView(object):
         self.current = current
         self.input = current.input
         self.output = current.output
-        if hasattr(current, 'task_data'):
-            self.cmd = current.task_data['cmd']
-        else:
-            self.cmd = current.input.get('cmd')
+        self.cmd = current.input.get('cmd')
         self.subcmd = current.input.get('subcmd')
-        self.do = self.subcmd in ['do_show', 'do_list', 'do_edit', 'do_add']
-        self.next_task = self.subcmd.split('_')[1] if self.do else None
-
-    def go_next_task(self):
-        if self.next_task:
-            self.current.set_task_data(self.next_task)
 
 
 class SimpleView(BaseView):
@@ -42,4 +35,3 @@ class SimpleView(BaseView):
     def __init__(self, current):
         super(SimpleView, self).__init__(current)
         self.__class__.__dict__["%s_view" % (self.cmd or 'show')](self)
-

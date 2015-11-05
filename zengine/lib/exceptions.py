@@ -29,3 +29,6 @@ class PermissionDenied(Exception):
 class ViewDoesNotExist(Exception):
     """The requested view does not exist"""
     pass
+
+class ZengineError(Exception):
+    pass
