@@ -1,7 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, date
-from pyoko.field import DATE_FORMAT, DATE_TIME_FORMAT
-
+from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
 from pyoko.form import Form
 from zengine.lib.catalog_data import CatalogData
 
@@ -23,7 +22,7 @@ class JsonForm(Form):
             ],
             "model": {}
         }
-        cat_data = CatalogData(self.current)
+        cat_data = CatalogData(self.context)
         for itm in self._serialize():
             if isinstance(itm['value'], datetime):
                 itm['value'] = itm['value'].strftime(DATE_TIME_FORMAT)
@@ -39,10 +38,15 @@ class JsonForm(Form):
 
             # ui expects a different format for select boxes
             if itm.get('choices'):
+                choices = itm.get('choices')
+                if not isinstance(choices, (list, tuple)):
+                    choices_data = cat_data.get(itm['choices'])
+                else:
+                    choices_data = choices
                 result["form"].append({'key': itm['name'],
                                        'type': 'select',
                                        'title': itm['title'],
-                                       'titleMap': cat_data.get(itm['choices'])})
+                                       'titleMap': choices_data})
             else:
                 result["form"].append(itm['name'])
 

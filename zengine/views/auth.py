@@ -7,14 +7,14 @@
 # (GPLv3).  See LICENSE.txt for details.
 import falcon
 
-from pyoko import field
+from pyoko import fields
 from zengine.views.base import SimpleView
 from zengine.lib.forms import JsonForm
 
 
 class LoginForm(JsonForm):
-    username = field.String("Username")
-    password = field.String("Password", type="password")
+    username = fields.String("Username")
+    password = fields.String("Password", type="password")
 
 
 def logout(current):
