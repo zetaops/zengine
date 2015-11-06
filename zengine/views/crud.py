@@ -35,26 +35,34 @@ class CrudView(BaseView):
         if 'model' not in current.input:
             self.list_models()
         else:
-            self.model_class = model_registry.get_model(current.input['model'])
-
-            self.object_id = self.input.get('object_id') or self.current.task_data.get('object_id')
-            if self.object_id:
-                try:
-                    self.object = self.model_class(current).objects.get(self.object_id)
-                    if self.object.deleted:
-                        raise HTTPNotFound()
-                except:
-                    raise HTTPNotFound()
-
-            else:
-                self.object = self.model_class(current)
-            current.log.info('Calling %s_view of %s' % (
-                (self.cmd or 'list'), self.model_class.__name__))
+            self.set_object(current)
             self.form = JsonForm(self.object, all=True, current=current)
             if not self.cmd:
-                current.task_data['cmd'] = 'list'
                 self.cmd = 'list'
-            self.__class__.__dict__['%s_view' % (self.cmd)](self)
+                current.task_data['cmd'] = self.cmd
+            current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
+                                                        self.object.__class__.__name__))
+            self.__class__.__dict__['%s_view' % self.cmd](self)
+            if self.subcmd and '_' in self.subcmd:
+                next_cmd = self.subcmd.split('_')[-1]
+                # self.current.set_task_data(next_cmd)
+                # FIXME: this should called through WF
+                self.__class__.__dict__['%s_view' % next_cmd](self)
+
+    def set_object(self, current):
+        model_class = model_registry.get_model(current.input['model'])
+
+        object_id = self.input.get('object_id') or self.current.task_data.get('object_id')
+        if object_id:
+            try:
+                self.object = model_class(current).objects.get(object_id)
+                if self.object.deleted:
+                    raise HTTPNotFound()
+            except:
+                raise HTTPNotFound()
+        else:
+            self.object = model_class(current)
+
 
     def list_models(self):
         self.output["models"] = [(m.Meta.verbose_name_plural, m.__name__)
