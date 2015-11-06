@@ -26,7 +26,7 @@ from zengine import signals
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
 from zengine.config import settings, AuthBackend
-from zengine.lib.cache import Cache
+from zengine.lib.cache import Cache, NotifyCache, WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import ZengineError
 from zengine.log import log
@@ -77,7 +77,7 @@ class Current(object):
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
-        self.msg_cache = Cache(key="MSG_%s" % self.user_id, serialize=True)
+        self.msg_cache = NotifyCache(self.user_id)
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
 
@@ -129,8 +129,8 @@ class WFCurrent(Current):
             self.new_token = True
             log.info("TOKEN NEW: %s " % self.token)
 
-        self.wfcache = Cache(key=self.token, serialize=True)
-        log.debug("\n\nWFCACHE: %s" % self.wfcache.get())
+        self.wfcache = WFCache(self.token)
+        log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
         self.set_task_data()
 
     def set_lane_data(self):

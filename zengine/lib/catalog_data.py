@@ -9,13 +9,12 @@
 # (GPLv3).  See LICENSE.txt for details.
 from collections import defaultdict
 from zengine.config import settings
-from zengine.lib.cache import Cache
+from zengine.lib.cache import Cache, CatalogCache
 
 
 class CatalogData(object):
     def __init__(self, current):
         self.lang = current.lang_code if current else settings.DEFAULT_LANG
-        self.cache_key_tmp = 'CTDT:{key}:{lang_code}'
 
     def get_from_db(self, key):
         from pyoko.db.connection import client
@@ -32,12 +31,15 @@ class CatalogData(object):
                     pass
                 lang_dict[lang_code].append({'value': k, "name": lang_val})
         for lang_code, lang_set in lang_dict.items():
-            Cache(self.cache_key_tmp.format(key=key, lang_code=lang_code), serialize=True).set(
-                lang_set)
+            CatalogCache(lang_code, key).set(lang_set)
         return lang_dict[self.lang]
 
-    def get_from_cache(self, key):
-        return Cache(self.cache_key_tmp.format(key=key, lang_code=self.lang), serialize=True).get()
-
     def get(self, key):
-        return self.get_from_cache(key) or self.get_from_db(key)
+        """
+        if data can't found in cache then it will be fetched from db,
+         parsed and stored to cache for each lang_code.
+
+        :param key: key of catalog data
+        :return:
+        """
+        return CatalogCache(self.lang, key).get() or self.get_from_db(key)

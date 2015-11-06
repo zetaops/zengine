@@ -13,24 +13,26 @@ from redis import Redis
 
 redis_host, redis_port = settings.REDIS_SERVER.split(':')
 cache = Redis(redis_host, redis_port)
-#
-# def dumper(obj):
-#     try:
-#         return obj.toJSON()
-#     except:
-#         return obj.__dict__
-#
-class Cache:
+
+REMOVE_SCRIPT = """
+local keys = redis.call('keys', ARGV[1])
+for i=1, #keys, 5000 do
+    redis.call('del', unpack(keys, i, math.min(i+4999, #keys)))
+end
+return keys
+"""
+
+_remove_keys = cache.register_script(REMOVE_SCRIPT)
+
+class Cache(object):
+    PREFIX = 'DFT'
+    SERIALIZE = True
+
+
+
     def __init__(self, *args, **kwargs):
-        self.args = args
-
-        self._key_str = kwargs.pop('key', '')
-        self.serialize = kwargs.pop('serialize')
-
-    def _key(self):
-        if not self._key_str:
-            self._key_str = str('_'.join([repr(n) for n in self.args]))
-        return self._key_str
+        self.serialize = kwargs.get('serialize', self.SERIALIZE)
+        self.key = "%s:%s" % (self.PREFIX, ':'.join(args))
 
     def __unicode__(self):
         return 'Cache object for %s' % self.key
@@ -42,7 +44,7 @@ class Cache:
         :param default: default value
         :return: cached value
         """
-        d = cache.get(self._key())
+        d = cache.get(self.key)
         return ((json.loads(d.decode('utf-8')) if self.serialize else d)
                 if d is not None
                 else default)
@@ -55,33 +57,65 @@ class Cache:
         :param lifetime: exprition time in sec
         :return: val
         """
-        cache.set(self._key(),
+        cache.set(self.key,
                   (json.dumps(val) if self.serialize else val))
-                  # lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
+        # lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
         return val
 
     def delete(self, *args):
-        return cache.delete(self._key())
+        return cache.delete(self.key)
 
     def incr(self, delta=1):
-        return cache.incr(self._key(), delta=delta)
+        return cache.incr(self.key, delta=delta)
 
     def decr(self, delta=1):
-        return cache.decr(self._key(), delta=delta)
+        return cache.decr(self.key, delta=delta)
 
     def add(self, val):
         # add to list
-        return cache.lpush(self._key(), json.dumps(val) if self.serialize else val)
+        return cache.lpush(self.key, json.dumps(val) if self.serialize else val)
 
     def get_all(self):
         # get all list items
-        result = cache.lrange(self._key(), 0, -1)
-        return (json.loads(item.decode('utf-8')) for item in result if item) if self.serialize else result
+        result = cache.lrange(self.key, 0, -1)
+        return (json.loads(item.decode('utf-8')) for item in result if
+                item) if self.serialize else result
 
     def remove_all(self):
         # get all list items
-        return cache.ltrim(self._key(), 0, -1)
+        return cache.ltrim(self.key, 0, -1)
 
     def remove_item(self, val):
         # get all list items
-        return cache.lrem(self._key(), json.dumps(val))
+        return cache.lrem(self.key, json.dumps(val))
+
+    @classmethod
+    def flush(cls):
+        """
+        removes all keys in this current namespace
+        If called from class itself, clears all keys starting with cls.PREFIX
+        if called from class instance, clears keys starting with given key.
+        :return: list of removed keys
+        """
+        return _remove_keys([], [getattr(cls, 'key', cls.PREFIX) + '*'])
+
+
+
+class NotifyCache(Cache):
+    PREFIX = 'NTFY'
+
+    def __init__(self, user_id):
+        super(NotifyCache, self).__init__(user_id)
+
+class CatalogCache(Cache):
+    PREFIX = 'CTDT'
+
+    def __init__(self, lang_code, key):
+        super(CatalogCache, self).__init__(lang_code, key)
+
+
+class WFCache(Cache):
+    PREFIX = 'WF'
+
+    def __init__(self, wf_token):
+        super(WFCache, self).__init__(wf_token)
