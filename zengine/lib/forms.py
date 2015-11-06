@@ -39,7 +39,7 @@ class JsonForm(Form):
 
             # ui expects a different format for select boxes
             if itm.get('choices'):
-                result["form"].append({'name': itm['name'],
+                result["form"].append({'key': itm['name'],
                                        'type': 'select',
                                        'title': itm['title'],
                                        'titleMap': cat_data.get(itm['choices'])})
