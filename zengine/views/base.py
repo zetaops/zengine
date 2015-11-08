@@ -34,4 +34,6 @@ class SimpleView(BaseView):
 
     def __init__(self, current):
         super(SimpleView, self).__init__(current)
-        self.__class__.__dict__["%s_view" % (self.cmd or 'show')](self)
+        view = "%s_view" % (self.cmd or 'show')
+        if view in self.__class__.__dict__:
+            self.__class__.__dict__[view](self)
