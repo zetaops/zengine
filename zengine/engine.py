@@ -167,10 +167,8 @@ class WFCurrent(Current):
         if internal_cmd:
             self.task_data['cmd'] = internal_cmd
         else:
-            if 'cmd' in self.input:
-                self.task_data['cmd'] = self.input['cmd']
-            else:
-                self.task_data['cmd'] = None
+            # TODO: Workaround, cmd should be in a certain place
+            self.task_data['cmd'] = self.input.get('cmd', self.input.get('form', {}).get('cmd'))
             self.task_data['object_id'] = self.input.get('object_id', None)
 
 

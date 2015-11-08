@@ -16,10 +16,10 @@
     </bpmn2:exclusiveGateway>
     <bpmn2:sequenceFlow id="list_objects_arrow" name="list_objects" sourceRef="START_XOR" targetRef="list_objects"/>
     <bpmn2:sequenceFlow id="to_add_or_edit" name="add_or_edit" sourceRef="START_XOR" targetRef="add_or_edit_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'add' or (cmd is 'edit' and object_id)</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'add' or (cmd == 'edit' and object_id)</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="to_show" name="show_object" sourceRef="START_XOR" targetRef="show_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'show' and object_id</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'show' and object_id</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:userTask id="add_or_edit_object" camunda:assignee="crud_view" name="add_or_edit_object">
       <bpmn2:incoming>to_add_or_edit</bpmn2:incoming>
@@ -60,7 +60,7 @@
       <bpmn2:outgoing>del_to_finish</bpmn2:outgoing>
     </bpmn2:serviceTask>
     <bpmn2:sequenceFlow id="to_del" name="" sourceRef="START_XOR" targetRef="delete_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'delete' and object_id</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'delete' and object_id</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="del_to_finish" name="" sourceRef="delete_object" targetRef="redirect_dispatcher"/>
     <bpmn2:exclusiveGateway id="FINISH_XOR" default="save_failured_arrow">
@@ -75,16 +75,16 @@
     </bpmn2:exclusiveGateway>
     <bpmn2:sequenceFlow id="save_failured_arrow" name="save_failured" sourceRef="FINISH_XOR" targetRef="add_or_edit_object"/>
     <bpmn2:sequenceFlow id="SequenceFlow_15" name="" sourceRef="FINISH_XOR" targetRef="EndEvent_2">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'finished'</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'finished'</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="save_then_edit_arrow" name="save_then_edit&#xA;" sourceRef="FINISH_XOR" targetRef="add_or_edit_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'edit'</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'edit'</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="fin_list_arrow" name="save_then_list" sourceRef="FINISH_XOR" targetRef="list_objects">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'list'</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'list'</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="save_then_add_arrow" name="save_then_add&#xA;" sourceRef="FINISH_XOR" targetRef="add_or_edit_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'add'</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'add'</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:serviceTask id="redirect_dispatcher" name="redirect&#xA;dispatcher">
       <bpmn2:incoming>del_to_finish</bpmn2:incoming>
@@ -95,10 +95,10 @@
     </bpmn2:serviceTask>
     <bpmn2:sequenceFlow id="SequenceFlow_2" name="" sourceRef="redirect_dispatcher" targetRef="FINISH_XOR"/>
     <bpmn2:sequenceFlow id="fin_to_delete" name="fin_to_delete" sourceRef="FINISH_XOR" targetRef="delete_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'delete'</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'delete'</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:sequenceFlow id="fin_to_show" name="fin_to_show" sourceRef="FINISH_XOR" targetRef="show_object">
-      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd is 'show' and object_id</bpmn2:conditionExpression>
+      <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'show' and object_id</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
     <bpmn2:startEvent id="StartEvent_1" name="start">
       <bpmn2:outgoing>SequenceFlow_1</bpmn2:outgoing>

@@ -105,7 +105,7 @@ class NotifyCache(Cache):
     PREFIX = 'NTFY'
 
     def __init__(self, user_id):
-        super(NotifyCache, self).__init__(user_id)
+        super(NotifyCache, self).__init__(str(user_id))
 
 class CatalogCache(Cache):
     PREFIX = 'CTDT'
