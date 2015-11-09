@@ -44,9 +44,9 @@ class SimpleView(BaseView):
     we call self.%s_view() method with %s substituted with self.input['cmd']
     self.show_view() will be called if client doesn't give any cmd
     """
-
+    DEFAULT_VIEW = ''
     def __init__(self, current):
         super(SimpleView, self).__init__(current)
-        view = "%s_view" % (self.cmd or 'show')
+        view = "%s_view" % (self.cmd or self.DEFAULT_VIEW or 'show')
         if view in self.__class__.__dict__:
             self.__class__.__dict__[view](self)
