@@ -26,7 +26,7 @@ class AuthBackend(object):
         # (instead of unsaved User instance)
         if 'user_id' in self.session:
             self.current.user_id = self.session['user_id']
-            return User.objects.get(self.session['user_id'])
+            return User.objects.get(self.current.user_id)
         else:
             return User()
 
