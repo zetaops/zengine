@@ -9,7 +9,6 @@ from __future__ import division
 from io import BytesIO
 import os
 from uuid import uuid4
-
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
 from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
@@ -62,15 +61,16 @@ class Current(object):
             self.session = self.request.env['session']
             self.input = self.request.context['data']
             self.output = self.request.context['result']
+            self.user_id = self.session.get('user_id')
         except AttributeError:
             # when we want to use engine functions independently,
             # we need to create a fake current object
             self.session = {}
             self.input = {}
             self.output = {}
+            self.user_id = None
 
         self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
-        self.user_id = None
         self.log = log
         self.pool = {}
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
@@ -394,6 +394,9 @@ class ZEngine(object):
                             err_msg = "{activity} not found under these paths: {paths}".format(
                                 activity=self.current.activity, paths=errors)
                             raise ZengineError(err_msg)
+            self.current.log.debug(
+                "Calling Activity %s from %s" % (self.current.activity,
+                                                 self.workflow_methods[self.current.activity]))
             self.workflow_methods[self.current.activity](self.current)
 
     def check_for_authentication(self):
@@ -406,7 +409,6 @@ class ZEngine(object):
         if auth_required and not self.current.is_auth:
             self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
             raise falcon.HTTPUnauthorized("Login required", "")
-
 
     def check_for_lane_permission(self):
         # TODO: Cache lane_data in app memory
