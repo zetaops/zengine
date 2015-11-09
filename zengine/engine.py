@@ -7,7 +7,6 @@
 from __future__ import print_function, absolute_import, division
 from __future__ import division
 from io import BytesIO
-import json
 import os
 from uuid import uuid4
 
@@ -26,7 +25,7 @@ from zengine import signals
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
 from zengine.config import settings, AuthBackend
-from zengine.lib.cache import Cache, NotifyCache, WFCache
+from zengine.lib.cache import NotifyCache, WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import ZengineError
 from zengine.log import log
@@ -293,7 +292,6 @@ class ZEngine(object):
         self.current = WFCurrent(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
-        self.check_for_crud_permission()
         self.workflow = self.load_or_create_workflow()
         log.debug("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
                   "\tWF: %s (Possible) TASK:%s\n"
@@ -335,7 +333,6 @@ class ZEngine(object):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.update_task(task)
                 self.check_for_permission()
-                self.check_for_crud_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
                 self.run_activity()
@@ -410,19 +407,6 @@ class ZEngine(object):
             self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
             raise falcon.HTTPUnauthorized("Login required", "")
 
-    def check_for_crud_permission(self):
-        # TODO: this should placed in to CrudView
-        if 'model' in self.current.input:
-            if 'cmd' in self.current.input:
-                permission = "%s.%s" % (self.current.input["model"], self.current.input['cmd'])
-            else:
-                permission = self.current.input["model"]
-            log.debug("CHECK CRUD PERM: %s" % permission)
-            if permission in settings.ANONYMOUS_WORKFLOWS:
-                return
-            if not self.current.has_permission(permission):
-                raise falcon.HTTPForbidden("Permission denied",
-                                           "You don't have required model permission: %s" % permission)
 
     def check_for_lane_permission(self):
         # TODO: Cache lane_data in app memory

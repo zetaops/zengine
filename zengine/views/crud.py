@@ -6,10 +6,14 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import datetime
+
+import falcon
 from falcon import HTTPNotFound
 import six
 
+from pyoko.conf import settings
 from pyoko.model import Model, model_registry
+from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.lib.forms import JsonForm
 from zengine.log import log
 from zengine.views.base import BaseView
@@ -40,6 +44,7 @@ class CrudView(BaseView):
             if not self.cmd:
                 self.cmd = 'list'
                 current.task_data['cmd'] = self.cmd
+            self.check_for_permission()
             current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
                                                         self.object.__class__.__name__))
             self.__class__.__dict__['%s_view' % self.cmd](self)
@@ -47,6 +52,21 @@ class CrudView(BaseView):
             if self.subcmd and '_' in self.subcmd:
                 self.subcmd, next_cmd = self.subcmd.split('_')
                 self.current.set_task_data(next_cmd)
+
+
+    def check_for_permission(self):
+        # TODO: this should placed in to CrudView
+        if 'cmd' in self.current.input:
+            permission = "%s.%s" % (self.current.input["model"], self.cmd)
+        else:
+            permission = self.current.input["model"]
+        log.debug("CHECK CRUD PERM: %s" % permission)
+        if (self.current.task_type in NO_PERM_TASKS_TYPES or
+                    permission in settings.ANONYMOUS_WORKFLOWS):
+            return
+        if not self.current.has_permission(permission):
+            raise falcon.HTTPForbidden("Permission denied",
+                                       "You don't have required model permission: %s" % permission)
 
     def set_object(self, current):
         model_class = model_registry.get_model(current.input['model'])
