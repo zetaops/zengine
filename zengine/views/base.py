@@ -27,7 +27,10 @@ class BaseView(object):
             self.cmd = current.input.get('cmd')
             del current.input['cmd']
         else:
-            self.cmd = current.task_data.get('cmd')
+            if hasattr(current, 'task_data'):
+                self.cmd = current.task_data.get('cmd')
+            else:
+                self.cmd = None
         self.subcmd = current.input.get('subcmd')
         if self.subcmd:
             del current.input['subcmd']
