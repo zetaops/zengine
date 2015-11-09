@@ -8,6 +8,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
+NEXT_CMD_SPLITTER = '::'
+
 class BaseView(object):
     """
     this class constitute a base for all view classes.
@@ -21,8 +23,16 @@ class BaseView(object):
         self.current = current
         self.input = current.input
         self.output = current.output
-        self.cmd = current.input.get('cmd')
+        if current.input.get('cmd'):
+            self.cmd = current.input.get('cmd')
+            del current.input['cmd']
+        else:
+            self.cmd = current.task_data.get('cmd')
         self.subcmd = current.input.get('subcmd')
+        if self.subcmd:
+            del current.input['subcmd']
+            if NEXT_CMD_SPLITTER in self.subcmd:
+                self.subcmd, self.next_cmd = self.subcmd.split(NEXT_CMD_SPLITTER)
 
 
 class SimpleView(BaseView):

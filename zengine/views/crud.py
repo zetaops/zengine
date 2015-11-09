@@ -43,10 +43,10 @@ class CrudView(BaseView):
             current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
                                                         self.object.__class__.__name__))
             self.__class__.__dict__['%s_view' % self.cmd](self)
-
-            # if self.subcmd and '_' in self.subcmd:
-            #     next_cmd = self.subcmd.split('_')[-1]
-            #     self.current.set_task_data(next_cmd)
+            # TODO: change
+            if self.subcmd and '_' in self.subcmd:
+                self.subcmd, next_cmd = self.subcmd.split('_')
+                self.current.set_task_data(next_cmd)
 
     def set_object(self, current):
         model_class = model_registry.get_model(current.input['model'])
@@ -170,8 +170,6 @@ class CrudView(BaseView):
         self.object = self.form.deserialize(data or self.current.input['form'])
         self.object.save()
         self.current.task_data['object_id'] = self.object.key
-        # FIXME: this is a workaround. next_view should be selected according to subcmd
-        self.list_view()
 
     def delete_view(self):
         # TODO: add confirmation dialog
@@ -180,7 +178,5 @@ class CrudView(BaseView):
         self.object.delete()
         del self.current.input['object_id']
         del self.current.task_data['object_id']
-        # FIXME: this is a workaround. next_view should be selected according to subcmd
-        self.list_view()
 
 crud_view = CrudView()
