@@ -9,7 +9,7 @@ class JsonForm(Form):
     def serialize(self):
         result = {
             "schema": {
-                "title": self.Meta.title,
+                "title": self.title,
                 "type": "object",
                 "properties": {},
                 "required": []
