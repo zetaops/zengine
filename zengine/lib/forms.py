@@ -17,7 +17,7 @@ class JsonForm(Form):
             "form": [
                 {
                     "type": "help",
-                    "helpvalue": getattr(self.Meta, 'help_text', '')
+                    "helpvalue": self.help_text
                 }
             ],
             "model": {}

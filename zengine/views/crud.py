@@ -40,7 +40,7 @@ class CrudView(BaseView):
             self.list_models()
         else:
             self.set_object(current)
-            self.form = JsonForm(self.object, all=True, current=current)
+            self.form = JsonForm(self.object, current=current)
             if not self.cmd:
                 self.cmd = 'list'
                 current.task_data['cmd'] = self.cmd
@@ -48,14 +48,12 @@ class CrudView(BaseView):
             current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
                                                         self.object.__class__.__name__))
             self.__class__.__dict__['%s_view' % self.cmd](self)
-            # TODO: change
             if self.subcmd and '_' in self.subcmd:
                 self.subcmd, next_cmd = self.subcmd.split('_')
                 self.current.set_task_data(next_cmd)
 
 
     def check_for_permission(self):
-        # TODO: this should placed in to CrudView
         if 'cmd' in self.current.input:
             permission = "%s.%s" % (self.current.input["model"], self.cmd)
         else:
@@ -193,7 +191,7 @@ class CrudView(BaseView):
 
     def delete_view(self):
         # TODO: add confirmation dialog
-        if self.subcmd == 'do_list':  # to overcome 1s riak-solr delay
+        if self.subcmd:  # to overcome 1s riak-solr delay
             self.current.task_data['deleted_obj'] = self.object.key
         self.object.delete()
         del self.current.input['object_id']
