@@ -11,6 +11,7 @@ import falcon
 from falcon import HTTPNotFound
 import six
 
+from pyoko import form
 from pyoko.conf import settings
 from pyoko.model import Model, model_registry
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
@@ -18,7 +19,12 @@ from zengine.lib.forms import JsonForm
 from zengine.log import log
 from zengine.views.base import BaseView
 
-GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show']
+GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
+
+
+class CrudForm(JsonForm):
+    save_list = form.Button("Kaydet ve Listele", cmd="save::list")
+    save_edit = form.Button("Kaydet ve Devam Et", cmd="save::edit")
 
 
 class CrudView(BaseView):
@@ -35,12 +41,13 @@ class CrudView(BaseView):
 
     def __call__(self, current):
         current.log.info("CRUD CALL")
+        self.current = current
         self.set_current(current)
         if 'model' not in current.input:
             self.list_models()
         else:
-            self.set_object(current)
-            self.form = JsonForm(self.object, current=current)
+            self.create_object(current)
+            self.create_form(current)
             if not self.cmd:
                 self.cmd = 'list'
                 current.task_data['cmd'] = self.cmd
@@ -48,13 +55,13 @@ class CrudView(BaseView):
             current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
                                                         self.object.__class__.__name__))
             self.__class__.__dict__['%s_view' % self.cmd](self)
-            if self.subcmd and '_' in self.subcmd:
-                self.subcmd, next_cmd = self.subcmd.split('_')
-                self.current.set_task_data(next_cmd)
+            if self.next_cmd:
+                self.current.set_task_data(self.next_cmd)
+
 
 
     def check_for_permission(self):
-        if 'cmd' in self.current.input:
+        if self.cmd:
             permission = "%s.%s" % (self.current.input["model"], self.cmd)
         else:
             permission = self.current.input["model"]
@@ -66,10 +73,13 @@ class CrudView(BaseView):
             raise falcon.HTTPForbidden("Permission denied",
                                        "You don't have required model permission: %s" % permission)
 
-    def set_object(self, current):
+    def create_form(self, current):
+        self.form = CrudForm(self.object, current=current)
+
+    def create_object(self, current):
         model_class = model_registry.get_model(current.input['model'])
 
-        object_id = self.input.get('object_id') or self.current.task_data.get('object_id')
+        object_id = self.input.get('object_id')  # or self.current.task_data.get('object_id')
         if object_id:
             try:
                 self.object = model_class(current).objects.get(object_id)
@@ -168,26 +178,20 @@ class CrudView(BaseView):
                 del self.current.task_data['added_obj']
 
     def edit_view(self):
-        if self.subcmd:
-            self._save_object()
-        else:
-            self.output['forms'] = self.form.serialize()
-            self.output['client_cmd'] = 'edit_object'
+        self.output['forms'] = self.form.serialize()
+        self.output['client_cmd'] = 'edit_object'
 
     def add_view(self):
-        if self.subcmd:
-            self._save_object()
-            if self.subcmd:
-                # to overcome 1s riak-solr delay
-                self.current.task_data['added_obj'] = self.object.key
-        else:
-            self.output['forms'] = self.form.serialize()
-            self.output['client_cmd'] = 'add_object'
+        self.output['forms'] = self.form.serialize()
+        self.output['client_cmd'] = 'add_object'
 
-    def _save_object(self, data=None):
-        self.object = self.form.deserialize(data or self.current.input['form'])
+    def save_view(self):
+        self.object = self.form.deserialize(self.current.input['form'])
+        obj_is_new = self.object.is_in_db()
         self.object.save()
-        self.current.task_data['object_id'] = self.object.key
+        if self.next_cmd and obj_is_new:
+            self.current.task_data['added_obj'] = self.object.key
+        # self.current.task_data['object_id'] = self.object.key
 
     def delete_view(self):
         # TODO: add confirmation dialog
@@ -195,6 +199,6 @@ class CrudView(BaseView):
             self.current.task_data['deleted_obj'] = self.object.key
         self.object.delete()
         del self.current.input['object_id']
-        del self.current.task_data['object_id']
+        # del self.current.task_data['object_id']
 
 crud_view = CrudView()

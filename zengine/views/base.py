@@ -31,11 +31,10 @@ class BaseView(object):
                 self.cmd = current.task_data.get('cmd')
             else:
                 self.cmd = None
-        self.subcmd = current.input.get('subcmd')
-        if self.subcmd:
-            del current.input['subcmd']
-            if NEXT_CMD_SPLITTER in self.subcmd:
-                self.subcmd, self.next_cmd = self.subcmd.split(NEXT_CMD_SPLITTER)
+        if self.cmd and NEXT_CMD_SPLITTER in self.cmd:
+            self.cmd, self.next_cmd = self.cmd.split(NEXT_CMD_SPLITTER)
+        else:
+            self.next_cmd = None
 
 
 class SimpleView(BaseView):
