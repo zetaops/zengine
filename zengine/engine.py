@@ -132,7 +132,7 @@ class WFCurrent(Current):
         log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
         self.set_task_data()
 
-    def set_lane_data(self):
+    def _set_lane_data(self):
         # TODO: Cache lane_data in process
         if 'lane_data' in self.spec.data:
             self.lane_name = self.spec.lane
@@ -144,9 +144,9 @@ class WFCurrent(Current):
             if 'owners' in lane_data:
                 self.lane_owners = lane_data['owners']
 
-    def update_task(self, task):
+    def _update_task(self, task):
         """
-        updates self.task with current task step
+        assigns current task step to self.task
         then updates the task's data with self.task_data
         """
         self.task = task
@@ -155,26 +155,33 @@ class WFCurrent(Current):
         self.spec = task.task_spec
         self.task_name = task.get_name()
         self.activity = getattr(self.spec, 'service_class', '')
-        self.set_lane_data()
+        self._set_lane_data()
 
     def set_task_data(self, internal_cmd=None):
         """
         updates task data according to client input
         internal_cmd overrides client cmd if exists
+
+        :param str internal_cmd: to set/overwrite task_data['cmd']
         """
-        # this cmd coming from some other part of the app (view)
+        # internal_cmd coming from some other part of the app (view)
         if internal_cmd:
             self.task_data['cmd'] = internal_cmd
         else:
-            # TODO: Workaround, cmd should be in a certain place
-            self.task_data['cmd'] = self.input.get('cmd', self.input.get('form', {}).get('cmd'))
+            cmd = self.input.get('cmd')
+            if cmd:
+                self.task_data['cmd'] = cmd
+            elif 'cmd' in self.task_data:
+                del self.task_data['cmd']
             self.task_data['object_id'] = self.input.get('object_id', None)
+        # A "flow" variable should be always exists in the task_data
+        self.task_data['flow'] = self.input.get('flow')
 
 
 class ZEngine(object):
     def __init__(self):
         self.use_compact_serializer = True
-        self.current = None
+        # self.current = None
         self.workflow_methods = {'crud_view': crud_view}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
@@ -184,12 +191,20 @@ class ZEngine(object):
     def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
         """
         if we aren't come to the end of the wf,
-        saves the wf state and data to cache
+        saves the wf state and task_data to cache
+
+        task_data items that starts with underscore "_" are treated as
+         local and does not passed to following task steps.
         """
         if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
         else:
             task_data = self.current.task_data.copy()
+            for k, v in list(task_data.items()):
+                if k.startswith('_'):
+                    del task_data[k]
+            if 'cmd' in task_data:
+                del task_data['cmd']
             wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
             if self.current.lane_name:
                 self.current.pool[self.current.lane_name] = self.current.user_id
@@ -323,15 +338,16 @@ class ZEngine(object):
 
     def run(self):
         """
-        main loop of the workflow engine
-        runs all READY tasks, calls their diagrams, saves wf state,
-        breaks if current task is a UserTask or EndTask
+        Main loop of the workflow engine
+        Activates all READY tasks, calls their diagrams, saves wf state,
+        Stops if current task is a UserTask or EndTask
+
         """
         # FIXME: raise if first task after line change isn't a UserTask
         while (self.current.task_type != 'UserTask' and
                    not self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
-                self.current.update_task(task)
+                self.current._update_task(task)
                 self.check_for_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
@@ -339,19 +355,12 @@ class ZEngine(object):
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
                 self.catch_lane_change()
-                # self.cleanup_task_data()
         self.current.output['token'] = self.current.token
         # look for incoming ready task(s)
         for task in self.workflow.get_tasks(state=Task.READY):
-            self.current.update_task(task)
+            self.current._update_task(task)
             self.catch_lane_change()
 
-    # def cleanup_task_data(self):
-    #     if ('cmd' in self.current.input and self.current.input[
-    #         'cmd'] in self.current.task_data):
-    #         if 'cmd' in self.current.task_data:
-    #             del self.current.task_data['cmd']
-    #         del self.current.task_data[self.current.input['cmd']]
 
     def catch_lane_change(self):
         """
@@ -376,34 +385,41 @@ class ZEngine(object):
         """
         imports, caches and calls the associated activity of the current task
         """
-        if self.current.activity:
-            errors = []
-            if self.current.activity not in self.workflow_methods:
-                for activity_package in settings.ACTIVITY_MODULES_IMPORT_PATHS:
-                    try:
-                        full_path = "%s.%s" % (activity_package, self.current.activity)
-                        self.workflow_methods[self.current.activity] = get_object_from_path(
-                            full_path)
-                        break
-                    except:
-                        errors.append(full_path)
-                        number_of_paths = len(settings.ACTIVITY_MODULES_IMPORT_PATHS)
-                        index_no = settings.ACTIVITY_MODULES_IMPORT_PATHS.index(activity_package)
-                        if index_no + 1 == number_of_paths:
-                            # raise if cant find the activity in the last path
-                            err_msg = "{activity} not found under these paths: {paths}".format(
-                                activity=self.current.activity, paths=errors)
-                            raise ZengineError(err_msg)
+        activity = self.current.activity
+        if activity:
+            if activity not in self.workflow_methods:
+                self._load_activity(activity)
             self.current.log.debug(
-                "Calling Activity %s from %s" % (self.current.activity,
-                                                 self.workflow_methods[self.current.activity]))
+                "Calling Activity %s from %s" % (activity, self.workflow_methods[activity]))
             self.workflow_methods[self.current.activity](self.current)
+
+    def _load_activity(self, activity):
+        """
+        imports, caches and calls the associated activity of the current task
+        """
+        errors = []
+        full_path = ''
+        paths = settings.ACTIVITY_MODULES_IMPORT_PATHS
+        for activity_package in paths:
+            try:
+                full_path = "%s.%s" % (activity_package, activity)
+                self.workflow_methods[activity] = get_object_from_path(full_path)
+                break
+            except:
+                errors.append(full_path)
+                number_of_paths = len(paths)
+                index_no = paths.index(activity_package)
+                if index_no + 1 == number_of_paths:
+                    # raise if cant find the activity in the last path
+                    err_msg = "{activity} not found under these paths: {paths}".format(
+                        activity=activity, paths=errors)
+                    raise ZengineError(err_msg)
 
     def check_for_authentication(self):
         """
-        checks current workflow against anonymous_workflows list,
-        raises HTTPUnauthorized error when wf needs an authenticated user
-        and current user isn't
+        Checks current workflow against anonymous_workflows list,
+        raises HTTPUnauthorized error when WF needs an authenticated user
+        and current user isn't.
         """
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
@@ -411,6 +427,14 @@ class ZEngine(object):
             raise falcon.HTTPUnauthorized("Login required", "")
 
     def check_for_lane_permission(self):
+        """
+        One or more permissions can be associated with a lane of a workflow.
+        In a similar way, a lane can be restricted with relation to other lanes of the workflow.
+
+        When this method called on lane changes, it checks if the current user has the required
+         permissions and proper relations. Raises a HTTPForbidden error if it is not.
+
+        """
         # TODO: Cache lane_data in app memory
         if self.current.lane_permissions:
             log.debug("HAS LANE PERMS: %s" % self.current.lane_permissions)
