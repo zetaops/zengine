@@ -35,6 +35,8 @@ class JsonForm(Form):
 
             if itm.get('cmd'):
                 item_props['cmd'] = itm['cmd']
+            if itm.get('flow'):
+                item_props['flow'] = itm['flow']
 
             # ui expects a different format for select boxes
             if itm.get('choices'):
