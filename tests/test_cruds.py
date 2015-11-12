@@ -19,10 +19,10 @@ class TestCase(BaseTestCase):
         self.prepare_client('/crud/')
 
         # calling the crud view without any model should list available models
-        resp = self.client.post()
-        resp.raw()
-        assert resp.json['models'] == [[m.Meta.verbose_name_plural, m.__name__] for m in
-                                       model_registry.get_base_models()]
+        # resp = self.client.post()
+        # resp.raw()
+        # assert resp.json['models'] == [[m.Meta.verbose_name_plural, m.__name__] for m in
+        #                                model_registry.get_base_models()]
         model_name = 'User'
         # calling with just model name (without any cmd) equals to cmd="list"
         resp = self.client.post(model=model_name, filters={"username": username})

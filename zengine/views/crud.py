@@ -35,28 +35,22 @@ class CrudView(BaseView):
 
     :type object: Model | None
     """
-    #
-    # def __init__(self):
-    #     super(CrudView, self).__init__()
-
+    MODEL = None
     def __call__(self, current):
         current.log.info("CRUD CALL")
         self.current = current
         self.set_current(current)
-        if 'model' not in current.input:
-            self.list_models()
-        else:
-            self.create_object(current)
-            self.create_form(current)
-            if not self.cmd:
-                self.cmd = 'list'
-                current.task_data['cmd'] = self.cmd
-            self.check_for_permission()
-            current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
-                                                        self.object.__class__.__name__))
-            self.__class__.__dict__['%s_view' % self.cmd](self)
-            if self.next_cmd:
-                self.current.set_task_data(self.next_cmd)
+        self.create_object()
+        self.create_form()
+        if not self.cmd:
+            self.cmd = 'list'
+            current.task_data['cmd'] = self.cmd
+        self.check_for_permission()
+        current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
+                                                    self.object.__class__.__name__))
+        self.__class__.__dict__['%s_view' % self.cmd](self)
+        if self.next_cmd:
+            self.current.task_data['cmd'] = self.next_cmd
 
 
 
@@ -73,31 +67,37 @@ class CrudView(BaseView):
             raise falcon.HTTPForbidden("Permission denied",
                                        "You don't have required model permission: %s" % permission)
 
-    def create_form(self, current):
-        self.form = CrudForm(self.object, current=current)
+    def create_form(self):
+        self.form = CrudForm(self.object, current=self.current)
 
-    def create_object(self, current):
-        model_class = model_registry.get_model(current.input['model'])
 
+    def get_model_class(self):
+        model = self.MODEL if self.MODEL else self.current.input['model']
+        if isinstance(model, Model):
+            return model
+        else:
+            return model_registry.get_model(model)
+
+    def create_object(self):
+        model_class = self.get_model_class()
         object_id = self.input.get('object_id')  # or self.current.task_data.get('object_id')
         if object_id:
             try:
-                self.object = model_class(current).objects.get(object_id)
+                self.object = model_class(self.current).objects.get(object_id)
                 if self.object.deleted:
                     raise HTTPNotFound()
             except:
                 raise HTTPNotFound()
         else:
-            self.object = model_class(current)
+            self.object = model_class(self.current)
 
-
-    def list_models(self):
-        self.output["models"] = [(m.Meta.verbose_name_plural, m.__name__)
-                                 for m in model_registry.get_base_models()]
-
-        self.output["app_models"] = [(app, [(m.Meta.verbose_name_plural, m.__name__)
-                                            for m in models])
-                                     for app, models in model_registry.get_models_by_apps()]
+    # def list_models(self):
+    #     self.output["models"] = [(m.Meta.verbose_name_plural, m.__name__)
+    #                              for m in model_registry.get_base_models()]
+    #
+    #     self.output["app_models"] = [(app, [(m.Meta.verbose_name_plural, m.__name__)
+    #                                         for m in models])
+    #                                  for app, models in model_registry.get_models_by_apps()]
 
     def show_view(self):
         self.output['object'] = self.form.serialize()['model']
