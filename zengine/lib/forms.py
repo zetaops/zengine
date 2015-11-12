@@ -24,10 +24,6 @@ class JsonForm(Form):
         }
         cat_data = CatalogData(self.context)
         for itm in self._serialize():
-            if isinstance(itm['value'], datetime):
-                itm['value'] = itm['value'].strftime(DATE_TIME_FORMAT)
-            elif isinstance(itm['value'], date):
-                itm['value'] = itm['value'].strftime(DATE_FORMAT)
 
             item_props = {'type': itm['type'],
                           'title': itm['title'],
