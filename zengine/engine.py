@@ -55,6 +55,7 @@ class Current(object):
     """
 
     def __init__(self, **kwargs):
+        self.task_data = {'cmd': None}
         self.request = kwargs.pop('request', {})
         self.response = kwargs.pop('response', {})
         try:
@@ -108,7 +109,6 @@ class WFCurrent(Current):
         self.spec = None
         self.workflow = None
         self.task_type = ''
-        self.task_data = {}
         self.task = None
         self.pool = {}
         self.task_name = ''
@@ -130,7 +130,7 @@ class WFCurrent(Current):
 
         self.wfcache = WFCache(self.token)
         log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
-        self.set_task_data()
+        self.set_client_cmds()
 
     def _set_lane_data(self):
         # TODO: Cache lane_data in process
@@ -157,25 +157,27 @@ class WFCurrent(Current):
         self.activity = getattr(self.spec, 'service_class', '')
         self._set_lane_data()
 
-    def set_task_data(self, internal_cmd=None):
+    def set_client_cmds(self):
         """
-        updates task data according to client input
-        internal_cmd overrides client cmd if exists
+        This is method automatically called on each request and
+        updates "object_id", "cmd" and "flow"  client variables
+        from current.input.
 
-        :param str internal_cmd: to set/overwrite task_data['cmd']
+        "flow" and "object_id" variables will always exists in the
+        task_data so app developers can safely check for their
+        values in workflows.
+        Their values will be reset to None if they not exists
+        in the current input data set.
+
+        On the other side, if there isn't a "cmd" in the current.input
+        cmd will be removed from task_data.
+
         """
-        # internal_cmd coming from some other part of the app (view)
-        if internal_cmd:
-            self.task_data['cmd'] = internal_cmd
-        else:
-            cmd = self.input.get('cmd')
-            if cmd:
-                self.task_data['cmd'] = cmd
-            elif 'cmd' in self.task_data:
-                del self.task_data['cmd']
-            self.task_data['object_id'] = self.input.get('object_id', None)
-        # A "flow" variable should be always exists in the task_data
+        self.task_data['cmd'] = self.input.get('cmd')
+
         self.task_data['flow'] = self.input.get('flow')
+
+        self.task_data['object_id'] = self.input.get('object_id')
 
 
 class ZEngine(object):
@@ -231,7 +233,7 @@ class ZEngine(object):
         if not self.current.new_token:
             wf_cache = self.current.wfcache.get()
             self.current.task_data = wf_cache['data']
-            self.current.set_task_data()
+            self.current.set_client_cmds()
             self.current.pool = wf_cache['pool']
             return wf_cache['wf_state']
 
@@ -360,7 +362,6 @@ class ZEngine(object):
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current._update_task(task)
             self.catch_lane_change()
-
 
     def catch_lane_change(self):
         """

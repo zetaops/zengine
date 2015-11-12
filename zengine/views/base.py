@@ -23,14 +23,7 @@ class BaseView(object):
         self.current = current
         self.input = current.input
         self.output = current.output
-        if current.input.get('cmd'):
-            self.cmd = current.input.get('cmd')
-            del current.input['cmd']
-        else:
-            if hasattr(current, 'task_data'):
-                self.cmd = current.task_data.get('cmd')
-            else:
-                self.cmd = None
+        self.cmd = current.task_data['cmd']
         if self.cmd and NEXT_CMD_SPLITTER in self.cmd:
             self.cmd, self.next_cmd = self.cmd.split(NEXT_CMD_SPLITTER)
         else:
