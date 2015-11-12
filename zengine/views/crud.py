@@ -35,6 +35,11 @@ class CrudView(BaseView):
 
     :type object: Model | None
     """
+    def __init__(self, current=None):
+        super(CrudView, self).__init__(current)
+        if current:
+            self.__call__(current)
+
     MODEL = None
     def __call__(self, current):
         current.log.info("CRUD CALL")
