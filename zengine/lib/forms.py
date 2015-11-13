@@ -36,11 +36,15 @@ class JsonForm(Form):
             item_props = {'type': itm['type'],
                           'title': itm['title'],
                           }
+            if itm['name'] in self.Meta.attributes:
+                item_props['attributes'] = self.Meta.attributes[itm['name']]
 
             if itm.get('cmd'):
                 item_props['cmd'] = itm['cmd']
             if itm.get('flow'):
                 item_props['flow'] = itm['flow']
+            if itm.get('position'):
+                item_props['position'] = itm['position']
 
             # ui expects a different format for select boxes
             if itm.get('choices'):
