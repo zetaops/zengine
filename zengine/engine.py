@@ -29,8 +29,9 @@ from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import ZengineError
 from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
-from zengine.views.crud import crud_view
+from zengine.views.crud import CrudView
 
+crud_view = CrudView()
 
 class InMemoryPackager(Packager):
     PARSER_CLASS = CamundaBMPNParser
@@ -404,9 +405,12 @@ class ZEngine(object):
         for activity_package in paths:
             try:
                 full_path = "%s.%s" % (activity_package, activity)
-                self.workflow_methods[activity] = get_object_from_path(full_path)
+                activity_object = get_object_from_path(full_path)
+                # if activity_object.__base__ == CrudView:
+                #     activity_object = activity_object()
+                self.workflow_methods[activity] = activity_object
                 break
-            except:
+            except (ImportError, AttributeError, IndexError):
                 errors.append(full_path)
                 number_of_paths = len(paths)
                 index_no = paths.index(activity_package)

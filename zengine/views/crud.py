@@ -6,11 +6,9 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import datetime
-
 import falcon
 from falcon import HTTPNotFound
 import six
-
 from pyoko import form
 from pyoko.conf import settings
 from pyoko.model import Model, model_registry
@@ -19,14 +17,30 @@ from zengine.lib.forms import JsonForm
 from zengine.log import log
 from zengine.views.base import BaseView
 
-GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
+# GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
 
+
+# class CRUDRegistry(type):
+#     registry = {}
+#
+#     def __init__(mcs, name, bases, attrs):
+#         CRUDRegistry.registry[mcs.__name__] = mcs
+#
+#     @classmethod
+#     def _get_permission_names(cls):
+#         perms = []
+#         for kls_name, kls in cls.registry.items():
+#             for method_name in cls.__dict__.keys():
+#                 if method_name.endswith('_view'):
+#                     perms.append("%s.%s" % (kls_name, method_name))
+#         return perms
 
 class CrudForm(JsonForm):
     save_list = form.Button("Kaydet ve Listele", cmd="save::list")
     save_edit = form.Button("Kaydet ve Devam Et", cmd="save::edit")
 
 
+# @six.add_metaclass(CRUDRegistry)
 class CrudView(BaseView):
     """
     A base class for "Create List Show Update Delete" type of views.
@@ -41,6 +55,9 @@ class CrudView(BaseView):
             self.__call__(current)
 
     MODEL = None
+
+
+
     def __call__(self, current):
         current.log.info("CRUD CALL")
         self.current = current
@@ -53,17 +70,12 @@ class CrudView(BaseView):
         self.check_for_permission()
         current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
                                                     self.object.__class__.__name__))
-        self.__class__.__dict__['%s_view' % self.cmd](self)
+        getattr(self, '%s_view' % self.cmd)()
         if self.next_cmd:
             self.current.task_data['cmd'] = self.next_cmd
 
-
-
     def check_for_permission(self):
-        if self.cmd:
-            permission = "%s.%s" % (self.current.input["model"], self.cmd)
-        else:
-            permission = self.current.input["model"]
+        permission = "%s.%s" % (self.object.__class__.__name__, self.cmd)
         log.debug("CHECK CRUD PERM: %s" % permission)
         if (self.current.task_type in NO_PERM_TASKS_TYPES or
                     permission in settings.ANONYMOUS_WORKFLOWS):
@@ -74,7 +86,6 @@ class CrudView(BaseView):
 
     def create_form(self):
         self.form = CrudForm(self.object, current=self.current)
-
 
     def get_model_class(self):
         model = self.MODEL if self.MODEL else self.current.input['model']
@@ -196,7 +207,7 @@ class CrudView(BaseView):
         self.object.save()
         if self.next_cmd and obj_is_new:
             self.current.task_data['added_obj'] = self.object.key
-        # self.current.task_data['object_id'] = self.object.key
+            # self.current.task_data['object_id'] = self.object.key
 
     def delete_view(self):
         # TODO: add confirmation dialog
@@ -205,5 +216,3 @@ class CrudView(BaseView):
         self.object.delete()
         del self.current.input['object_id']
         # del self.current.task_data['object_id']
-
-crud_view = CrudView()
