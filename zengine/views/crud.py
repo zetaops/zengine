@@ -17,6 +17,7 @@ from zengine.lib.forms import JsonForm
 from zengine.log import log
 from zengine.views.base import BaseView
 
+
 # GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
 
 
@@ -35,9 +36,6 @@ from zengine.views.base import BaseView
 #                     perms.append("%s.%s" % (kls_name, method_name))
 #         return perms
 
-class CrudForm(JsonForm):
-    save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-    save_edit = form.Button("Kaydet ve Devam Et", cmd="save::edit")
 
 
 # @six.add_metaclass(CRUDRegistry)
@@ -49,14 +47,22 @@ class CrudView(BaseView):
 
     :type object: Model | None
     """
-    def __init__(self, current=None):
-        super(CrudView, self).__init__(current)
-        if current:
-            self.__call__(current)
 
-    MODEL = None
+    # def __init__(self, current=None):
+    #     super(CrudView, self).__init__(current)
+    #     if current:
+    #         self.__call__(current)
 
+    class Meta:
+        model = None
+        init_view = 'list'
+        filter = {}
+        allow_client_filters = True
+        title = None
 
+    class CrudForm(JsonForm):
+        save_list = form.Button("Kaydet ve Listele", cmd="save::list")
+        save_edit = form.Button("Kaydet ve Devam Et", cmd="save::edit")
 
     def __call__(self, current):
         current.log.info("CRUD CALL")
@@ -65,7 +71,7 @@ class CrudView(BaseView):
         self.create_object()
         self.create_form()
         if not self.cmd:
-            self.cmd = 'list'
+            self.cmd = self.Meta.init_view
             current.task_data['cmd'] = self.cmd
         self.check_for_permission()
         current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
@@ -85,10 +91,10 @@ class CrudView(BaseView):
                                        "You don't have required model permission: %s" % permission)
 
     def create_form(self):
-        self.form = CrudForm(self.object, current=self.current)
+        self.form = self.CrudForm(self.object, current=self.current)
 
     def get_model_class(self):
-        model = self.MODEL if self.MODEL else self.current.input['model']
+        model = self.Meta.model if self.Meta.model else self.current.input['model']
         if isinstance(model, Model):
             return model
         else:
@@ -143,15 +149,18 @@ class CrudView(BaseView):
                     list_headers.append(getattr(self.object, f).title)
                 else:
                     list_headers.append(self.object._fields[f].title)
-            self.output['nobjects'].append(list_headers)
+            self.output['objects'].append(list_headers)
         else:
-            self.output['nobjects'].append('-1')
+            self.output['objects'].append('-1')
 
     def _process_list_filters(self, query):
-        if self.current.request.params:
-            return query.filter(**self.current.request.params)
-        if 'filters' in self.input:
-            return query.filter(**self.input['filters'])
+        if self.Meta.filter:
+            query = query.filter(**self.Meta.filter)
+        if self.Meta.allow_client_filters:
+            if self.current.request.params:
+                query = query.filter(**self.current.request.params)
+            if 'filters' in self.input:
+                query = query.filter(**self.input['filters'])
         return query
 
     def _process_list_search(self, query):
@@ -169,13 +178,13 @@ class CrudView(BaseView):
         query = self._process_list_filters(query)
         query = self._process_list_search(query)
         self.output['client_cmd'] = 'list_objects'
-        self.output['nobjects'] = []
+        self.output['objects'] = []
         self._make_list_header()
         for obj in query:
             if self._just_deleted_object(obj):
                 continue
-            self.output['nobjects'].append(self._get_list_obj(obj))
-        self._just_created_object(self.output['nobjects'])
+            self.output['objects'].append(self._get_list_obj(obj))
+        self._just_created_object(self.output['objects'])
 
     def _just_deleted_object(self, obj):
         # compensate riak~solr sync delay
@@ -190,7 +199,7 @@ class CrudView(BaseView):
             key = self.current.task_data['added_obj']
             if not any([o[0] == key for o in objects]):
                 obj = self.object.objects.get(key)
-                self.output['nobjects'].insert(1, self._get_list_obj(obj))
+                self.output['objects'].insert(1, self._get_list_obj(obj))
                 del self.current.task_data['added_obj']
 
     def edit_view(self):
