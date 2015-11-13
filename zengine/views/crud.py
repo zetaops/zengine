@@ -102,7 +102,9 @@ class CrudView(BaseView):
 
     def create_object(self):
         model_class = self.get_model_class()
-        object_id = self.input.get('object_id')  # or self.current.task_data.get('object_id')
+        object_id = self.input.get('object_id')
+        if not object_id and 'form' in self.input:
+            object_id = self.input['form'].get('object_key')
         if object_id:
             try:
                 self.object = model_class(self.current).objects.get(object_id)

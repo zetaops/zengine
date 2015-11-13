@@ -406,11 +406,11 @@ class ZEngine(object):
             try:
                 full_path = "%s.%s" % (activity_package, activity)
                 activity_object = get_object_from_path(full_path)
-                # if activity_object.__base__ == CrudView:
-                #     activity_object = activity_object()
+                if getattr(activity_object, '__base__', None) == CrudView:
+                    activity_object = activity_object()
                 self.workflow_methods[activity] = activity_object
                 break
-            except (ImportError, AttributeError, IndexError):
+            except (ImportError,):
                 errors.append(full_path)
                 number_of_paths = len(paths)
                 index_no = paths.index(activity_package)

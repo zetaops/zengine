@@ -23,6 +23,14 @@ class JsonForm(Form):
             "model": {}
         }
         cat_data = CatalogData(self.context)
+
+        if self._model.is_in_db():
+            # key = self._model.key
+            # result["schema"]["properties"]['_id'] = {"type": "string", "title": ""}
+            result["model"]['object_key'] = self._model.key
+            # result["form"].append("_id")
+            # result["schema"]["required"].append('_id')
+
         for itm in self._serialize():
 
             item_props = {'type': itm['type'],
