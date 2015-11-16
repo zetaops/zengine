@@ -73,6 +73,8 @@ class CrudView(BaseView):
         allow_add = True
         objects_per_page = 20
         title = None
+        dispatch = True
+        object_workflows = []
 
     class CrudForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
@@ -82,7 +84,7 @@ class CrudView(BaseView):
         current.log.info("CRUD CALL")
         self.current = current
         self.set_current(current)
-        self.create_object()
+        self.create_initial_object()
         self.create_form()
         if not self.cmd:
             self.cmd = self.Meta.init_view
@@ -124,7 +126,7 @@ class CrudView(BaseView):
         else:
             return model_registry.get_model(model)
 
-    def create_object(self):
+    def create_initial_object(self):
         model_class = self.get_model_class()
         object_id = self.input.get('object_id')
         if not object_id and 'form' in self.input:
@@ -220,11 +222,14 @@ class CrudView(BaseView):
 
     def delete_view(self):
         # TODO: add confirmation dialog
-        if self.subcmd:  # to overcome 1s riak-solr delay
+        if self.next_cmd:  # to overcome 1s riak-solr delay
             self.current.task_data['deleted_obj'] = self.object.key
         self.object.delete()
         del self.current.input['object_id']
         # del self.current.task_data['object_id']
+
+    def object_actions(self, obj):
+        pass
 
     def list_view(self):
         # TODO: add pagination
