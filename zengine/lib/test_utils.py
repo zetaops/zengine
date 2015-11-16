@@ -4,6 +4,8 @@ from time import sleep
 import falcon
 from falcon import errors
 from werkzeug.test import Client
+
+from pyoko.lib.utils import pprnt
 from zengine.server import app
 from pprint import pprint
 import json
@@ -46,9 +48,11 @@ class RWrapper(object):
 
     def raw(self):
         pprint(self.code)
-        pprint(self.json)
+        pprnt(self.json)
         pprint(self.headers)
-        pprint(self.content)
+        if not self.json:
+            pprint(self.content)
+
 
 
 class TestClient(object):
