@@ -26,7 +26,7 @@ class UserCrud(CrudView):
     def silinemez_kullanicilar(self, obj, result):
         if obj.username in ['admin']:
             result['can_delete'] = False
-        return obj, result
+        return result
 
     @view_method
     def delete(self):
