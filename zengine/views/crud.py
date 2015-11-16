@@ -59,10 +59,33 @@ class CrudView(BaseView):
     :type object: Model | None
     """
 
-    # def __init__(self, current=None):
-    #     super(CrudView, self).__init__(current)
-    #     if current:
-    #         self.__call__(current)
+    FILTER_METHODS = []
+    VIEW_METHODS = {}
+    QUERY_METHODS = []
+
+
+    def filter(func):
+        func.filter_method = True
+        return func
+
+    def view(func):
+        func.view_method = True
+        return func
+
+    def query(func):
+        func.query_method = True
+        return func
+
+    def __init__(self, current=None):
+        super(CrudView, self).__init__(current)
+        for name, func in self.__class__.__dict__.items():
+            if hasattr(func, 'view_method'):
+                self.VIEW_METHODS[name] = func
+            elif hasattr(func, 'filter_method'):
+                self.FILTER_METHODS.append(func)
+            elif hasattr(func, 'query_method'):
+                self.QUERY_METHODS.append(func)
+        pass
 
     class Meta:
         model = None
@@ -74,18 +97,24 @@ class CrudView(BaseView):
         objects_per_page = 20
         title = None
         dispatch = True
-        object_workflows = []
+        object_actions = []
 
     class CrudForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
         save_edit = form.Button("Kaydet ve Devam Et", cmd="save::edit")
 
-    def __call__(self, current):
-        current.log.info("CRUD CALL")
-        self.current = current
+    def _init(self, current):
+        """
+        prepare
+        :param current:
+        """
         self.set_current(current)
         self.create_initial_object()
         self.create_form()
+
+    def __call__(self, current):
+        current.log.info("CRUD CALL")
+        self._init(current)
         if not self.cmd:
             self.cmd = self.Meta.init_view
             current.task_data['cmd'] = self.cmd
@@ -98,7 +127,9 @@ class CrudView(BaseView):
             'allow_edit': self.Meta.allow_edit,
             'allow_add': self.Meta.allow_add
         }
-        getattr(self, '%s_view' % self.cmd)()
+        if self.Meta.dispatch:
+            # getattr(self, '%s_view' % self.cmd)()
+            self.VIEW_METHODS[self.cmd](self)
         if self.next_cmd:
             self.current.task_data['cmd'] = self.next_cmd
 
@@ -117,7 +148,7 @@ class CrudView(BaseView):
                                        "You don't have required model permission: %s" % permission)
 
     def create_form(self):
-        self.form = self.CrudForm(self.object, current=self.current)
+        self.object_form = self.CrudForm(self.object, current=self.current)
 
     def get_model_class(self):
         model = self.Meta.model if self.Meta.model else self.current.input['model']
@@ -141,21 +172,6 @@ class CrudView(BaseView):
         else:
             self.object = model_class(self.current)
 
-    def _get_list_obj(self, mdl):
-        if self.brief:
-            return [mdl.key, unicode(mdl) if six.PY2 else mdl]
-        else:
-            result = [mdl.key]
-            for f in self.object.Meta.list_fields:
-                field = getattr(mdl, f)
-                if callable(field):
-                    result.append(field())
-                elif isinstance(field, (datetime.date, datetime.datetime)):
-                    result.append(mdl._fields[f].clean_value(field))
-                else:
-                    result.append(field)
-            return result
-
     def _make_list_header(self):
         if not self.brief:  # add list headers
             list_headers = []
@@ -168,6 +184,7 @@ class CrudView(BaseView):
         else:
             self.output['objects'].append('-1')
 
+    @query
     def _process_list_filters(self, query):
         if self.Meta.default_filter:
             query = query.filter(**self.Meta.default_filter)
@@ -178,6 +195,7 @@ class CrudView(BaseView):
                 query = query.filter(**self.input['filters'])
         return query
 
+    @query
     def _process_list_search(self, query):
         if 'query' in self.input:
             query_string = self.input['query']
@@ -186,7 +204,59 @@ class CrudView(BaseView):
             return query.raw(search_string)
         return query
 
-    def _is_just_deleted_object(self, obj):
+    @view
+    def form(self):
+        self.output['forms'] = self.object_form.serialize()
+        self.set_client_cmd('form')
+
+    @view
+    def save(self):
+        self.object = self.object_form.deserialize(self.current.input['form'])
+        obj_is_new = self.object.is_in_db()
+        self.object.save()
+        if self.next_cmd and obj_is_new:
+            self.current.task_data['added_obj'] = self.object.key
+
+    @view
+    def delete(self):
+        # TODO: add confirmation dialog
+        if self.next_cmd:  # to overcome 1s riak-solr delay
+            self.current.task_data['deleted_obj'] = self.object.key
+        self.object.delete()
+        del self.current.input['object_id']
+        # del self.current.task_data['object_id']
+
+    @filter
+    def _get_list_obj(self, obj, result):
+        if self.brief:
+            result['fields'].append(unicode(obj) if six.PY2 else obj)
+            return obj, result
+        else:
+            for f in self.object.Meta.list_fields:
+                field = getattr(obj, f)
+                if callable(field):
+                    result['fields'].append(field())
+                elif isinstance(field, (datetime.date, datetime.datetime)):
+                    result['fields'].append(obj._fields[f].clean_value(field))
+                else:
+                    result['fields'].append(field)
+            return obj, result
+
+    def _parse_object_actions(self, obj):
+        result = {'key': obj.key, 'fields': [], 'do_list': True}
+        for f in self.FILTER_METHODS:
+            obj, result = f(self, obj, result)
+            if not result:
+                return obj, False
+        return obj, result
+
+    def _apply_list_queries(self, query):
+        for f in self.QUERY_METHODS:
+            query = f(self, query)
+        return query
+
+    @filter
+    def remove_just_deleted_object(self, obj, result):
         """
         to compensate riak~solr sync delay, remove just deleted
         object from from object list (if exists)
@@ -194,7 +264,9 @@ class CrudView(BaseView):
         if ('deleted_obj' in self.current.task_data and
                     self.current.task_data['deleted_obj'] == obj.key):
             del self.current.task_data['deleted_obj']
-            return True
+            result['do_list'] = False
+
+        return obj, result
 
     def _add_just_created_object(self, objects):
         """
@@ -208,50 +280,27 @@ class CrudView(BaseView):
                 obj = self.object.objects.get(key)
                 self.output['objects'].insert(1, self._get_list_obj(obj))
                 del self.current.task_data['added_obj']
-
-    def form_view(self):
-        self.output['forms'] = self.form.serialize()
-        self.set_client_cmd('form')
-
-    def save_view(self):
-        self.object = self.form.deserialize(self.current.input['form'])
-        obj_is_new = self.object.is_in_db()
-        self.object.save()
-        if self.next_cmd and obj_is_new:
-            self.current.task_data['added_obj'] = self.object.key
-
-    def delete_view(self):
-        # TODO: add confirmation dialog
-        if self.next_cmd:  # to overcome 1s riak-solr delay
-            self.current.task_data['deleted_obj'] = self.object.key
-        self.object.delete()
-        del self.current.input['object_id']
-        # del self.current.task_data['object_id']
-
-    def object_actions(self, obj):
-        pass
-
-    def list_view(self):
+    @view
+    def list(self):
         # TODO: add pagination
         self.set_client_cmd('list')
         self.brief = 'brief' in self.input or not self.object.Meta.list_fields
-        query = self.object.objects.filter()
-        query = self._process_list_filters(query)
-        query = self._process_list_search(query)
-
+        query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
         self._make_list_header()
         for obj in query:
-            if self._is_just_deleted_object(obj):
-                continue
-            self.output['objects'].append(self._get_list_obj(obj))
+            obj, list_obj = self._parse_object_actions(obj)
+            if list_obj['do_list']:
+                self.output['objects'].append(list_obj)
         self._add_just_created_object(self.output['objects'])
 
-    def show_view(self):
+    @view
+    def show(self):
         self.set_client_cmd('show')
-        self.output['object'] = self.form.serialize()['model']
+        self.output['object'] = self.object_form.serialize()['model']
         self.output['object']['key'] = self.object.key
 
-    def list_form_view(self):
-        self.form_view()
-        self.list_view()
+    @view
+    def list_form(self):
+        self.form()
+        self.list()
