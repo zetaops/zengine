@@ -59,6 +59,6 @@ class TestCase(BaseTestCase):
     def test_list_form(self):
         self.prepare_client('/extended_crud/')
         resp = self.client.post()
-        assert resp.json["client_cmd"] == ["list", "form"]
+        assert sorted(resp.json["client_cmd"]) == sorted(["list", "form"])
 
         resp.raw()
