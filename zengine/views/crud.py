@@ -67,17 +67,11 @@ def list_query(func):
 class CrudView(BaseView):
     """
     A base class for "Create List Show Update Delete" type of views.
-
-
-
-    :type object: Model | None
     """
 
     FILTER_METHODS = []
     VIEW_METHODS = {}
     QUERY_METHODS = []
-
-
 
     def __init__(self, current=None):
         super(CrudView, self).__init__(current)
@@ -93,7 +87,6 @@ class CrudView(BaseView):
     class Meta:
         model = None
         init_view = 'list'
-        default_filter = {}
         allow_filters = True
         allow_edit = True
         allow_add = True
@@ -189,8 +182,6 @@ class CrudView(BaseView):
 
     @list_query
     def _process_list_filters(self, query):
-        if self.Meta.default_filter:
-            query = query.filter(**self.Meta.default_filter)
         if self.Meta.allow_filters:
             if self.current.request.params:
                 query = query.filter(**self.current.request.params)
