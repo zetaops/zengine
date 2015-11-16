@@ -7,14 +7,13 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from time import sleep
-from pyoko.model import model_registry
 from zengine.lib.test_utils import BaseTestCase, username
 
 RESPONSES = {}
 
+
 class TestCase(BaseTestCase):
     def test_list_search_add_delete_with_user_model(self):
-
         # setup workflow
         self.prepare_client('/crud/')
 
@@ -57,9 +56,9 @@ class TestCase(BaseTestCase):
         # number of objects should be equal to starting point
         assert num_of_objects == len(resp.json['objects']) - 1
 
+    def test_list_form(self):
+        self.prepare_client('/extended_crud/')
+        resp = self.client.post()
+        assert resp.json["client_cmd"] == ["list", "form"]
 
-
-
-
-
-
+        resp.raw()
