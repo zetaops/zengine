@@ -93,7 +93,14 @@ class CrudView(BaseView):
         objects_per_page = 20
         title = None
         dispatch = True
-        object_actions = []
+        object_actions = [
+            {'name':'Sil', 'cmd': 'delete'},
+            {'name':'Yetkilendir', 'wf': 'manage_permissions', 'mode': 'modal'},
+            # various values can be given to define how to start WF activity
+            # modal: run in modal window
+            # bg: run in bg (for wf's that doesn't contain usertasks)
+            # new: new window
+        ]
 
     class CrudForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
@@ -224,7 +231,7 @@ class CrudView(BaseView):
     def _get_list_obj(self, obj, result):
         if self.brief:
             result['fields'].append(unicode(obj) if six.PY2 else obj)
-            return obj, result
+            return result
         else:
             for f in self.object.Meta.list_fields:
                 field = getattr(obj, f)
@@ -234,23 +241,32 @@ class CrudView(BaseView):
                     result['fields'].append(obj._fields[f].clean_value(field))
                 else:
                     result['fields'].append(field)
-            return obj, result
+            return result
 
     def _parse_object_actions(self, obj):
-        result = {'key': obj.key, 'fields': [], 'do_list': True}
+        """
+        applies registered object filter methods
+        :param obj: pyoko model instance
+        :return: (obj, result) model instance
+        """
+        result = {'key': obj.key, 'fields': [],
+                  'do_list': True, 'actions': self.Meta.object_actions[:]}
         for f in self.FILTER_METHODS:
-            obj, result = f(self, obj, result)
-            if not result:
-                return obj, False
-        return obj, result
+            result = f(self, obj, result)
+        return result
 
     def _apply_list_queries(self, query):
+        """
+        applies registered query methods
+        :param query: queryset
+        :return: queryset
+        """
         for f in self.QUERY_METHODS:
             query = f(self, query)
         return query
 
     @obj_filter
-    def remove_just_deleted_object(self, obj, result):
+    def _remove_just_deleted_object(self, obj, result):
         """
         to compensate riak~solr sync delay, remove just deleted
         object from from object list (if exists)
@@ -260,7 +276,7 @@ class CrudView(BaseView):
             del self.current.task_data['deleted_obj']
             result['do_list'] = False
 
-        return obj, result
+        return result
 
     def _add_just_created_object(self, objects):
         """
@@ -284,7 +300,7 @@ class CrudView(BaseView):
         self.output['objects'] = []
         self._make_list_header()
         for obj in query:
-            obj, list_obj = self._parse_object_actions(obj)
+            list_obj = self._parse_object_actions(obj)
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(self.output['objects'])
