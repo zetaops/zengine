@@ -410,7 +410,7 @@ class ZEngine(object):
                     activity_object = activity_object()
                 self.workflow_methods[activity] = activity_object
                 break
-            except (ImportError,):
+            except (ImportError, AttributeError):
                 errors.append(full_path)
                 number_of_paths = len(paths)
                 index_no = paths.index(activity_package)
