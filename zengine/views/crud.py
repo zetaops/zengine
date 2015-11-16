@@ -15,7 +15,7 @@ from pyoko.model import Model, model_registry
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.lib.forms import JsonForm
 from zengine.log import log
-from zengine.views.base import BaseView, NEXT_CMD_SPLITTER
+from zengine.views.base import BaseView
 
 
 # GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
@@ -49,6 +49,20 @@ class CRUDRegistry(type):
         return perms
 
 
+def obj_filter(func):
+    func.filter_method = True
+    return func
+
+
+def view_method(func):
+    func.view_method = True
+    return func
+
+
+def list_query(func):
+    func.query_method = True
+    return func
+
 @six.add_metaclass(CRUDRegistry)
 class CrudView(BaseView):
     """
@@ -64,17 +78,6 @@ class CrudView(BaseView):
     QUERY_METHODS = []
 
 
-    def filter(func):
-        func.filter_method = True
-        return func
-
-    def view(func):
-        func.view_method = True
-        return func
-
-    def query(func):
-        func.query_method = True
-        return func
 
     def __init__(self, current=None):
         super(CrudView, self).__init__(current)
@@ -184,7 +187,7 @@ class CrudView(BaseView):
         else:
             self.output['objects'].append('-1')
 
-    @query
+    @list_query
     def _process_list_filters(self, query):
         if self.Meta.default_filter:
             query = query.filter(**self.Meta.default_filter)
@@ -195,7 +198,7 @@ class CrudView(BaseView):
                 query = query.filter(**self.input['filters'])
         return query
 
-    @query
+    @list_query
     def _process_list_search(self, query):
         if 'query' in self.input:
             query_string = self.input['query']
@@ -204,12 +207,12 @@ class CrudView(BaseView):
             return query.raw(search_string)
         return query
 
-    @view
+    @view_method
     def form(self):
         self.output['forms'] = self.object_form.serialize()
         self.set_client_cmd('form')
 
-    @view
+    @view_method
     def save(self):
         self.object = self.object_form.deserialize(self.current.input['form'])
         obj_is_new = self.object.is_in_db()
@@ -217,7 +220,7 @@ class CrudView(BaseView):
         if self.next_cmd and obj_is_new:
             self.current.task_data['added_obj'] = self.object.key
 
-    @view
+    @view_method
     def delete(self):
         # TODO: add confirmation dialog
         if self.next_cmd:  # to overcome 1s riak-solr delay
@@ -226,7 +229,7 @@ class CrudView(BaseView):
         del self.current.input['object_id']
         # del self.current.task_data['object_id']
 
-    @filter
+    @obj_filter
     def _get_list_obj(self, obj, result):
         if self.brief:
             result['fields'].append(unicode(obj) if six.PY2 else obj)
@@ -255,7 +258,7 @@ class CrudView(BaseView):
             query = f(self, query)
         return query
 
-    @filter
+    @obj_filter
     def remove_just_deleted_object(self, obj, result):
         """
         to compensate riak~solr sync delay, remove just deleted
@@ -280,7 +283,8 @@ class CrudView(BaseView):
                 obj = self.object.objects.get(key)
                 self.output['objects'].insert(1, self._get_list_obj(obj))
                 del self.current.task_data['added_obj']
-    @view
+
+    @view_method
     def list(self):
         # TODO: add pagination
         self.set_client_cmd('list')
@@ -294,13 +298,13 @@ class CrudView(BaseView):
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(self.output['objects'])
 
-    @view
+    @view_method
     def show(self):
         self.set_client_cmd('show')
         self.output['object'] = self.object_form.serialize()['model']
         self.output['object']['key'] = self.object.key
 
-    @view
+    @view_method
     def list_form(self):
         self.form()
         self.list()

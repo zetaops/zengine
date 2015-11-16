@@ -11,7 +11,7 @@ from falcon import HTTPError
 from pyoko import form
 # from zengine.models import User
 from zengine.lib.forms import JsonForm
-from zengine.views.crud import CrudView
+from zengine.views.crud import CrudView, obj_filter, view_method
 
 
 class UserCrud(CrudView):
@@ -22,13 +22,13 @@ class UserCrud(CrudView):
     class CrudForm(JsonForm):
         save_list = form.Button("Btn1", cmd="list_form::list_form")
 
-    @CrudView.filter
+    @obj_filter
     def silinemez_kullanicilar(self, obj, result):
         if obj.username in ['admin']:
             result['can_delete'] = False
         return obj, result
 
-    @CrudView.view
+    @view_method
     def delete(self):
         if self.object.username in ['admin']:
             raise HTTPError()
