@@ -36,8 +36,8 @@ class JsonForm(Form):
             item_props = {'type': itm['type'],
                           'title': itm['title'],
                           }
-            if itm['name'] in self.Meta.attributes:
-                item_props['attributes'] = self.Meta.attributes[itm['name']]
+            # if itm['name'] in self.Meta.attributes:
+            #     item_props['attributes'] = self.Meta.attributes[itm['name']]
 
             if itm.get('cmd'):
                 item_props['cmd'] = itm['cmd']
