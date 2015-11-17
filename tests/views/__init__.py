@@ -18,13 +18,16 @@ class UserCrud(CrudView):
     class Meta:
         model = 'User'
         init_view = 'list_form'
+        attributes = {
+            'Permission': {
+                'permission_id': [{'name': 'exclude', 'value': {'code': 'delete'}}]
+            },
+            'Main': {
+                'permission_id': [{'name': 'exclude', 'value': {'code': 'delete'}}]
+            }
+        }
 
     class CrudForm(JsonForm):
-        class Meta:
-            attributes = {
-                'permission_id': [{'name':'exclude', 'value':{'code': 'delete'}}]
-
-            }
         save_list = form.Button("Btn1", cmd="list_form::list_form")
 
     @obj_filter
