@@ -74,10 +74,7 @@ def get_workflow_permissions(permission_list=None):
 def get_model_permissions(permission_list=None):
     from pyoko.model import model_registry
     from zengine.views.crud import CrudView
-    generic_commands = []
-    for method_name in CrudView.__dict__.keys():
-        if method_name.endswith('_view'):
-            generic_commands.append(method_name[:-5])
+    generic_commands = CrudView().VIEW_METHODS.keys()
     permissions = permission_list or []
     for model in model_registry.get_base_models():
         model_name = model.__name__
