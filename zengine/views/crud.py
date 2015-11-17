@@ -63,6 +63,7 @@ def list_query(func):
     func.query_method = True
     return func
 
+
 @six.add_metaclass(CRUDRegistry)
 class CrudView(BaseView):
     """
@@ -93,18 +94,24 @@ class CrudView(BaseView):
         objects_per_page = 20
         title = None
         dispatch = True
+        attributes = {}
         object_actions = [
-            {'name':'Sil', 'cmd': 'delete'},
-            {'name':'Yetkilendir', 'wf': 'manage_permissions', 'mode': 'modal'},
-            # various values can be given to define how to start WF activity
+            {'name': 'Sil', 'cmd': 'delete', 'mode': 'bg', 'show_as': 'button'},
+            {'name': 'Düzenle', 'cmd': 'form', 'mode': 'normal', 'show_as': 'button'},
+            # {'name': 'Yetkilendir', 'wf': 'manage_permissions', 'mode': 'modal', 'show_as': 'menu'},
+            # actions can be shown as "button", "context_menu" or in "group_action" menu
+
+            # various values can be given to define how to run an activity
+            # normal: open in same window
             # modal: run in modal window
             # bg: run in bg (for wf's that doesn't contain usertasks)
             # new: new window
+
         ]
 
     class CrudForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-        save_edit = form.Button("Kaydet ve Devam Et", cmd="save::edit")
+        save_edit = form.Button("Kaydet ve Devam Et", cmd="save::form")
 
     def _init(self, current):
         """
@@ -116,22 +123,18 @@ class CrudView(BaseView):
         self.create_form()
 
     def __call__(self, current):
-        current.log.info("CRUD CALL")
         self._init(current)
         if not self.cmd:
             self.cmd = self.Meta.init_view
             current.task_data['cmd'] = self.cmd
+        current.log.info('Calling %s.%s(%s)' % (self.__class__.__name__, self.cmd, self.object))
         self.check_for_permission()
-        current.log.info('Calling %s_view of %s' % ((self.cmd or 'list'),
-                                                    self.object.__class__.__name__))
         self.client_cmd = set()
         self.output['meta'] = {
             'allow_filters': self.Meta.allow_filters,
-            'allow_edit': self.Meta.allow_edit,
-            'allow_add': self.Meta.allow_add
+            'attributes': self.Meta.attributes,
         }
         if self.Meta.dispatch:
-            # getattr(self, '%s_view' % self.cmd)()
             self.VIEW_METHODS[self.cmd](self)
         if self.next_cmd:
             self.current.task_data['cmd'] = self.next_cmd
@@ -199,9 +202,8 @@ class CrudView(BaseView):
     @list_query
     def _process_list_search(self, query):
         if 'query' in self.input:
-            query_string = self.input['query']
             search_string = ' OR '.join(
-                ['%s:*%s*' % (f, query_string) for f in self.object.Meta.list_fields])
+                ['%s:*%s*' % (f, self.input['query']) for f in self.object.Meta.list_fields])
             return query.raw(search_string)
         return query
 
@@ -278,18 +280,17 @@ class CrudView(BaseView):
 
         return result
 
-    def _add_just_created_object(self, objects):
+    def _add_just_created_object(self, new_added_key, new_added_listed):
         """
         to compensate riak~solr sync delay, add just created
         object to the object list
         :param objects:
         """
-        if 'added_obj' in self.current.task_data:
-            key = self.current.task_data['added_obj']
-            if not any([o[0] == key for o in objects]):
-                obj = self.object.objects.get(key)
-                self.output['objects'].insert(1, self._get_list_obj(obj))
-                del self.current.task_data['added_obj']
+        if new_added_key and not new_added_listed:
+            obj = self.object.objects.get(new_added_key)
+            list_obj = self._parse_object_actions(obj)
+            if list_obj['do_list']:
+                self.output['objects'].append(list_obj)
 
     @view_method
     def list(self):
@@ -299,11 +300,14 @@ class CrudView(BaseView):
         query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
         self._make_list_header()
+        new_added_key = self.current.task_data.get('added_obj')
+        new_added_listed = False
         for obj in query:
+            new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
-        self._add_just_created_object(self.output['objects'])
+        self._add_just_created_object(new_added_key, new_added_listed)
 
     @view_method
     def show(self):
