@@ -76,3 +76,9 @@ SESSION_OPTIONS = {
 VIEW_URLS = [
     # ('falcon URI template', 'python path to view method/class'),
 ]
+
+MESSAGES = {
+    'lane_change_message_title': 'System needs you!',
+    'lane_change_message_body': 'Some workflow reached a state that needs your action, '
+                                'please follow the link bellow',
+}

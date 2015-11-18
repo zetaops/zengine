@@ -20,11 +20,13 @@ from beaker.session import Session
 from falcon import Request, Response
 import falcon
 import lazy_object_proxy
+from zengine.notifications import Notify
+
 from zengine import signals
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
 from zengine.config import settings, AuthBackend
-from zengine.lib.cache import NotifyCache, WFCache
+from zengine.lib.cache import WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import ZengineError
 from zengine.log import log
@@ -78,12 +80,12 @@ class Current(object):
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
 
-        self.msg_cache = NotifyCache(self.user_id)
+        self.msg_cache = Notify(self.user_id)
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
 
     def set_message(self, title, msg, typ, url=None):
-        self.msg_cache.add(
+        self.msg_cache.set_message(
             {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
 
     @property
@@ -144,6 +146,9 @@ class WFCurrent(Current):
                 self.lane_relations = lane_data['relations']
             if 'owners' in lane_data:
                 self.lane_owners = lane_data['owners']
+
+    def get_wf_url(self):
+        return "#/%s/%s" % (self.workflow_name, self.token)
 
     def _update_task(self, task):
         """
