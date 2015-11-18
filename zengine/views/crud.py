@@ -136,8 +136,8 @@ class CrudView(BaseView):
         }
         if self.Meta.dispatch:
             self.VIEW_METHODS[self.cmd](self)
-        if self.next_cmd:
-            self.current.task_data['cmd'] = self.next_cmd
+        self.current.task_data['cmd'] = self.next_cmd
+
 
     def set_client_cmd(self, cmd):
         self.client_cmd.add(cmd)
@@ -165,10 +165,10 @@ class CrudView(BaseView):
 
     def create_initial_object(self):
         model_class = self.get_model_class()
-        object_id = self.input.get('object_id')
+        object_id = self.current.task_data.get('object_id')
         if not object_id and 'form' in self.input:
             object_id = self.input['form'].get('object_key')
-        if object_id:
+        if object_id and object_id != self.current.task_data.get('deleted_obj'):
             try:
                 self.object = model_class(self.current).objects.get(object_id)
                 if self.object.deleted:
@@ -223,11 +223,13 @@ class CrudView(BaseView):
     @view_method
     def delete(self):
         # TODO: add confirmation dialog
-        if self.next_cmd:  # to overcome 1s riak-solr delay
-            self.current.task_data['deleted_obj'] = self.object.key
+        # to overcome 1s riak-solr delay
+        self.current.task_data['deleted_obj'] = self.object.key
+        if 'object_id' in self.current.task_data:
+            del self.current.task_data['object_id']
         self.object.delete()
-        del self.current.input['object_id']
-        # del self.current.task_data['object_id']
+        self.set_client_cmd('reload')
+
 
     @obj_filter
     def _get_list_obj(self, obj, result):

@@ -12,7 +12,7 @@
       <bpmn2:outgoing>SequenceFlow_13</bpmn2:outgoing>
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="SequenceFlow_13" name="" sourceRef="form" targetRef="save_object"/>
-    <bpmn2:serviceTask id="delete_object" camunda:class="crud_view" name="delete_object">
+    <bpmn2:userTask id="delete_object" camunda:class="crud_view" camunda:assignee="crud_view" name="delete_object">
       <bpmn2:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="list">1</camunda:inputParameter>
@@ -20,7 +20,7 @@
       </bpmn2:extensionElements>
       <bpmn2:incoming>fin_to_delete</bpmn2:incoming>
       <bpmn2:outgoing>del_to_finish</bpmn2:outgoing>
-    </bpmn2:serviceTask>
+    </bpmn2:userTask>
     <bpmn2:sequenceFlow id="del_to_finish" name="" sourceRef="delete_object" targetRef="FINISH_XOR"/>
     <bpmn2:serviceTask id="save_object" camunda:class="crud_view" name="save_object">
       <bpmn2:incoming>SequenceFlow_13</bpmn2:incoming>
