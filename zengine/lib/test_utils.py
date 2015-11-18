@@ -40,9 +40,11 @@ class RWrapper(object):
         if int(self.code[:3]) >= 400:
             self.raw()
             if self.code in CODE_EXCEPTION:
-                raise CODE_EXCEPTION[self.code]
+                raise CODE_EXCEPTION[self.code](title=self.json.get('title'),
+                                                description=self.json.get('description'))
             else:
-                raise falcon.HTTPError
+                raise falcon.HTTPError(title=self.json.get('title'),
+                                       description=self.json.get('description'))
 
     def raw(self):
         pprint(self.code)

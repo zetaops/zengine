@@ -60,7 +60,7 @@
       <bpmn2:outgoing>SequenceFlow_9</bpmn2:outgoing>
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="SequenceFlow_9" name="" sourceRef="show_object" targetRef="FINISH_XOR"/>
-    <bpmn2:serviceTask id="init" camunda:class="crud_view" name="init">
+    <bpmn2:serviceTask id="init" name="init">
       <bpmn2:incoming>SequenceFlow_1</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_2</bpmn2:outgoing>
     </bpmn2:serviceTask>
