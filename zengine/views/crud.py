@@ -215,7 +215,7 @@ class CrudView(BaseView):
     @view_method
     def save(self):
         self.object = self.object_form.deserialize(self.current.input['form'])
-        obj_is_new = self.object.is_in_db()
+        obj_is_new = not self.object.is_in_db()
         self.object.save()
         if self.next_cmd and obj_is_new:
             self.current.task_data['added_obj'] = self.object.key
