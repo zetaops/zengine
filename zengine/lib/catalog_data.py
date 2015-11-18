@@ -43,3 +43,16 @@ class CatalogData(object):
         :return:
         """
         return CatalogCache(self.lang, key).get() or self.get_from_db(key)
+
+
+CATALOG_DATA = []
+
+
+def gettxt(source_text):
+    CATALOG_DATA.append(source_text)
+    return source_text
+
+
+def lazy_gettxt(source_text):
+    CATALOG_DATA.append(source_text)
+    return source_text
