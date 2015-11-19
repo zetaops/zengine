@@ -109,9 +109,12 @@ class CrudView(BaseView):
 
         ]
 
-    class CrudForm(JsonForm):
+    class ObjectForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
         save_edit = form.Button("Kaydet ve Devam Et", cmd="save::form")
+
+    class ListForm(JsonForm):
+        add = form.Button("Add", cmd="form")
 
     def _init(self, current):
         """
@@ -120,7 +123,7 @@ class CrudView(BaseView):
         """
         self.set_current(current)
         self.create_initial_object()
-        self.create_form()
+        self.create_object_form()
 
     def __call__(self, current):
         self._init(current)
@@ -153,8 +156,8 @@ class CrudView(BaseView):
             raise falcon.HTTPForbidden("Permission denied",
                                        "You don't have required model permission: %s" % permission)
 
-    def create_form(self):
-        self.object_form = self.CrudForm(self.object, current=self.current)
+    def create_object_form(self):
+        self.object_form = self.ObjectForm(self.object, current=self.current)
 
     def get_model_class(self):
         model = self.Meta.model if self.Meta.model else self.current.input['model']
@@ -164,19 +167,24 @@ class CrudView(BaseView):
             return model_registry.get_model(model)
 
     def create_initial_object(self):
-        model_class = self.get_model_class()
+        self.model_class = self.get_model_class()
         object_id = self.current.task_data.get('object_id')
         if not object_id and 'form' in self.input:
             object_id = self.input['form'].get('object_key')
         if object_id and object_id != self.current.task_data.get('deleted_obj'):
             try:
-                self.object = model_class(self.current).objects.get(object_id)
+                self.object = self.model_class(self.current).objects.get(object_id)
                 if self.object.deleted:
                     raise HTTPNotFound()
             except:
                 raise HTTPNotFound()
         else:
-            self.object = model_class(self.current)
+            self.object = self.model_class(self.current)
+
+    def get_selected_objects(self):
+        return {self.model_class(self.current).get(itm_key)
+                for itm_key in self.input['selected_items']}
+
 
     def _make_list_header(self):
         if not self.brief:  # add list headers
@@ -207,28 +215,6 @@ class CrudView(BaseView):
             return query.raw(search_string)
         return query
 
-    @view_method
-    def form(self):
-        self.output['forms'] = self.object_form.serialize()
-        self.set_client_cmd('form')
-
-    @view_method
-    def save(self):
-        self.object = self.object_form.deserialize(self.current.input['form'])
-        obj_is_new = not self.object.is_in_db()
-        self.object.save()
-        if self.next_cmd and obj_is_new:
-            self.current.task_data['added_obj'] = self.object.key
-
-    @view_method
-    def delete(self):
-        # TODO: add confirmation dialog
-        # to overcome 1s riak-solr delay
-        self.current.task_data['deleted_obj'] = self.object.key
-        if 'object_id' in self.current.task_data:
-            del self.current.task_data['object_id']
-        self.object.delete()
-        self.set_client_cmd('reload')
 
 
     @obj_filter
@@ -297,7 +283,8 @@ class CrudView(BaseView):
     @view_method
     def list(self):
         # TODO: add pagination
-        self.set_client_cmd('list')
+
+        self.set_client_cmd('form')
         self.brief = 'brief' in self.input or not self.object.Meta.list_fields
         query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
@@ -310,6 +297,7 @@ class CrudView(BaseView):
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
+        self.output['forms'] = self.ListForm(current=self.current).serialize()
 
     @view_method
     def show(self):
@@ -319,5 +307,31 @@ class CrudView(BaseView):
 
     @view_method
     def list_form(self):
-        self.form()
         self.list()
+        self.form()
+
+
+    @view_method
+    def form(self):
+        self.output['forms'] = self.object_form.serialize()
+        self.set_client_cmd('form')
+
+
+    @view_method
+    def save(self):
+        self.object = self.object_form.deserialize(self.current.input['form'])
+        obj_is_new = not self.object.is_in_db()
+        self.object.save()
+        if self.next_cmd and obj_is_new:
+            self.current.task_data['added_obj'] = self.object.key
+
+
+    @view_method
+    def delete(self):
+        # TODO: add confirmation dialog
+        # to overcome 1s riak-solr delay
+        self.current.task_data['deleted_obj'] = self.object.key
+        if 'object_id' in self.current.task_data:
+            del self.current.task_data['object_id']
+        self.object.delete()
+        self.set_client_cmd('reload')
