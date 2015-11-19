@@ -66,6 +66,7 @@ class Current(object):
             self.input = self.request.context['data']
             self.output = self.request.context['result']
             self.user_id = self.session.get('user_id')
+            self.role_id = self.session.get('role_id')
         except AttributeError:
             # when we want to use engine functions independently,
             # we need to create a fake current object
@@ -73,12 +74,14 @@ class Current(object):
             self.input = {}
             self.output = {}
             self.user_id = None
+            self.role_id = None
 
         self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
         self.log = log
         self.pool = {}
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
+        self.role = lazy_object_proxy.Proxy(lambda: self.auth.get_role())
 
         self.msg_cache = Notify(self.user_id)
         log.debug("\n\nINPUT DATA: %s" % self.input)
@@ -195,6 +198,7 @@ class ZEngine(object):
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
         self.user_model = get_object_from_path(settings.USER_MODEL)
+        self.role_model = get_object_from_path(settings.ROLE_MODEL)
 
     def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
         """
@@ -215,7 +219,7 @@ class ZEngine(object):
                 del task_data['cmd']
             wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
             if self.current.lane_name:
-                self.current.pool[self.current.lane_name] = self.current.user_id
+                self.current.pool[self.current.lane_name] = self.current.role_id
             wf_cache['pool'] = self.current.pool
             self.current.wfcache.set(wf_cache)
 
@@ -225,10 +229,10 @@ class ZEngine(object):
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
             context[model_name] = model_registry.get_model(model_name).objects
-        for lane_name, user_id in self.current.pool.items():
-            if user_id:
+        for lane_name, role_id in self.current.pool.items():
+            if role_id:
                 context[lane_name] = lazy_object_proxy.Proxy(
-                    lambda: self.user_model(super_context).objects.get(user_id))
+                    lambda: self.role_model(super_context).objects.get(role_id))
         return context
 
     def load_workflow_from_cache(self):

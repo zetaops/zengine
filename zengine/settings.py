@@ -22,7 +22,7 @@ AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
 PERMISSION_MODEL = 'zengine.models.Permission'
 USER_MODEL = 'zengine.models.User'
-
+ROLE_MODEL = 'zengine.models.User'
 # left blank to use StreamHandler aka stderr
 # set 'file' for logging 'LOG_FILE'
 LOG_HANDLER = os.environ.get('LOG_HANDLER')
