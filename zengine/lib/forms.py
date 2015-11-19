@@ -4,6 +4,14 @@ from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
 from pyoko.form import Form
 from zengine.lib.catalog_data import CatalogData
 
+_choices_cache = {}
+
+
+def convert_choices(chc):
+    _id = id(chc)
+    _choices_cache[_id] = [{'name': name, 'value': value} for name, value in chc]
+    return _choices_cache[_id]
+
 
 class JsonForm(Form):
     def serialize(self):
@@ -52,7 +60,7 @@ class JsonForm(Form):
                 if not isinstance(choices, (list, tuple)):
                     choices_data = cat_data.get(itm['choices'])
                 else:
-                    choices_data = choices
+                    choices_data = _choices_cache.get(id(choices), convert_choices(choices))
                 result["form"].append({'key': itm['name'],
                                        'type': 'select',
                                        'title': itm['title'],
