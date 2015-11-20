@@ -10,4 +10,6 @@ from zengine.management_commands import *
 # environ.setdefault('PYOKO_SETTINGS', 'example.settings')
 environ['PYOKO_SETTINGS'] = 'example.settings'
 environ['ZENGINE_SETTINGS'] = 'example.settings'
-ManagementCommands()
+
+if __name__ == '__main__':
+    ManagementCommands()
