@@ -50,6 +50,15 @@ class CRUDRegistry(type):
 
 
 def obj_filter(func):
+    """
+
+    def func(self, obj, result_dict):
+
+
+    :rtype: object a function takes two positional parameters.
+
+
+    """
     func.filter_method = True
     return func
 
@@ -260,6 +269,12 @@ class CrudView(BaseView):
         """
         to compensate riak~solr sync delay, remove just deleted
         object from from object list (if exists)
+
+        :param obj: pyoko Model instance
+        :param dict result: {'key': obj.key, 'fields': [],
+                          'do_list': True, 'actions': self.Meta.object_actions}
+
+        :return: result
         """
         if ('deleted_obj' in self.current.task_data and
                     self.current.task_data['deleted_obj'] == obj.key):
