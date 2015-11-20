@@ -15,9 +15,9 @@ from zengine.dispatch.dispatcher import receiver
 from zengine.signals import lane_user_change
 from zengine.lib.catalog_data import gettxt as _
 
-DEFAULT_LANE_CHANGE_MSG = {
-    'title': settings.MESSAGES['lane_change_message_title'],
-    'body': settings.MESSAGES['lane_change_message_body'],
+DEFAULT_LANE_CHANGE_INVITE_MSG = {
+    'title': settings.MESSAGES['lane_change_invite_title'],
+    'body': settings.MESSAGES['lane_change_invite_body'],
 }
 UserModel = get_object_from_path(settings.USER_MODEL)
 
@@ -27,10 +27,10 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     current = kwargs['current']
     old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']
-    if 'lane_change_msg' in current.task_data:
-        msg_context = current.task_data.pop('lane_change_msg')
+    if 'lane_change_invite' in current.task_data:
+        msg_context = current.task_data.pop('lane_change_invite ')
     else:
-        msg_context = DEFAULT_LANE_CHANGE_MSG
+        msg_context = DEFAULT_LANE_CHANGE_INVITE_MSG
     for recipient in owners:
         if not isinstance(recipient, UserModel):
             recipient = recipient.get_user()

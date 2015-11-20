@@ -33,7 +33,13 @@ from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.views.crud import CrudView
 
+DEFAULT_LANE_CHANGE_MSG = {
+    'title': settings.MESSAGES['lane_change_message_title'],
+    'body': settings.MESSAGES['lane_change_message_body'],
+}
+
 crud_view = CrudView()
+
 
 class InMemoryPackager(Packager):
     PARSER_CLASS = CamundaBMPNParser
@@ -112,7 +118,9 @@ class Current(object):
         :param str typ: 'info', 'error', 'warning'
         """
         self.output['msgbox'] = {'type': typ, "title": title or msg[:20],
-                                    "msg": msg}
+                                 "msg": msg}
+
+
 class WFCurrent(Current):
     """
     Workflow specific version of Current object
@@ -392,14 +400,26 @@ class ZEngine(object):
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
-                    # if self.current.lane_owners
-                    possible_owners = eval(self.current.lane_owners, self.get_pool_context())
-                    signals.lane_user_change.send(sender=self,
-                                                  current=self.current,
-                                                  old_lane=self.current.old_lane,
-                                                  possible_owners=possible_owners
-                                                  )
+                    self.sendoff_current_user()
+                    self.invite_other_party()
             self.current.old_lane = self.current.lane_name
+
+    def sendoff_current_user(self):
+        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
+        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
+
+
+    def set_job_goes_bg(self):
+        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
+        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
+
+    def invite_other_party(self):
+        possible_owners = eval(self.current.lane_owners, self.get_pool_context())
+        signals.lane_user_change.send(sender=self,
+                                      current=self.current,
+                                      old_lane=self.current.old_lane,
+                                      possible_owners=possible_owners
+                                      )
 
     def run_activity(self):
         """

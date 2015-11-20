@@ -78,7 +78,11 @@ VIEW_URLS = [
 ]
 
 MESSAGES = {
-    'lane_change_message_title': 'System needs you!',
+    'lane_change_invite_title': 'System needs you!',
+    'lane_change_invite_body': 'Some workflow reached a state that needs your action, '
+                                'please follow the link bellow',
+    'lane_change_message_title': '',
     'lane_change_message_body': 'Some workflow reached a state that needs your action, '
                                 'please follow the link bellow',
+
 }
