@@ -103,7 +103,16 @@ class Current(object):
     def get_permissions(self):
         return self.auth.get_permissions()
 
+    def msg_box(self, msg, title=None, typ='info'):
+        """
+        Create a message box
 
+        :param str msg:
+        :param str title:
+        :param str typ: 'info', 'error', 'warning'
+        """
+        self.output['msgbox'] = {'type': typ, "title": title or msg[:20],
+                                    "msg": msg}
 class WFCurrent(Current):
     """
     Workflow specific version of Current object
