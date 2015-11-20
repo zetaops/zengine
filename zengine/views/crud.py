@@ -95,6 +95,45 @@ class CrudView(BaseView):
         pass
 
     class Meta:
+        """
+        attributes
+        ----------------
+        To customize form fields
+        attributes = {
+           # field_name    attrib_name   value(s)
+            'kadro_id': [('filters', {'durum': 1}), ]
+
+        }
+
+
+
+        object_actions
+        ----------------
+
+        List of dicts.
+        {'name': '', 'cmd': '', 'mode': '', 'show_as': ''},
+
+        name: Name of action, not used when "show_as" set to "link".
+
+        cmd: Command to be run. Should not be used in conjunction with "wf".
+
+        wf: Workflow to be run. Should not be used in conjunction with "cmd".
+
+        show_as:
+            "button",
+            "context_menu" appends to context_menu of the row
+            "group_action". appends to actions drop down menu
+            "link" this option expects "fields" param with index numbers
+            of fields to be shown  as links.
+
+        mode:
+            various values can be given to define how to run an activity
+            normal: open in same window
+            modal: open in modal window
+            bg: run in bg (for wf's that doesn't contain user interaction)
+            new: new browser window
+
+        """
         model = None
         init_view = 'list'
         allow_filters = True
@@ -107,15 +146,7 @@ class CrudView(BaseView):
         object_actions = [
             {'name': 'Sil', 'cmd': 'delete', 'mode': 'bg', 'show_as': 'button'},
             {'name': 'Düzenle', 'cmd': 'form', 'mode': 'normal', 'show_as': 'button'},
-            # {'name': 'Yetkilendir', 'wf': 'manage_permissions', 'mode': 'modal', 'show_as': 'menu'},
-            # actions can be shown as "button", "context_menu" or in "group_action" menu
-
-            # various values can be given to define how to run an activity
-            # normal: open in same window
-            # modal: run in modal window
-            # bg: run in bg (for wf's that doesn't contain usertasks)
-            # new: new window
-
+            {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         ]
 
     class ObjectForm(JsonForm):
@@ -143,6 +174,7 @@ class CrudView(BaseView):
         self.check_for_permission()
         self.client_cmd = set()
         self.output['meta'] = {
+            # 'allow_selection': True,
             'allow_filters': self.Meta.allow_filters,
             'attributes': self.Meta.attributes,
         }
@@ -331,10 +363,12 @@ class CrudView(BaseView):
         self.output['forms'] = self.object_form.serialize()
         self.set_client_cmd('form')
 
+    def set_form_data_to_object(self):
+        self.object = self.object_form.deserialize(self.current.input['form'])
 
     @view_method
     def save(self):
-        self.object = self.object_form.deserialize(self.current.input['form'])
+        self.set_form_data_to_object()
         obj_is_new = not self.object.is_in_db()
         self.object.save()
         if self.next_cmd and obj_is_new:
