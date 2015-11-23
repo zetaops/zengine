@@ -373,6 +373,7 @@ class ZEngine(object):
 
         """
         # FIXME: raise if first task after line change isn't a UserTask
+        # actually this check should be done at parser
         while (self.current.task_type != 'UserTask' and
                    not self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
@@ -389,6 +390,7 @@ class ZEngine(object):
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current._update_task(task)
             self.catch_lane_change()
+            self.handle_wf_finalization()
 
     def catch_lane_change(self):
         """
@@ -508,3 +510,8 @@ class ZEngine(object):
         if not self.current.has_permission(permission):
             raise falcon.HTTPForbidden("Permission denied",
                                        "You don't have required permission: %s" % permission)
+
+    def handle_wf_finalization(self):
+        if self.current.task_type.startswith('End') and 'token' in self.current.output:
+            del self.current.output['token']
+
