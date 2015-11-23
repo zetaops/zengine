@@ -49,28 +49,55 @@ class CRUDRegistry(type):
         return perms
 
 
-def obj_filter(func):
+def obj_filter(cond_func=None):
     """
+    To mark a method to work as a builder method for the object listings.
 
-    def func(self, obj, result_dict):
+    @obj_filter
+    or
+    @obj_filter(lambda o: o.status > 2)
+    to only apply the decorated method if obj.status higher than 2
 
 
-    :rtype: object a function takes two positional parameters.
+    :param func: a filter method that takes object instance and result dictionary and returns same
+    (but probably modified) dictionary
+    :param function cond_func: if defined, this should return True to run the *func*
 
 
     """
-    func.filter_method = True
-    return func
+    def obj_filter_decorator(func):
+        func.filter_method = True
+        func.filters = cond_func
+        return func
+    return obj_filter_decorator
 
 
 def view_method(func):
+    """
+    marks view methods to use with dynamic dispatching
+
+    :param func: view method
+    :return:
+    """
     func.view_method = True
     return func
 
 
-def list_query(func):
-    func.query_method = True
-    return func
+def list_query(cond_func=None):
+    """
+    last first only
+    query extend
+    :param function cond_func: if defined, this should return True to run the *func*
+    :param function query_method: query method to be chained. Takes and returns a queryset.
+    :return: query_method
+    """
+    def list_query_decorator(query_method):
+        query_method.query_method = True
+        query_method.filter_func = cond_func
+        return query_method
+    return list_query_decorator
+
+
 
 
 @six.add_metaclass(CRUDRegistry)
@@ -182,7 +209,6 @@ class CrudView(BaseView):
             self.VIEW_METHODS[self.cmd](self)
         self.current.task_data['cmd'] = self.next_cmd
 
-
     def set_client_cmd(self, cmd):
         self.client_cmd.add(cmd)
         self.output['client_cmd'] = list(self.client_cmd)
@@ -226,7 +252,6 @@ class CrudView(BaseView):
         return {self.model_class(self.current).get(itm_key)
                 for itm_key in self.input['selected_items']}
 
-
     def _make_list_header(self):
         if not self.brief:  # add list headers
             list_headers = []
@@ -246,23 +271,18 @@ class CrudView(BaseView):
                 query = query.filter(**self.current.request.params)
             if 'filters' in self.input:
                 query = query.filter(**self.input['filters'])
-        return query
 
     @list_query
     def _process_list_search(self, query):
         if 'query' in self.input:
             search_string = ' OR '.join(
-                ['%s:*%s*' % (f, self.input['query']) for f in self.object.Meta.list_fields])
-            return query.raw(search_string)
-        return query
-
-
+                    ['%s:*%s*' % (f, self.input['query']) for f in self.object.Meta.list_fields])
+            query.raw(search_string)
 
     @obj_filter
     def _get_list_obj(self, obj, result):
         if self.brief:
             result['fields'].append(unicode(obj) if six.PY2 else obj)
-            return result
         else:
             for f in self.object.Meta.list_fields:
                 field = getattr(obj, f)
@@ -272,7 +292,6 @@ class CrudView(BaseView):
                     result['fields'].append(obj._fields[f].clean_value(field))
                 else:
                     result['fields'].append(field)
-            return result
 
     def _parse_object_actions(self, obj):
         """
@@ -280,21 +299,21 @@ class CrudView(BaseView):
         :param obj: pyoko model instance
         :return: (obj, result) model instance
         """
-        result = {'key': obj.key, 'fields': [],
-                  'do_list': True, 'actions': self.Meta.object_actions[:]}
+        result = {'key': obj.key, 'fields': [], 'do_list': True,
+                  'actions': self.Meta.object_actions[:]}
         for f in self.FILTER_METHODS:
-            result = f(self, obj, result)
+            if not f.filter_func or f.filter_func():
+                f(self, obj, result)
         return result
 
     def _apply_list_queries(self, query):
         """
         applies registered query methods
         :param query: queryset
-        :return: queryset
         """
         for f in self.QUERY_METHODS:
-            query = f(self, query)
-        return query
+            if not f.filter_func or f.filter_func():
+                f(self, query)
 
     @obj_filter
     def _remove_just_deleted_object(self, obj, result):
@@ -312,8 +331,6 @@ class CrudView(BaseView):
                     self.current.task_data['deleted_obj'] == obj.key):
             del self.current.task_data['deleted_obj']
             result['do_list'] = False
-
-        return result
 
     def _add_just_created_object(self, new_added_key, new_added_listed):
         """
@@ -357,9 +374,8 @@ class CrudView(BaseView):
         self.list()
         self.form()
 
-
     @view_method
-    def form(self):
+    def add_edit_form(self):
         self.output['forms'] = self.object_form.serialize()
         self.set_client_cmd('form')
 
@@ -373,7 +389,6 @@ class CrudView(BaseView):
         self.object.save()
         if self.next_cmd and obj_is_new:
             self.current.task_data['added_obj'] = self.object.key
-
 
     @view_method
     def delete(self):
