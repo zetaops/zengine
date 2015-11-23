@@ -160,7 +160,6 @@ class CrudView(BaseView):
         allow_add = True
         objects_per_page = 20
         title = None
-        dispatch = True
         attributes = {}
         object_actions = [
             {'name': 'Sil', 'cmd': 'delete', 'mode': 'bg', 'show_as': 'button'},
@@ -170,7 +169,7 @@ class CrudView(BaseView):
 
     class ObjectForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-        save_edit = form.Button("Kaydet ve Devam Et", cmd="save::form")
+save_edit = form.Button("Kaydet ve Devam Et", cmd="save::add_edit_form")
 
     class ListForm(JsonForm):
         add = form.Button("Add", cmd="form")
