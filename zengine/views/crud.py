@@ -169,7 +169,7 @@ class CrudView(BaseView):
 
     class ObjectForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-save_edit = form.Button("Kaydet ve Devam Et", cmd="save::add_edit_form")
+        save_edit = form.Button("Kaydet ve Devam Et", cmd="save::add_edit_form")
 
     class ListForm(JsonForm):
         add = form.Button("Add", cmd="form")
