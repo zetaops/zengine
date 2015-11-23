@@ -65,10 +65,12 @@ def obj_filter(cond_func=None):
 
 
     """
+
     def obj_filter_decorator(func):
         func.filter_method = True
-        func.filters = cond_func
+        func.filter_func = cond_func
         return func
+
     return obj_filter_decorator
 
 
@@ -91,13 +93,13 @@ def list_query(cond_func=None):
     :param function query_method: query method to be chained. Takes and returns a queryset.
     :return: query_method
     """
+
     def list_query_decorator(query_method):
         query_method.query_method = True
         query_method.filter_func = cond_func
         return query_method
+
     return list_query_decorator
-
-
 
 
 @six.add_metaclass(CRUDRegistry)
@@ -106,20 +108,8 @@ class CrudView(BaseView):
     A base class for "Create List Show Update Delete" type of views.
     """
 
-    FILTER_METHODS = []
-    VIEW_METHODS = {}
-    QUERY_METHODS = []
 
-    def __init__(self, current=None):
-        super(CrudView, self).__init__(current)
-        for name, func in self.__class__.__dict__.items():
-            if hasattr(func, 'view_method'):
-                self.VIEW_METHODS[name] = func
-            elif hasattr(func, 'filter_method'):
-                self.FILTER_METHODS.append(func)
-            elif hasattr(func, 'query_method'):
-                self.QUERY_METHODS.append(func)
-        pass
+
 
     class Meta:
         """
@@ -161,9 +151,11 @@ class CrudView(BaseView):
             new: new browser window
 
         """
+        allow_search = True
         model = None
         init_view = 'list'
         allow_filters = True
+        allow_selection = True
         allow_edit = True
         allow_add = True
         objects_per_page = 20
@@ -172,7 +164,7 @@ class CrudView(BaseView):
         attributes = {}
         object_actions = [
             {'name': 'Sil', 'cmd': 'delete', 'mode': 'bg', 'show_as': 'button'},
-            {'name': 'Düzenle', 'cmd': 'form', 'mode': 'normal', 'show_as': 'button'},
+            {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal', 'show_as': 'button'},
             {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         ]
 
@@ -183,30 +175,37 @@ class CrudView(BaseView):
     class ListForm(JsonForm):
         add = form.Button("Add", cmd="form")
 
-    def _init(self, current):
-        """
-        prepare
-        :param current:
-        """
-        self.set_current(current)
+    def _prepare_decorated_method(self):
+        self.FILTER_METHODS = []
+        self.VIEW_METHODS = {}
+        self.QUERY_METHODS = []
+        for name, func in self.__class__.__dict__.items():
+            if hasattr(func, 'view_method'):
+                self.VIEW_METHODS[name] = func
+            elif hasattr(func, 'filter_method'):
+                self.FILTER_METHODS.append(func)
+            elif hasattr(func, 'query_method'):
+                self.QUERY_METHODS.append(func)
+
+    def __init__(self, current=None):
+        super(CrudView, self).__init__(current)
+        self.cmd = self.cmd or self.Meta.init_view
+        current.task_data['cmd'] = self.cmd
+        self._prepare_decorated_method()
         self.create_initial_object()
         self.create_object_form()
-
-    def __call__(self, current):
-        self._init(current)
-        if not self.cmd:
-            self.cmd = self.Meta.init_view
-            current.task_data['cmd'] = self.cmd
+        self.output['reload_cmd'] = self.cmd
         current.log.info('Calling %s.%s(%s)' % (self.__class__.__name__, self.cmd, self.object))
-        self.check_for_permission()
         self.client_cmd = set()
         self.output['meta'] = {
-            # 'allow_selection': True,
+            'allow_selection': self.Meta.allow_selection,
             'allow_filters': self.Meta.allow_filters,
+            'allow_search': self.Meta.allow_search,
             'attributes': self.Meta.attributes,
         }
-        if self.Meta.dispatch:
-            self.VIEW_METHODS[self.cmd](self)
+
+    def __call__(self,):
+        self.VIEW_METHODS[self.cmd](self)
         self.current.task_data['cmd'] = self.next_cmd
 
     def set_client_cmd(self, cmd):
@@ -264,22 +263,17 @@ class CrudView(BaseView):
         else:
             self.output['objects'].append('-1')
 
-    @list_query
+    @list_query()
     def _process_list_filters(self, query):
-        if self.Meta.allow_filters:
-            if self.current.request.params:
-                query = query.filter(**self.current.request.params)
-            if 'filters' in self.input:
-                query = query.filter(**self.input['filters'])
+        filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
+        filters and query.filter(**filters)
 
-    @list_query
+    @list_query()
     def _process_list_search(self, query):
-        if 'query' in self.input:
-            search_string = ' OR '.join(
-                    ['%s:*%s*' % (f, self.input['query']) for f in self.object.Meta.list_fields])
-            query.raw(search_string)
+        q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
+        q and query.raw(' OR '.join(['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields]))
 
-    @obj_filter
+    @obj_filter()
     def _get_list_obj(self, obj, result):
         if self.brief:
             result['fields'].append(unicode(obj) if six.PY2 else obj)
@@ -301,9 +295,8 @@ class CrudView(BaseView):
         """
         result = {'key': obj.key, 'fields': [], 'do_list': True,
                   'actions': self.Meta.object_actions[:]}
-        for f in self.FILTER_METHODS:
-            if not f.filter_func or f.filter_func():
-                f(self, obj, result)
+        for method in self.FILTER_METHODS:
+            (not method.filter_func or method.filter_func()) and method(self, obj, result)
         return result
 
     def _apply_list_queries(self, query):
@@ -314,8 +307,9 @@ class CrudView(BaseView):
         for f in self.QUERY_METHODS:
             if not f.filter_func or f.filter_func():
                 f(self, query)
+        return query
 
-    @obj_filter
+    @obj_filter()
     def _remove_just_deleted_object(self, obj, result):
         """
         to compensate riak~solr sync delay, remove just deleted

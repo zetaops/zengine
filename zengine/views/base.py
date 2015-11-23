@@ -12,7 +12,7 @@ NEXT_CMD_SPLITTER = '::'
 
 class BaseView(object):
     """
-    this class constitute a base for all view classes.
+    All view classes should extend this class
     """
 
     def __init__(self, current=None):
@@ -22,6 +22,8 @@ class BaseView(object):
     def set_current(self, current):
         self.current = current
         self.input = current.input
+        self.req = current.request
+        self.resp = current.response
         self.output = current.output
         self.cmd = current.task_data['cmd']
         if self.cmd and NEXT_CMD_SPLITTER in self.cmd:

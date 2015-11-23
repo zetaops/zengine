@@ -6,6 +6,8 @@
 
 from __future__ import print_function, absolute_import, division
 from __future__ import division
+
+import importlib
 from io import BytesIO
 import os
 from uuid import uuid4
@@ -31,14 +33,14 @@ from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import ZengineError
 from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
-from zengine.views.crud import CrudView
+# from zengine.views.crud import CrudView
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
     'body': settings.MESSAGES['lane_change_message_body'],
 }
 
-crud_view = CrudView()
+# crud_view = CrudView()
 
 
 class InMemoryPackager(Packager):
@@ -210,7 +212,7 @@ class ZEngine(object):
     def __init__(self):
         self.use_compact_serializer = True
         # self.current = None
-        self.workflow_methods = {'crud_view': crud_view}
+        self.wf_activities = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
@@ -410,7 +412,6 @@ class ZEngine(object):
         msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
         self.current.msg_box(title=msgs['title'], msg=msgs['body'])
 
-
     def set_job_goes_bg(self):
         msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
         self.current.msg_box(title=msgs['title'], msg=msgs['body'])
@@ -429,36 +430,48 @@ class ZEngine(object):
         """
         activity = self.current.activity
         if activity:
-            if activity not in self.workflow_methods:
+            if activity not in self.wf_activities:
                 self._load_activity(activity)
             self.current.log.debug(
-                "Calling Activity %s from %s" % (activity, self.workflow_methods[activity]))
-            self.workflow_methods[self.current.activity](self.current)
+                "Calling Activity %s from %s" % (activity, self.wf_activities[activity]))
+            self.wf_activities[self.current.activity](self.current)
+
+    def _import_object(self, path, last_nth):
+        path = path.split('.')
+        module_path = '.'.join(path[:-last_nth])
+        class_name = path[-last_nth]
+        module = importlib.import_module(module_path)
+        class_method = path[-last_nth + 1:][0] if path[-last_nth:][0] != path[-last_nth] else None
+        return getattr(module, class_name), class_name, class_method
+
+
 
     def _load_activity(self, activity):
         """
         imports, caches and calls the associated activity of the current task
         """
-        errors = []
+        fpths = []
         full_path = ''
         paths = settings.ACTIVITY_MODULES_IMPORT_PATHS
-        for activity_package in paths:
+        number_of_paths = len(paths)
+        _pass = 0
+        for index_no in range(number_of_paths):
             try:
-                full_path = "%s.%s" % (activity_package, activity)
-                activity_object = get_object_from_path(full_path)
-                if getattr(activity_object, '__base__', None) == CrudView:
-                    activity_object = activity_object(self.current)
-                self.workflow_methods[activity] = activity_object
-                break
+                _pass += 1
+                full_path = "%s.%s" % (paths[index_no], activity)
+                kls, cls_name, cls_method = self._import_object(full_path, _pass)
+                # self.wf_task_classes[cls_name] = (kls, cls_method)
+                if cls_method:
+                    self.wf_activities[activity] = lambda crnt: getattr(kls(crnt), cls_method)()
+                else:
+                    self.wf_activities[activity] = lambda crnt: kls(crnt)()
+                return
             except (ImportError, AttributeError):
-                errors.append(full_path)
-                number_of_paths = len(paths)
-                index_no = paths.index(activity_package)
-                if index_no + 1 == number_of_paths:
-                    # raise if cant find the activity in the last path
-                    err_msg = "{activity} not found under these paths: {paths}".format(
-                        activity=activity, paths=errors)
-                    raise ZengineError(err_msg)
+                fpths.append(full_path)
+                errmsg = "{activity} not found under these paths: {paths}"
+                assert index_no + 1 == number_of_paths, errmsg.format(activity=activity, paths=fpths)
+                # assert if cant find the activity in none of the registered paths
+
 
     def check_for_authentication(self):
         """
@@ -514,4 +527,3 @@ class ZEngine(object):
     def handle_wf_finalization(self):
         if self.current.task_type.startswith('End') and 'token' in self.current.output:
             del self.current.output['token']
-
