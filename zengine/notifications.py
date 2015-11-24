@@ -24,4 +24,6 @@ class Notify(Cache):
         super(Notify, self).__init__(str(user_id))
 
     def set_message(self, title, msg, typ, url=None):
-        self.add({'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
+        _id = uuid4().hex
+        self.add({'title': title, 'body': msg, 'type': typ, 'url': url, 'id': _id})
+        return _id
