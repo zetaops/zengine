@@ -96,8 +96,7 @@ class Current(object):
         self.permissions = []
 
     def set_message(self, title, msg, typ, url=None):
-        self.msg_cache.set_message(
-            {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex})
+        return self.msg_cache.set_message(title=title, msg=msg, typ=typ, url=url)
 
     @property
     def is_auth(self):
@@ -230,6 +229,7 @@ class ZEngine(object):
         if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
         else:
+            self.current.task_data['flow'] = None
             task_data = self.current.task_data.copy()
             for k, v in list(task_data.items()):
                 if k.startswith('_'):
@@ -388,6 +388,7 @@ class ZEngine(object):
                 self._save_workflow()
                 self.catch_lane_change()
         self.current.output['token'] = self.current.token
+
         # look for incoming ready task(s)
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current._update_task(task)
@@ -436,12 +437,16 @@ class ZEngine(object):
                 "Calling Activity %s from %s" % (activity, self.wf_activities[activity]))
             self.wf_activities[self.current.activity](self.current)
 
-    def _import_object(self, path, last_nth):
+    def _import_object(self, path, look4kls_method):
+        last_nth = 2 if look4kls_method else 1
         path = path.split('.')
         module_path = '.'.join(path[:-last_nth])
         class_name = path[-last_nth]
         module = importlib.import_module(module_path)
-        class_method = path[-last_nth + 1:][0] if path[-last_nth:][0] != path[-last_nth] else None
+        if look4kls_method and path[-last_nth:][0] == path[-last_nth]:
+            class_method = path[-last_nth:][1]
+        else:
+            class_method = None
         return getattr(module, class_name), class_name, class_method
 
 
@@ -454,24 +459,25 @@ class ZEngine(object):
         full_path = ''
         paths = settings.ACTIVITY_MODULES_IMPORT_PATHS
         number_of_paths = len(paths)
-        _pass = 0
         for index_no in range(number_of_paths):
-            try:
-                _pass += 1
-                full_path = "%s.%s" % (paths[index_no], activity)
-                kls, cls_name, cls_method = self._import_object(full_path, _pass)
-                # self.wf_task_classes[cls_name] = (kls, cls_method)
-                if cls_method:
-                    self.wf_activities[activity] = lambda crnt: getattr(kls(crnt), cls_method)()
-                else:
-                    self.wf_activities[activity] = lambda crnt: kls(crnt)()
-                return
-            except (ImportError, AttributeError):
-                fpths.append(full_path)
-                errmsg = "{activity} not found under these paths: {paths}"
-                assert index_no + 1 == number_of_paths, errmsg.format(activity=activity, paths=fpths)
-                # assert if cant find the activity in none of the registered paths
-
+            full_path = "%s.%s" % (paths[index_no], activity)
+            for look4kls in (0, 1):
+                try:
+                    self.current.log.info("try to load from %s[%s]" % (full_path, look4kls))
+                    kls, cls_name, cls_method = self._import_object(full_path, look4kls)
+                    if cls_method:
+                        self.current.log.info("WILLCall %s(current).%s()" % (kls, cls_method))
+                        self.wf_activities[activity] = lambda crnt: getattr(kls(crnt), cls_method)()
+                    else:
+                        self.wf_activities[activity] = kls
+                    return
+                except (ImportError, AttributeError):
+                    fpths.append(full_path)
+                    errmsg = "{activity} not found under these paths: {paths}"
+                    self.current.log.exception("Cannot found the %s" % activity)
+                    assert index_no != number_of_paths - 1, errmsg.format(activity=activity, paths=fpths)
+                except:
+                    self.current.log.exception("Cannot found the %s" % activity)
 
     def check_for_authentication(self):
         """

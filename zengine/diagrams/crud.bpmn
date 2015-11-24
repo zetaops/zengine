@@ -8,12 +8,12 @@
         <camunda:property value="hidden" name="menu_category"/>
       </camunda:properties>
     </bpmn2:extensionElements>
-    <bpmn2:userTask id="form" camunda:assignee="crud.CrudView" name="add/edit form">
+    <bpmn2:userTask id="form" camunda:assignee="crud.CrudView.call" name="add/edit form">
       <bpmn2:incoming>save_then_add_arrow</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_13</bpmn2:outgoing>
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="SequenceFlow_13" name="" sourceRef="form" targetRef="save_object"/>
-    <bpmn2:userTask id="delete_object" camunda:class="crud_view" camunda:assignee="crud.CrudView" name="delete_object">
+    <bpmn2:userTask id="delete_object" camunda:class="crud_view" camunda:assignee="crud.CrudView.call" name="delete_object">
       <bpmn2:extensionElements>
         <camunda:inputOutput>
           <camunda:inputParameter name="list">1</camunda:inputParameter>
@@ -23,7 +23,7 @@
       <bpmn2:outgoing>del_to_finish</bpmn2:outgoing>
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="del_to_finish" name="" sourceRef="delete_object" targetRef="FINISH_XOR"/>
-    <bpmn2:serviceTask id="save_object" camunda:class="crud.CrudView" name="save_object">
+    <bpmn2:serviceTask id="save_object" camunda:class="crud.CrudView.call" name="save_object">
       <bpmn2:incoming>SequenceFlow_13</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_8</bpmn2:outgoing>
     </bpmn2:serviceTask>
@@ -51,12 +51,12 @@
     <bpmn2:sequenceFlow id="fin_to_show" name="fin_to_show" sourceRef="FINISH_XOR" targetRef="show_object">
       <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression">cmd == 'show' and object_id</bpmn2:conditionExpression>
     </bpmn2:sequenceFlow>
-    <bpmn2:userTask id="list_objects" camunda:assignee="crud.CrudView" name="list_objects">
+    <bpmn2:userTask id="list_objects" camunda:assignee="crud.CrudView.call" name="list_objects">
       <bpmn2:incoming>fin_list_arrow</bpmn2:incoming>
       <bpmn2:outgoing>list_to_finish</bpmn2:outgoing>
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="list_to_finish" name="" sourceRef="list_objects" targetRef="FINISH_XOR"/>
-    <bpmn2:userTask id="show_object" camunda:assignee="crud.CrudView" name="show_object">
+    <bpmn2:userTask id="show_object" camunda:assignee="crud.CrudView.call" name="show_object">
       <bpmn2:incoming>fin_to_show</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_9</bpmn2:outgoing>
     </bpmn2:userTask>

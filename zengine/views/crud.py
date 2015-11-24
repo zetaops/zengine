@@ -108,9 +108,6 @@ class CrudView(BaseView):
     A base class for "Create List Show Update Delete" type of views.
     """
 
-
-
-
     class Meta:
         """
         attributes
@@ -147,7 +144,6 @@ class CrudView(BaseView):
             various values can be given to define how to run an activity
             normal: open in same window
             modal: open in modal window
-            bg: run in bg (for wf's that doesn't contain user interaction)
             new: new browser window
 
         """
@@ -170,15 +166,50 @@ class CrudView(BaseView):
     class ObjectForm(JsonForm):
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
         save_edit = form.Button("Kaydet ve Devam Et", cmd="save::add_edit_form")
+        save_as_new_edit = form.Button("Yeni Olarak Kaydet ve Devam Et",
+                                       cmd="save_as_new::add_edit_form")
 
     class ListForm(JsonForm):
-        add = form.Button("Add", cmd="form")
+        add = form.Button("Add", cmd="add_edit_form")
 
-    def _prepare_decorated_method(self):
+    def __init__(self, current=None):
         self.FILTER_METHODS = []
         self.VIEW_METHODS = {}
         self.QUERY_METHODS = []
-        for name, func in self.__class__.__dict__.items():
+        super(CrudView, self).__init__(current)
+
+        self.cmd = getattr(self, 'cmd', None) or self.Meta.init_view
+        self._prepare_decorated_methods()
+        if current:
+            current.task_data['cmd'] = self.cmd
+            self.create_initial_object()
+            self.create_object_form()
+            current.log.info('Calling %s.%s(%s)' % (self.__class__.__name__,
+                                                    self.cmd, self.object))
+
+            self.output['reload_cmd'] = self.cmd
+
+            self.output['meta'] = {
+                'allow_selection': self.Meta.allow_selection,
+                'allow_filters': self.Meta.allow_filters,
+                'allow_search': self.Meta.allow_search,
+                'attributes': self.Meta.attributes,
+            }
+
+    def modify_form_properties(self, serialized_form):
+        for field, prop in serialized_form['schema']['properties'].items():
+            if prop['type'] == 'model':
+                prop.update({
+                    'add_cmd': 'add_edit_form',
+                    'list_cmd': 'select_list',
+                    'wf': 'crud'
+                })
+
+    def _prepare_decorated_methods(self):
+        items = list(self.__class__.__dict__.items())
+        for base in self.__class__.__bases__:
+            items.extend(list(base.__dict__.items()))
+        for name, func in items:
             if hasattr(func, 'view_method'):
                 self.VIEW_METHODS[name] = func
             elif hasattr(func, 'filter_method'):
@@ -186,30 +217,10 @@ class CrudView(BaseView):
             elif hasattr(func, 'query_method'):
                 self.QUERY_METHODS.append(func)
 
-    def __init__(self, current=None):
-        super(CrudView, self).__init__(current)
-        self.cmd = self.cmd or self.Meta.init_view
-        current.task_data['cmd'] = self.cmd
-        self._prepare_decorated_method()
-        self.create_initial_object()
-        self.create_object_form()
-        self.output['reload_cmd'] = self.cmd
-        current.log.info('Calling %s.%s(%s)' % (self.__class__.__name__, self.cmd, self.object))
-        self.client_cmd = set()
-        self.output['meta'] = {
-            'allow_selection': self.Meta.allow_selection,
-            'allow_filters': self.Meta.allow_filters,
-            'allow_search': self.Meta.allow_search,
-            'attributes': self.Meta.attributes,
-        }
-
-    def __call__(self,):
+    def call(self):
+        self.check_for_permission()
         self.VIEW_METHODS[self.cmd](self)
         self.current.task_data['cmd'] = self.next_cmd
-
-    def set_client_cmd(self, cmd):
-        self.client_cmd.add(cmd)
-        self.output['client_cmd'] = list(self.client_cmd)
 
     def check_for_permission(self):
         permission = "%s.%s" % (self.object.__class__.__name__, self.cmd)
@@ -251,7 +262,7 @@ class CrudView(BaseView):
                 for itm_key in self.input['selected_items']}
 
     def _make_list_header(self):
-        if not self.brief:  # add list headers
+        if self.object.Meta.list_fields:
             list_headers = []
             for f in self.object.Meta.list_fields:
                 if callable(getattr(self.object, f)):
@@ -274,9 +285,8 @@ class CrudView(BaseView):
 
     @obj_filter()
     def _get_list_obj(self, obj, result):
-        if self.brief:
-            result['fields'].append(unicode(obj) if six.PY2 else obj)
-        else:
+        fields = self.object.Meta.list_fields
+        if fields:
             for f in self.object.Meta.list_fields:
                 field = getattr(obj, f)
                 if callable(field):
@@ -285,6 +295,8 @@ class CrudView(BaseView):
                     result['fields'].append(obj._fields[f].clean_value(field))
                 else:
                     result['fields'].append(field)
+        else:
+            result['fields'] = [six.text_type(obj)]
 
     def _parse_object_actions(self, obj):
         """
@@ -339,10 +351,7 @@ class CrudView(BaseView):
 
     @view_method
     def list(self):
-        # TODO: add pagination
 
-        self.set_client_cmd('form')
-        self.brief = 'brief' in self.input or not self.object.Meta.list_fields
         query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
         self._make_list_header()
@@ -354,7 +363,13 @@ class CrudView(BaseView):
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
-        self.output['forms'] = self.ListForm(current=self.current).serialize()
+        title = getattr(self.object.Meta, 'verbose_name_plural', self.object.__class__.__name__)
+        self.form_out(self.ListForm(current=self.current, title=title))
+
+    @view_method
+    def select_list(self):
+        self.output['objects'] = [{'key': obj.key, 'value': six.text_type(obj)}
+                                  for obj in self.object.objects.filter()]
 
     @view_method
     def show(self):
@@ -369,11 +384,18 @@ class CrudView(BaseView):
 
     @view_method
     def add_edit_form(self):
-        self.output['forms'] = self.object_form.serialize()
-        self.set_client_cmd('form')
+        self.form_out()
+        # self.output['forms'] = self.object_form.serialize()
+        # self.set_client_cmd('form')
 
     def set_form_data_to_object(self):
         self.object = self.object_form.deserialize(self.current.input['form'])
+
+    @view_method
+    def save_as_new(self):
+        self.set_form_data_to_object()
+        self.object.key = None
+        self.object.save()
 
     @view_method
     def save(self):
