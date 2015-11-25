@@ -154,20 +154,22 @@ class CrudView(BaseView):
         allow_selection = True
         allow_edit = True
         allow_add = True
-        objects_per_page = 20
+        objects_per_page = 8
         title = None
         attributes = {}
         object_actions = [
-            {'name': 'Sil', 'cmd': 'delete', 'mode': 'bg', 'show_as': 'button'},
+            {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
             {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal', 'show_as': 'button'},
             {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         ]
 
     class ObjectForm(JsonForm):
+        save_edit = form.Button("Kaydet", cmd="save::add_edit_form")
         save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-        save_edit = form.Button("Kaydet ve Devam Et", cmd="save::add_edit_form")
-        save_as_new_edit = form.Button("Yeni Olarak Kaydet ve Devam Et",
+        save_as_new_edit = form.Button("Yeni Olarak Kaydet",
                                        cmd="save_as_new::add_edit_form")
+        save_as_new_list = form.Button("Yeni Olarak Kaydet ve Listele",
+                                       cmd="save_as_new::list")
 
     class ListForm(JsonForm):
         add = form.Button("Add", cmd="add_edit_form")
@@ -276,12 +278,16 @@ class CrudView(BaseView):
     @list_query()
     def _process_list_filters(self, query):
         filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
-        filters and query.filter(**filters)
+        if filters:
+            return query.filter(**filters)
+        else:
+            return query
 
     @list_query()
     def _process_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
-        q and query.raw(' OR '.join(['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields]))
+        return query.raw(' OR '.join(
+                ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields])) if q else query
 
     @obj_filter()
     def _get_list_obj(self, obj, result):
@@ -317,7 +323,7 @@ class CrudView(BaseView):
         """
         for f in self.QUERY_METHODS:
             if not f.filter_func or f.filter_func():
-                f(self, query)
+                query = f(self, query)
         return query
 
     @obj_filter()
@@ -349,10 +355,25 @@ class CrudView(BaseView):
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
 
+    @list_query()
+    def _handle_list_pagination(self, query):
+        current_page = self.current.input.get('page', 1)
+        per_page = self.Meta.objects_per_page
+        total_objects = query.count()
+        total_pages = total_objects / per_page or 1
+        # add orphans to last page
+        per_page += total_objects % per_page if current_page == total_pages else 0
+        self.output["pagination"] = dict(page=current_page,
+                                         total_pages=total_pages,
+                                         total_objects=total_objects)
+        query = query.set_params(rows=per_page, start=(current_page - 1)* per_page)
+        return query
+
     @view_method
     def list(self):
 
         query = self._apply_list_queries(self.object.objects.filter())
+
         self.output['objects'] = []
         self._make_list_header()
         new_added_key = self.current.task_data.get('added_obj')
@@ -396,6 +417,7 @@ class CrudView(BaseView):
         self.set_form_data_to_object()
         self.object.key = None
         self.object.save()
+        self.current.task_data['object_id'] = self.object.key
 
     @view_method
     def save(self):
