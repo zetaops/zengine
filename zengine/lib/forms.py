@@ -57,6 +57,7 @@ class JsonForm(Form):
             # ui expects a different format for select boxes
             if itm.get('choices'):
                 choices = itm.get('choices')
+                item_props['type'] = 'select'
                 if not isinstance(choices, (list, tuple)):
                     choices_data = cat_data.get(itm['choices'])
                 else:
