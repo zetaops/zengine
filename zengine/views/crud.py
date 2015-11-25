@@ -9,6 +9,8 @@ import datetime
 import falcon
 from falcon import HTTPNotFound
 import six
+from zengine import signals
+
 from pyoko import form
 from pyoko.conf import settings
 from pyoko.model import Model, model_registry
@@ -421,9 +423,11 @@ class CrudView(BaseView):
 
     @view_method
     def save(self):
+        signals.crud_pre_save.send(self, current=self.current, object=self.object)
         self.set_form_data_to_object()
         obj_is_new = not self.object.is_in_db()
         self.object.save()
+        signals.crud_post_save.send(self, current=self.current, object=self.object)
         if self.next_cmd and obj_is_new:
             self.current.task_data['added_obj'] = self.object.key
 
@@ -431,8 +435,11 @@ class CrudView(BaseView):
     def delete(self):
         # TODO: add confirmation dialog
         # to overcome 1s riak-solr delay
+        signals.crud_pre_delete.send(self, current=self.current, object=self.object)
         self.current.task_data['deleted_obj'] = self.object.key
         if 'object_id' in self.current.task_data:
             del self.current.task_data['object_id']
+        object_data = self.object._data
         self.object.delete()
+        signals.crud_post_delete.send(self, current=self.current, object_data=object_data)
         self.set_client_cmd('reload')
