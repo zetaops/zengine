@@ -27,7 +27,7 @@ from zengine.notifications import Notify
 from zengine import signals
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
-from zengine.config import settings, AuthBackend
+from zengine.config import settings
 from zengine.lib.cache import WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import ZengineError
@@ -66,6 +66,7 @@ class Current(object):
     """
 
     def __init__(self, **kwargs):
+
         self.task_data = {'cmd': None}
         self.request = kwargs.pop('request', {})
         self.response = kwargs.pop('response', {})
@@ -87,6 +88,7 @@ class Current(object):
         self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
         self.log = log
         self.pool = {}
+        AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
         self.role = lazy_object_proxy.Proxy(lambda: self.auth.get_role())

@@ -14,7 +14,7 @@ from pyoko.lib.utils import get_object_from_path
 from pyoko.conf import settings
 # settings = importlib.import_module(os.getenv('ZENGINE_SETTINGS'))
 
-AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
+# AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
 
 beaker.cache.clsmap = _backends({'redis': redis_.RedisManager})
 
