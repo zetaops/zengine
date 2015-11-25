@@ -86,3 +86,5 @@ MESSAGES = {
                                 'please follow the link bellow',
 
 }
+
+CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
