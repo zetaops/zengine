@@ -293,16 +293,15 @@ class CrudView(BaseView):
 
     @obj_filter()
     def _get_list_obj(self, obj, result):
+
         fields = self.object.Meta.list_fields
         if fields:
             for f in self.object.Meta.list_fields:
                 field = getattr(obj, f)
                 if callable(field):
                     result['fields'].append(field())
-                elif isinstance(field, (datetime.date, datetime.datetime)):
-                    result['fields'].append(obj._fields[f].clean_value(field))
                 else:
-                    result['fields'].append(field)
+                    result['fields'].append(obj.get_humane_value(f))
         else:
             result['fields'] = [six.text_type(obj)]
 
@@ -397,7 +396,7 @@ class CrudView(BaseView):
     @view_method
     def show(self):
         self.set_client_cmd('show')
-        self.output['object'] = self.object_form.serialize()['model']
+        self.output['object'] = self.object_form.serialize(readable=True)['model']
         self.output['object']['key'] = self.object.key
 
     @view_method
