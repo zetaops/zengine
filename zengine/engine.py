@@ -474,7 +474,7 @@ class ZEngine(object):
                 except (ImportError, AttributeError):
                     fpths.append(full_path)
                     errmsg = "{activity} not found under these paths: {paths}"
-                    self.current.log.exception("Cannot found the %s" % activity)
+                    # self.current.log.exception("Cannot found the %s" % activity)
                     assert index_no != number_of_paths - 1, errmsg.format(activity=activity, paths=fpths)
                 except:
                     self.current.log.exception("Cannot found the %s" % activity)
