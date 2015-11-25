@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime, date
 from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
 from pyoko.form import Form
-from zengine.lib.catalog_data import CatalogData
+from zengine.lib.catalog_data import catalog_data_manager
 
 _choices_cache = {}
 
@@ -14,7 +14,7 @@ def convert_choices(chc):
 
 
 class JsonForm(Form):
-    def serialize(self):
+    def serialize(self, readable=False):
         result = {
             "schema": {
                 "title": self.title,
@@ -30,7 +30,6 @@ class JsonForm(Form):
             ],
             "model": {}
         }
-        cat_data = CatalogData(self.context)
 
         if self._model.is_in_db():
             # key = self._model.key
@@ -39,7 +38,7 @@ class JsonForm(Form):
             # result["form"].append("_id")
             # result["schema"]["required"].append('_id')
 
-        for itm in self._serialize():
+        for itm in self._serialize(readable):
 
             item_props = {'type': itm['type'],
                           'title': itm['title'],
@@ -59,7 +58,7 @@ class JsonForm(Form):
                 choices = itm.get('choices')
                 item_props['type'] = 'select'
                 if not isinstance(choices, (list, tuple)):
-                    choices_data = cat_data.get(itm['choices'])
+                    choices_data = catalog_data_manager.get_all(itm['choices'])
                 else:
                     choices_data = _choices_cache.get(id(choices), convert_choices(choices))
                 result["form"].append({'key': itm['name'],
