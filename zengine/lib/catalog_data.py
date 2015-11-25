@@ -43,7 +43,7 @@ class CatalogData(object):
                     k = int(k)
                 except:
                     pass
-                self.ITEM_CACHE[lang_code][cat][k] = lang_val
+                # self.ITEM_CACHE[lang_code][cat][k] = lang_val
                 lang_dict[lang_code].append({'value': k, "name": lang_val})
         for lang_code, lang_set in lang_dict.items():
             CatalogCache(lang_code, cat).set(lang_set)
