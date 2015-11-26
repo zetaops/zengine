@@ -314,7 +314,7 @@ class CrudView(BaseView):
         result = {'key': obj.key, 'fields': [], 'do_list': True,
                   'actions': self.Meta.object_actions[:]}
         for method in self.FILTER_METHODS:
-            (not method.filter_func or method.filter_func()) and method(self, obj, result)
+            (not method.filter_func or method.filter_func(self, obj)) and method(self, obj, result)
         return result
 
     def _apply_list_queries(self, query):
@@ -323,7 +323,7 @@ class CrudView(BaseView):
         :param query: queryset
         """
         for f in self.QUERY_METHODS:
-            if not f.filter_func or f.filter_func():
+            if not f.filter_func or f.filter_func(self, query):
                 query = f(self, query)
         return query
 
@@ -382,6 +382,7 @@ class CrudView(BaseView):
         for obj in query:
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
+            list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', 0))
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
