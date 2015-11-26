@@ -358,16 +358,20 @@ class CrudView(BaseView):
 
     @list_query()
     def _handle_list_pagination(self, query):
-        current_page = self.current.input.get('page', 1)
+        current_page = int(self.current.input.get('page', 1))
         per_page = self.Meta.objects_per_page
         total_objects = query.count()
         total_pages = total_objects / per_page or 1
         # add orphans to last page
-        per_page += total_objects % per_page if current_page == total_pages else 0
+        print(total_objects % per_page, current_page, total_pages, current_page == total_pages)
+        print((total_objects % per_page) if current_page == total_pages else 0)
+        current_per_page = per_page + (total_objects % per_page if current_page == total_pages else 0)
+        print(per_page)
         self.output["pagination"] = dict(page=current_page,
                                          total_pages=total_pages,
-                                         total_objects=total_objects)
-        query = query.set_params(rows=per_page, start=(current_page - 1)* per_page)
+                                         total_objects=total_objects,
+                                         per_page=current_per_page)
+        query = query.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
         return query
 
     @view_method
