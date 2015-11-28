@@ -11,7 +11,8 @@ setup(
     author_email='evrenesat@zetaops.io',
     description='BPMN workflow based REST framework with advanced '
                 'permissions and extensible scaffolding features',
-    install_requires=['beaker', 'falcon', 'beaker_extensions', 'redis', 'SpiffWorkflow', 'pyoko'],
+    install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions',
+                      'redis', 'SpiffWorkflow', 'pyoko'],
     dependency_links=[
         'git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions',
         'git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow',
