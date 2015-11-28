@@ -363,10 +363,7 @@ class CrudView(BaseView):
         total_objects = query.count()
         total_pages = total_objects / per_page or 1
         # add orphans to last page
-        print(total_objects % per_page, current_page, total_pages, current_page == total_pages)
-        print((total_objects % per_page) if current_page == total_pages else 0)
         current_per_page = per_page + (total_objects % per_page if current_page == total_pages else 0)
-        print(per_page)
         self.output["pagination"] = dict(page=current_page,
                                          total_pages=total_pages,
                                          total_objects=total_objects,
