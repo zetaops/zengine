@@ -29,12 +29,6 @@ class User(Model):
     class Meta:
         list_fields = ['username', 'superuser']
 
-    class Permissions(ListNode):
-        permission = Permission()
-
-        def __unicode__(self):
-            return "ListNode for:  %s" % self.permission
-
     def __unicode__(self):
         return "User %s" % self.username
 
@@ -51,3 +45,40 @@ class User(Model):
 
     def get_permissions(self):
         return (p.permission.code for p in self.Permissions)
+
+    def get_role(self, role_id):
+        return self.role_set.node_dict[role_id]
+
+
+class Role(Model):
+    user = User()
+
+    class Meta:
+        verbose_name = "Rol"
+        verbose_name_plural = "Roles"
+
+    def __unicode__(self):
+        try:
+            return "%s %s" % (self.abstract_role.name, self.user.username)
+        except:
+            return "Role #%s" % self.key
+
+    class Permissions(ListNode):
+        permission = Permission()
+
+    def get_permissions(self):
+        return [p.permission.code for p in self.Permissions]
+
+    def add_permission(self, perm):
+        self.Permissions(permission=perm)
+        self.save()
+
+    def add_permission_by_name(self, code, save=False):
+        if not save:
+            return ["%s | %s" % (p.name, p.code) for p in
+                    Permission.objects.filter(code='*' + code + '*')]
+        for p in Permission.objects.filter(code='*' + code + '*'):
+            if p not in self.Permissions:
+                self.Permissions(permission=p)
+        if p:
+            self.save()
