@@ -75,6 +75,7 @@ SESSION_OPTIONS = {
 
 VIEW_URLS = [
     # ('falcon URI template', 'python path to view method/class'),
+    ('/menu', 'zengine.views.menu.Menu'),
 ]
 
 MESSAGES = {
@@ -88,3 +89,10 @@ MESSAGES = {
 }
 
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
+
+CRUD_MENUS = {}
+
+DEFAULT_WF_CATEGORY_NAME = 'Genel'
+
+DATE_DEFAULT_FORMAT = "%d.%m.%Y"
+DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
