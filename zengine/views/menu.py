@@ -17,10 +17,21 @@ from zengine.config import settings
 class Menu(BaseView):
     def __init__(self, current):
         super(Menu, self).__init__(current)
-        result = self.get_crud_menus()
+        result = self.simple_crud() if settings.ENABLE_SIMPLE_CRUD_MENU else self.get_crud_menus()
         for k, v in self.get_workflow_menus().items():
             result[k].extend(v)
         self.output.update(result)
+
+
+    def simple_crud(self):
+        results = defaultdict(list)
+        for mdl in model_registry.get_base_models():
+            results['other'].append({"text": mdl.Meta.verbose_name_plural,
+                                     "wf": 'crud',
+                                     "model": mdl.__name__,
+                                     "kategori": settings.DEFAULT_WF_CATEGORY_NAME,
+                                     "param": 'id'})
+        return results
 
     def get_crud_menus(self):
         results = defaultdict(list)
