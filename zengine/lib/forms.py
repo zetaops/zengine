@@ -52,6 +52,8 @@ class JsonForm(Form):
                 item_props['flow'] = itm['flow']
             if itm.get('position'):
                 item_props['position'] = itm['position']
+            if itm.get('validation'):
+                item_props['validation'] = itm['validation']
 
             # ui expects a different format for select boxes
             if itm.get('choices'):
