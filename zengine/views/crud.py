@@ -392,6 +392,11 @@ class CrudView(BaseView):
 
     @view_method
     def select_list(self):
+        """
+        creates a brief object list to fill the select boxes
+        :return: [object_name_1 ...]
+        """
+        query = self.object.objects.filter()
         self.output['objects'] = [{'key': obj.key, 'value': six.text_type(obj)}
                                   for obj in self.object.objects.filter()]
 

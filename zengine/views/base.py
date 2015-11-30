@@ -43,9 +43,9 @@ class BaseView(object):
         self.client_cmd.add(cmd)
         self.output['client_cmd'] = list(self.client_cmd)
 
-    def form_out(self, form=None):
-        form = form or self.object_form
-        self.output['forms'] = form.serialize()
+    def form_out(self, _form=None):
+        _form = _form or self.object_form
+        self.output['forms'] = _form.serialize()
         self.modify_form_properties(self.output['forms'])
         self.set_client_cmd('form')
 
