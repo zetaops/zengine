@@ -9,7 +9,7 @@ _choices_cache = {}
 
 def convert_choices(chc):
     _id = id(chc)
-    _choices_cache[_id] = [{'name': name, 'value': value} for name, value in chc]
+    _choices_cache[_id] = [{'name': name, 'value': value} for value, name in chc]
     return _choices_cache[_id]
 
 
