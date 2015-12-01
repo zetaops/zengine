@@ -32,54 +32,44 @@ class JsonForm(Form):
         }
 
         if self._model.is_in_db():
-            # key = self._model.key
-            # result["schema"]["properties"]['_id'] = {"type": "string", "title": ""}
             result["model"]['object_key'] = self._model.key
-            # result["form"].append("_id")
-            # result["schema"]["required"].append('_id')
 
         for itm in self._serialize(readable):
-
-            item_props = {'type': itm['type'],
-                          'title': itm['title'],
-                          }
-            # if itm['name'] in self.Meta.attributes:
-            #     item_props['attributes'] = self.Meta.attributes[itm['name']]
-
-            if itm.get('cmd'):
-                item_props['cmd'] = itm['cmd']
-            if itm.get('flow'):
-                item_props['flow'] = itm['flow']
-            if itm.get('position'):
-                item_props['position'] = itm['position']
-            if itm.get('validation'):
-                item_props['validation'] = itm['validation']
-
-            # ui expects a different format for select boxes
-            if itm.get('choices'):
-                choices = itm.get('choices')
-                item_props['type'] = 'select'
-                if not isinstance(choices, (list, tuple)):
-                    choices_data = catalog_data_manager.get_all(itm['choices'])
-                else:
-                    choices_data = _choices_cache.get(id(choices), convert_choices(choices))
-                result["form"].append({'key': itm['name'],
-                                       'type': 'select',
-                                       'title': itm['title'],
-                                       'titleMap': choices_data})
-            else:
-                result["form"].append(itm['name'])
+            item_props = {'type': itm['type'], 'title': itm['title']}
+            result["model"][itm['name']] = itm['value'] or itm['default']
 
             if itm['type'] == 'model':
                 item_props['model_name'] = itm['model_name']
+            elif 'hidden' in itm['kwargs']:
+                # we're simulating HTML's hidden form fields
+                # by just setting it in "model" dict and bypassing other parts
+                continue
+            else:
+                item_props.update(itm['kwargs'])
+
+            self._handle_choices(itm, item_props, result)
 
             if 'schema' in itm:
                 item_props['schema'] = itm['schema']
 
             result["schema"]["properties"][itm['name']] = item_props
 
-            result["model"][itm['name']] = itm['value'] or itm['default']
-
             if itm['required']:
                 result["schema"]["required"].append(itm['name'])
         return result
+
+    def _handle_choices(self, itm, item_props, result):
+        # ui expects a different format for select boxes
+        if itm.get('choices'):
+            choices = itm.get('choices')
+            item_props['type'] = 'select'
+            if not isinstance(choices, (list, tuple)):
+                choices_data = catalog_data_manager.get_all(itm['choices'])
+            else:
+                choices_data = _choices_cache.get(id(choices), convert_choices(choices))
+            result["form"].append({'key': itm['name'],
+                                   'type': 'select',
+                                   'title': itm['title'],
+                                   'titleMap': choices_data})
+        else:
+            result["form"].append(itm['name'])
