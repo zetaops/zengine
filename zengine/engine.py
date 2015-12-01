@@ -386,6 +386,7 @@ class ZEngine(object):
                 self.check_for_lane_permission()
                 self.log_wf_state()
                 self.run_activity()
+                self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
                 self.catch_lane_change()
@@ -426,6 +427,32 @@ class ZEngine(object):
                                       old_lane=self.current.old_lane,
                                       possible_owners=possible_owners
                                       )
+
+    def parse_workflow_messages(self):
+        """
+        transmits client message that defined in
+        a workflow task's inputOutput extension
+
+         <bpmn2:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="client_message">
+            <camunda:map>
+              <camunda:entry key="title">Teşekkürler</camunda:entry>
+              <camunda:entry key="body">İşlem Başarılı</camunda:entry>
+              <camunda:entry key="type">info</camunda:entry>
+            </camunda:map>
+          </camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn2:extensionElements>
+
+        :return:
+        """
+        if 'client_message' in self.current.spec.data:
+            m = self.current.spec.data['client_message']
+            self.current.msg_box(title=m.get('title'),
+                                     msg=m.get('body'),
+                                     typ=m.get('type', 'info'))
+
 
     def run_activity(self):
         """
