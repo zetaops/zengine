@@ -208,6 +208,8 @@ class CrudView(BaseView):
                     'list_cmd': 'select_list',
                     'wf': 'crud'
                 })
+            if field == 'Permissions':
+                prop['widget'] = 'filter_interface'
 
     def _prepare_decorated_methods(self):
         items = list(self.__class__.__dict__.items())
