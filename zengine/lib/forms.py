@@ -1,5 +1,8 @@
 from collections import defaultdict
 from datetime import datetime, date
+
+import six
+
 from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
 from pyoko.form import Form
 from zengine.lib.catalog_data import catalog_data_manager
@@ -33,6 +36,7 @@ class JsonForm(Form):
 
         if self._model.is_in_db():
             result["model"]['object_key'] = self._model.key
+            result["model"]['unicode'] = six.text_type(self._model)
 
         for itm in self._serialize(readable):
             item_props = {'type': itm['type'], 'title': itm['title']}
