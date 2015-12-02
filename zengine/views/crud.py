@@ -28,6 +28,8 @@ class CRUDRegistry(type):
     _meta = None
 
     def __new__(mcs, name, bases, attrs):
+        # for key, prop in attrs.items():
+        #     if hasattr(prop, 'view_method'):
         if name == 'CrudView':
             CRUDRegistry._meta = attrs['Meta']
         else:
@@ -38,6 +40,8 @@ class CRUDRegistry(type):
                 for k, v in CRUDRegistry._meta.__dict__.items():
                     if k not in attrs['Meta'].__dict__:
                         setattr(attrs['Meta'], k, v)
+
+
         new_class = super(CRUDRegistry, mcs).__new__(mcs, name, bases, attrs)
         return new_class
 
@@ -51,11 +55,25 @@ class CRUDRegistry(type):
         return perms
 
 
+def form_modifier(func):
+    """
+    To mark a method to work as a modifier for the form output.
+
+    @form_modifier
+
+    :param func: a filter method that takes
+
+    """
+
+    func.form_modifier = True
+    return func
+
+
 def obj_filter(cond_func=None):
     """
     To mark a method to work as a builder method for the object listings.
 
-    @obj_filter
+    @obj_filter()
     or
     @obj_filter(lambda o: o.status > 2)
     to only apply the decorated method if obj.status higher than 2
@@ -178,8 +196,9 @@ class CrudView(BaseView):
 
     def __init__(self, current=None):
         self.FILTER_METHODS = []
-        self.VIEW_METHODS = {}
         self.QUERY_METHODS = []
+        self.FORM_MODIFIERS = []
+        self.VIEW_METHODS = {}
         super(CrudView, self).__init__(current)
 
         self.cmd = getattr(self, 'cmd', None) or self.Meta.init_view
@@ -200,35 +219,74 @@ class CrudView(BaseView):
                 'attributes': self.Meta.attributes,
             }
 
-    def modify_form_properties(self, serialized_form):
+    def _apply_form_modifiers(self, serialized_form):
+        """
+        This method will be called by self.form_out() method
+        with serialized form data.
+
+        :param dict serialized_form:
+        :return:
+        """
         for field, prop in serialized_form['schema']['properties'].items():
+            # this adds default directives for building
+            # add and list views of linked models
             if prop['type'] == 'model':
                 prop.update({
                     'add_cmd': 'add_edit_form',
                     'list_cmd': 'select_list',
-                    'wf': 'crud'
+                    'wf': 'crud',
                 })
+            # overriding widget type of Permissions ListNode
             if field == 'Permissions':
                 prop['widget'] = 'filter_interface'
 
+        for method in self.FORM_MODIFIERS:
+            method.filter_func(self, serialized_form)
+
+    def form_out(self, _form=None):
+        """
+        renders form. applies modifier method then outputs the result
+
+        :param JsonForm _form: JsonForm object
+        """
+        _form = _form or self.object_form
+        self.output['forms'] = _form.serialize()
+        self._apply_form_modifiers(self.output['forms'])
+        self.set_client_cmd('form')
+
     def _prepare_decorated_methods(self):
+        """
+        collects various methods in to their related lists
+        TODO: To decrease the overhead, this will be moved to metaclass of CrudView (CRUDRegistry)
+        :return:
+        """
         items = list(self.__class__.__dict__.items())
         for base in self.__class__.__bases__:
             items.extend(list(base.__dict__.items()))
         for name, func in items:
             if hasattr(func, 'view_method'):
                 self.VIEW_METHODS[name] = func
+            elif hasattr(func, 'form_modifier'):
+                self.FORM_MODIFIERS.append(func)
             elif hasattr(func, 'filter_method'):
                 self.FILTER_METHODS.append(func)
             elif hasattr(func, 'query_method'):
                 self.QUERY_METHODS.append(func)
 
     def call(self):
+        """
+        this method act as a method dispatcher
+        for non-wf based flow handling
+        """
         self.check_for_permission()
         self.VIEW_METHODS[self.cmd](self)
         self.current.task_data['cmd'] = self.next_cmd
 
     def check_for_permission(self):
+        """
+        since wf task has their own perm. checker,
+        this method called only by "call()" dispatcher
+        """
         permission = "%s.%s" % (self.object.__class__.__name__, self.cmd)
         log.debug("CHECK CRUD PERM: %s" % permission)
         if (self.current.task_type in NO_PERM_TASKS_TYPES or
@@ -236,7 +294,7 @@ class CrudView(BaseView):
             return
         if not self.current.has_permission(permission):
             raise falcon.HTTPForbidden("Permission denied",
-                                       "You don't have required model permission: %s" % permission)
+                                       "You don't have required CRUD permission: %s" % permission)
 
     def create_object_form(self):
         self.object_form = self.ObjectForm(self.object, current=self.current)
@@ -260,6 +318,9 @@ class CrudView(BaseView):
                     raise HTTPNotFound()
             except:
                 raise HTTPNotFound()
+        elif 'added_obj' in self.current.task_data:
+            self.object = self.model_class(self.current).objects.get(
+                    self.current.task_data['added_obj'])
         else:
             self.object = self.model_class(self.current)
 
@@ -365,7 +426,8 @@ class CrudView(BaseView):
         total_objects = query.count()
         total_pages = total_objects / per_page or 1
         # add orphans to last page
-        current_per_page = per_page + (total_objects % per_page if current_page == total_pages else 0)
+        current_per_page = per_page + (
+        total_objects % per_page if current_page == total_pages else 0)
         self.output["pagination"] = dict(page=current_page,
                                          total_pages=total_pages,
                                          total_objects=total_objects,
