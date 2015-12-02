@@ -69,29 +69,15 @@ def form_modifier(func):
     return func
 
 
-def obj_filter(cond_func=None):
+def obj_filter(func):
     """
     To mark a method to work as a builder method for the object listings.
 
-    @obj_filter()
-    or
-    @obj_filter(lambda o: o.status > 2)
-    to only apply the decorated method if obj.status higher than 2
-
-
-    :param func: a filter method that takes object instance and result dictionary and returns same
-    (but probably modified) dictionary
-    :param function cond_func: if defined, this should return True to run the *func*
-
-
+    :param func: a filter method that takes object instance and
+    result dictionary and modifiec this dict in place
     """
-
-    def obj_filter_decorator(func):
-        func.filter_method = True
-        func.filter_func = cond_func
-        return func
-
-    return obj_filter_decorator
+    func.filter_method = True
+    return func
 
 
 def view_method(func):
@@ -105,21 +91,16 @@ def view_method(func):
     return func
 
 
-def list_query(cond_func=None):
+def list_query(func):
     """
     last first only
     query extend
-    :param function cond_func: if defined, this should return True to run the *func*
     :param function query_method: query method to be chained. Takes and returns a queryset.
     :return: query_method
     """
 
-    def list_query_decorator(query_method):
-        query_method.query_method = True
-        query_method.filter_func = cond_func
-        return query_method
-
-    return list_query_decorator
+    func.query_method = True
+    return func
 
 
 @six.add_metaclass(CRUDRegistry)
@@ -340,7 +321,7 @@ class CrudView(BaseView):
         else:
             self.output['objects'].append('-1')
 
-    @list_query()
+    @list_query
     def _process_list_filters(self, query):
         filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
         if filters:
@@ -348,13 +329,13 @@ class CrudView(BaseView):
         else:
             return query
 
-    @list_query()
+    @list_query
     def _process_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
         return query.raw(' OR '.join(
                 ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields])) if q else query
 
-    @obj_filter()
+    @obj_filter
     def _get_list_obj(self, obj, result):
 
         fields = self.object.Meta.list_fields
@@ -377,7 +358,7 @@ class CrudView(BaseView):
         result = {'key': obj.key, 'fields': [], 'do_list': True,
                   'actions': self.Meta.object_actions[:]}
         for method in self.FILTER_METHODS:
-            (not method.filter_func or method.filter_func(self, obj)) and method(self, obj, result)
+            method(self, obj, result)
         return result
 
     def _apply_list_queries(self, query):
@@ -386,11 +367,10 @@ class CrudView(BaseView):
         :param query: queryset
         """
         for f in self.QUERY_METHODS:
-            if not f.filter_func or f.filter_func(self, query):
                 query = f(self, query)
         return query
 
-    @obj_filter()
+    @obj_filter
     def _remove_just_deleted_object(self, obj, result):
         """
         to compensate riak~solr sync delay, remove just deleted
@@ -419,7 +399,7 @@ class CrudView(BaseView):
             if list_obj['do_list']:
                 self.output['objects'].append(list_obj)
 
-    @list_query()
+    @list_query
     def _handle_list_pagination(self, query):
         current_page = int(self.current.input.get('page', 1))
         per_page = self.Meta.objects_per_page

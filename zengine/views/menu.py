@@ -17,7 +17,10 @@ from zengine.config import settings
 class Menu(BaseView):
     def __init__(self, current):
         super(Menu, self).__init__(current)
-        result = self.simple_crud() if settings.ENABLE_SIMPLE_CRUD_MENU else self.get_crud_menus()
+        if settings.ENABLE_SIMPLE_CRUD_MENU:
+            result = self.simple_crud()
+        else:
+            result = self.get_crud_menus()
         for k, v in self.get_workflow_menus().items():
             result[k].extend(v)
         self.output.update(result)
