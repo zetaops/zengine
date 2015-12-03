@@ -66,10 +66,10 @@ class Cache(object):
         return cache.delete(self.key)
 
     def incr(self, delta=1):
-        return cache.incr(self.key, delta=delta)
+        return cache.incr(self.key, delta)
 
     def decr(self, delta=1):
-        return cache.decr(self.key, delta=delta)
+        return cache.decr(self.key, delta)
 
     def add(self, val):
         # add to list
