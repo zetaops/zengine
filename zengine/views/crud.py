@@ -302,6 +302,7 @@ class CrudView(BaseView):
         elif 'added_obj' in self.current.task_data:
             self.object = self.model_class(self.current).objects.get(
                     self.current.task_data['added_obj'])
+            del self.current.task_data['added_obj']
         else:
             self.object = self.model_class(self.current)
 
@@ -433,6 +434,8 @@ class CrudView(BaseView):
         self._add_just_created_object(new_added_key, new_added_listed)
         title = getattr(self.object.Meta, 'verbose_name_plural', self.object.__class__.__name__)
         self.form_out(self.ListForm(current=self.current, title=title))
+        if new_added_key:
+            del self.current.task_data['added_obj']
 
     @view_method
     def select_list(self):
