@@ -13,7 +13,6 @@ from zengine.views.base import BaseView
 from zengine.config import settings
 
 
-
 class Menu(BaseView):
     def __init__(self, current):
         super(Menu, self).__init__(current)
@@ -23,8 +22,16 @@ class Menu(BaseView):
             result = self.get_crud_menus()
         for k, v in self.get_workflow_menus().items():
             result[k].extend(v)
-        self.output.update(result)
+        if current.user.superuser:
+            result['other'].extend([
+                {'kategori': 'Admin', 'model': 'User', 'wf': 'crud', 'param': 'id',
+                 'text': 'Kullanıcı'},
+                {'kategori': 'Admin', 'model': 'Role', 'wf': 'crud', 'param': 'id', 'text': 'Rol'},
+                {'kategori': 'Admin', 'model': 'Permission', 'wf': 'crud', 'param': 'id',
+                 'text': 'Yetki'},
+            ])
 
+        self.output.update(result)
 
     def simple_crud(self):
         results = defaultdict(list)
