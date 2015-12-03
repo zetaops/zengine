@@ -356,7 +356,7 @@ class CrudView(BaseView):
         :param obj: pyoko model instance
         :return: (obj, result) model instance
         """
-        result = {'key': obj.key, 'fields': [], 'do_list': True,
+        result = {'key': obj.key, 'fields': [],
                   'actions': self.Meta.object_actions[:]}
         for method in self.FILTER_METHODS:
             method(self, obj, result)
@@ -379,14 +379,14 @@ class CrudView(BaseView):
 
         :param obj: pyoko Model instance
         :param dict result: {'key': obj.key, 'fields': [],
-                          'do_list': True, 'actions': self.Meta.object_actions}
+                           'actions': self.Meta.object_actions}
 
         :return: result
         """
         if ('deleted_obj' in self.current.task_data and
                     self.current.task_data['deleted_obj'] == obj.key):
             del self.current.task_data['deleted_obj']
-            result['do_list'] = False
+            result['exclude'] = True
 
     def _add_just_created_object(self, new_added_key, new_added_listed):
         """
@@ -397,7 +397,7 @@ class CrudView(BaseView):
         if new_added_key and not new_added_listed:
             obj = self.object.objects.get(new_added_key)
             list_obj = self._parse_object_actions(obj)
-            if list_obj['do_list']:
+            if 'exclude' not in list_obj:
                 self.output['objects'].append(list_obj)
 
     @list_query
@@ -429,13 +429,21 @@ class CrudView(BaseView):
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
             list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', 0))
-            if list_obj['do_list']:
+            if 'exclude' not in list_obj:
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
         title = getattr(self.object.Meta, 'verbose_name_plural', self.object.__class__.__name__)
         self.form_out(self.ListForm(current=self.current, title=title))
         if new_added_key:
             del self.current.task_data['added_obj']
+
+    @view_method
+    def reload(self):
+        self.set_client_cmd('reload')
+
+    @view_method
+    def reset(self):
+        self.set_client_cmd('reset')
 
     @view_method
     def select_list(self):
