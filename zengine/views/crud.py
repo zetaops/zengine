@@ -419,19 +419,21 @@ class CrudView(BaseView):
         renders
         :return:
         """
-        filters = getattr(self.object.Meta, 'list_filters', [])[:]
+        model_class = self.object.__class__
+
+        filters = getattr(model_class.Meta, 'list_filters', [])[:]
         if filters and self.Meta.allow_filters:
             self.output['meta']['allow_filters'] = True
         flt = []
         for field_name in filters:
-            field = getattr(self.object, field_name)
+            field = self.object._fields[field_name]
             f = {'field': field_name,
                  'verbose_name': field.title,
                  }
             if isinstance(field, (form.Date, form.DateTime)):
                 f['type'] = 'date'
             else:
-                f['values'] = self.object.facet(field_name).keys()
+                f['values'] = model_class.objects.facet(field_name).keys()
             flt.append(f)
         self.output['list_filters'] = flt
 
@@ -444,7 +446,7 @@ class CrudView(BaseView):
         self._make_list_header()
         new_added_key = self.current.task_data.get('added_obj')
         new_added_listed = False
-        # self.render_list_filters()
+        self.render_list_filters()
         for obj in query:
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
