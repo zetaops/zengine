@@ -432,8 +432,11 @@ class CrudView(BaseView):
                  }
             if isinstance(field, (form.Date, form.DateTime)):
                 f['type'] = 'date'
+            elif hasattr(field, 'choices'):
+                f['values'] = self.object.get_choices_for(field_name)
             else:
-                f['values'] = model_class.objects.facet(field_name).keys()
+                f['values'] = [{'name': k, 'value': k} for k, v in
+                               model_class.objects.facet(field_name).items()]
             flt.append(f)
         self.output['list_filters'] = flt
 
