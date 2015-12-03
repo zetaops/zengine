@@ -41,7 +41,6 @@ class CRUDRegistry(type):
                     if k not in attrs['Meta'].__dict__:
                         setattr(attrs['Meta'], k, v)
 
-
         new_class = super(CRUDRegistry, mcs).__new__(mcs, name, bases, attrs)
         return new_class
 
@@ -173,7 +172,7 @@ class CrudView(BaseView):
                                        cmd="save_as_new::list")
 
     class ListForm(JsonForm):
-        add = form.Button("Add", cmd="add_edit_form")
+        add = form.Button("Ekle", cmd="add_edit_form")
 
     def __init__(self, current=None):
         self.FILTER_METHODS = []
@@ -195,7 +194,6 @@ class CrudView(BaseView):
 
             self.output['meta'] = {
                 'allow_selection': self.Meta.allow_selection,
-                'allow_filters': self.Meta.allow_filters,
                 'allow_search': self.Meta.allow_search,
                 'attributes': self.Meta.attributes,
             }
@@ -368,7 +366,7 @@ class CrudView(BaseView):
         :param query: queryset
         """
         for f in self.QUERY_METHODS:
-                query = f(self, query)
+            query = f(self, query)
         return query
 
     @obj_filter
@@ -408,13 +406,34 @@ class CrudView(BaseView):
         total_pages = total_objects / per_page or 1
         # add orphans to last page
         current_per_page = per_page + (
-        total_objects % per_page if current_page == total_pages else 0)
+            total_objects % per_page if current_page == total_pages else 0)
         self.output["pagination"] = dict(page=current_page,
                                          total_pages=total_pages,
                                          total_objects=total_objects,
                                          per_page=current_per_page)
         query = query.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
         return query
+
+    def render_list_filters(self):
+        """
+        renders
+        :return:
+        """
+        filters = getattr(self.object.Meta, 'list_filters', [])[:]
+        if filters and self.Meta.allow_filters:
+            self.output['meta']['allow_filters'] = True
+        flt = []
+        for field_name in filters:
+            field = getattr(self.object, field_name)
+            f = {'field': field_name,
+                 'verbose_name': field.title,
+                 }
+            if isinstance(field, (form.Date, form.DateTime)):
+                f['type'] = 'date'
+            else:
+                f['values'] = self.object.facet(field_name).keys()
+            flt.append(f)
+        self.output['list_filters'] = flt
 
     @view_method
     def list(self):
@@ -425,6 +444,7 @@ class CrudView(BaseView):
         self._make_list_header()
         new_added_key = self.current.task_data.get('added_obj')
         new_added_listed = False
+        # self.render_list_filters()
         for obj in query:
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
