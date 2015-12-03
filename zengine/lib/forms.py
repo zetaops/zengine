@@ -45,7 +45,7 @@ class JsonForm(Form):
             if itm['type'] == 'model':
                 item_props['model_name'] = itm['model_name']
 
-            if itm['type'] not in ['ListNode', 'model']:
+            if itm['type'] not in ['ListNode', 'model', 'Node']:
                 if 'hidden' in itm['kwargs']:
                     # we're simulating HTML's hidden form fields
                     # by just setting it in "model" dict and bypassing other parts
