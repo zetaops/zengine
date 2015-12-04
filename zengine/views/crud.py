@@ -509,15 +509,19 @@ class CrudView(BaseView):
         self.object.save()
         self.current.task_data['object_id'] = self.object.key
 
-    @view_method
-    def save(self):
+    def save_object(self):
         signals.crud_pre_save.send(self, current=self.current, object=self.object)
-        self.set_form_data_to_object()
         obj_is_new = not self.object.is_in_db()
         self.object.save()
         signals.crud_post_save.send(self, current=self.current, object=self.object)
         if self.next_cmd and obj_is_new:
             self.current.task_data['added_obj'] = self.object.key
+
+    @view_method
+    def save(self):
+        self.set_form_data_to_object()
+        self.save_object()
+
 
     @view_method
     def delete(self):
