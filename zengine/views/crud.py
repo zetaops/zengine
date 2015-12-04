@@ -151,7 +151,7 @@ class CrudView(BaseView):
         model = None
         init_view = 'list'
         allow_filters = True
-        allow_selection = True
+        allow_selection = False
         allow_edit = True
         allow_add = True
         objects_per_page = 8
@@ -321,7 +321,7 @@ class CrudView(BaseView):
             self.output['objects'].append('-1')
 
     @list_query
-    def _process_list_filters(self, query):
+    def _apply_list_filters(self, query):
         filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
         if filters:
             return query.filter(**filters)
@@ -329,7 +329,7 @@ class CrudView(BaseView):
             return query
 
     @list_query
-    def _process_list_search(self, query):
+    def _apply_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
         return query.raw(' OR '.join(
                 ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields])) if q else query
@@ -414,42 +414,42 @@ class CrudView(BaseView):
         query = query.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
         return query
 
-    def render_list_filters(self):
+    def display_list_filters(self):
         """
-        renders
-        :return:
+        calculates and renders list filters for the model
         """
         model_class = self.object.__class__
-
-        filters = getattr(model_class.Meta, 'list_filters', [])[:]
-        if filters and self.Meta.allow_filters:
-            self.output['meta']['allow_filters'] = True
+        if not (self.Meta.allow_filters or model_class.Meta.list_filters):
+            return
+        self.output['meta']['allow_filters'] = True
         flt = []
-        for field_name in filters:
+        for field_name in model_class.Meta.list_filters:
             field = self.object._fields[field_name]
             f = {'field': field_name,
                  'verbose_name': field.title,
+                 # 'type': 'button'
                  }
             if isinstance(field, (form.Date, form.DateTime)):
                 f['type'] = 'date'
-            elif hasattr(field, 'choices'):
+            elif field.choices:
                 f['values'] = self.object.get_choices_for(field_name)
             else:
                 f['values'] = [{'name': k, 'value': k} for k, v in
-                               model_class.objects.facet(field_name).items()]
+                               model_class.objects.distinct_values_of(field_name).items()]
             flt.append(f)
         self.output['list_filters'] = flt
 
     @view_method
     def list(self):
-
+        """
+        creates object listing for the model
+        """
         query = self._apply_list_queries(self.object.objects.filter())
-
         self.output['objects'] = []
         self._make_list_header()
         new_added_key = self.current.task_data.get('added_obj')
         new_added_listed = False
-        self.render_list_filters()
+        self.display_list_filters()
         for obj in query:
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
@@ -477,8 +477,9 @@ class CrudView(BaseView):
         :return: [object_name_1 ...]
         """
         query = self.object.objects.filter()
+        query = self._apply_list_search(query)
         self.output['objects'] = [{'key': obj.key, 'value': six.text_type(obj)}
-                                  for obj in self.object.objects.filter()]
+                                  for obj in query]
 
     @view_method
     def show(self):
