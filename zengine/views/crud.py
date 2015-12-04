@@ -331,8 +331,9 @@ class CrudView(BaseView):
     @list_query
     def _apply_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
-        return query.raw(' OR '.join(
-                ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields])) if q else query
+        # print("qUE:::::::::", q)
+        return (query.raw(' OR '.join(
+                ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields]))) if q else query
 
     @obj_filter
     def _get_list_obj(self, obj, result):
