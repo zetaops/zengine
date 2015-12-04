@@ -91,7 +91,7 @@ MESSAGES = {
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
 
 CRUD_MENUS = {}
-
+ADMIN_MENUS = []
 DEFAULT_WF_CATEGORY_NAME = 'Genel'
 
 DATE_DEFAULT_FORMAT = "%d.%m.%Y"

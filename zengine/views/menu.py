@@ -23,14 +23,7 @@ class Menu(BaseView):
         for k, v in self.get_workflow_menus().items():
             result[k].extend(v)
         if current.user.superuser:
-            result['other'].extend([
-                {'kategori': 'Admin', 'model': 'User', 'wf': 'crud', 'param': 'id',
-                 'text': 'Kullanıcı'},
-                {'kategori': 'Admin', 'model': 'Role', 'wf': 'crud', 'param': 'id', 'text': 'Rol'},
-                {'kategori': 'Admin', 'model': 'Permission', 'wf': 'crud', 'param': 'id',
-                 'text': 'Yetki'},
-            ])
-
+            result['other'].extend(settings.ADMIN_MENUS)
         self.output.update(result)
 
     def simple_crud(self):
