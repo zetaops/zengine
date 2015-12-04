@@ -331,7 +331,7 @@ class CrudView(BaseView):
     @list_query
     def _apply_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
-        # print("qUE:::::::::", q)
+        print("qUE:::::::::", q)
         return (query.raw(' OR '.join(
                 ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields]))) if q else query
 
@@ -420,7 +420,7 @@ class CrudView(BaseView):
         calculates and renders list filters for the model
         """
         model_class = self.object.__class__
-        if not (self.Meta.allow_filters or model_class.Meta.list_filters):
+        if not (self.Meta.allow_filters and model_class.Meta.list_filters):
             return
         self.output['meta']['allow_filters'] = True
         flt = []
