@@ -332,6 +332,8 @@ class CrudView(BaseView):
         filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
         if filters:
             for k, v in filters.items():
+                if k == 'query':  # workaround
+                    continue
                 if ',' in v:  # handle multiple selection
                     query = query.filter(**{'%__in' % k: v.split(',')})
                 else:
@@ -342,7 +344,7 @@ class CrudView(BaseView):
     def _apply_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
         if q:
-            return query.search_on(query, *self.object.Meta.search_fields)
+            return query.search_on(q, *self.object.Meta.search_fields)
         return query
 
     @obj_filter
