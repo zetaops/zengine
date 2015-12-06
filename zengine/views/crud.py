@@ -322,18 +322,28 @@ class CrudView(BaseView):
 
     @list_query
     def _apply_list_filters(self, query):
+        """
+        applies query filters.
+        accepts comma separated multiple values for single field
+
+        :param query:
+        :return: query
+        """
         filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
         if filters:
-            return query.filter(**filters)
-        else:
-            return query
+            for k, v in filters.items():
+                if ',' in v:  # handle multiple selection
+                    query = query.filter(**{'%__in' % k: v.split(',')})
+                else:
+                    query = query.filter(**{k: v})
+        return query
 
     @list_query
     def _apply_list_search(self, query):
         q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
-        print("qUE:::::::::", q)
-        return (query.raw(' OR '.join(
-                ['%s:*%s*' % (f, q) for f in self.object.Meta.list_fields]))) if q else query
+        if q:
+            return query.search_on(query, *self.object.Meta.search_fields)
+        return query
 
     @obj_filter
     def _get_list_obj(self, obj, result):
@@ -521,7 +531,6 @@ class CrudView(BaseView):
     def save(self):
         self.set_form_data_to_object()
         self.save_object()
-
 
     @view_method
     def delete(self):
