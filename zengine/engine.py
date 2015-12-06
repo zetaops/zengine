@@ -231,7 +231,7 @@ class ZEngine(object):
         if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
         else:
-            self.current.task_data['flow'] = None
+            # self.current.task_data['flow'] = None
             task_data = self.current.task_data.copy()
             for k, v in list(task_data.items()):
                 if k.startswith('_'):
