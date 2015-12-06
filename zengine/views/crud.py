@@ -308,7 +308,7 @@ class CrudView(BaseView):
         return {self.model_class(self.current).get(itm_key)
                 for itm_key in self.input['selected_items']}
 
-    def _make_list_header(self):
+    def make_list_header(self):
         if self.object.Meta.list_fields:
             list_headers = []
             for f in self.object.Meta.list_fields:
@@ -459,7 +459,7 @@ class CrudView(BaseView):
         """
         query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
-        self._make_list_header()
+        self.make_list_header()
         new_added_key = self.current.task_data.get('added_obj')
         new_added_listed = False
         self.display_list_filters()
