@@ -329,15 +329,15 @@ class CrudView(BaseView):
         :param query:
         :return: query
         """
-        filters = self.Meta.allow_filters and self.input.get('filters') or self.req.params
+        filters = self.Meta.allow_filters and self.input.get('filters')
         if filters:
-            for k, v in filters.items():
-                if k == 'query':  # workaround
-                    continue
-                if ',' in v:  # handle multiple selection
-                    query = query.filter(**{'%__in' % k: v.split(',')})
+            for fltr in filters:
+                if fltr.get('type') == 'date':
+                    start = fltr['values'][0]
+                    end = fltr['values'][1]
+                    query = query.filter(**{'%s__range' % fltr['field']: (start, end)})
                 else:
-                    query = query.filter(**{k: v})
+                    query = query.filter(**{'%s__in' % fltr['field']: fltr['values']})
         return query
 
     @list_query
