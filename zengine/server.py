@@ -29,19 +29,19 @@ falcon_app = falcon.API(middleware=[get_object_from_path(mw_class)()
 app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="session")
 
 
-class crud_handler(object):
-    """
-    this object redirects /ModelName/ type queries to /crud with ModelName as part of JSON payload
-    """
-    @staticmethod
-    def on_get(req, resp, model_name):
-        req.context['data']['model'] = model_name
-        wf_connector(req, resp, 'crud')
-
-    @staticmethod
-    def on_post(req, resp, model_name):
-        req.context['data']['model'] = model_name
-        wf_connector(req, resp, 'crud')
+# class crud_handler(object):
+#     """
+#     this object redirects /ModelName/ type queries to /crud with ModelName as part of JSON payload
+#     """
+#     @staticmethod
+#     def on_get(req, resp, model_name):
+#         req.context['data']['model'] = model_name
+#         wf_connector(req, resp, 'crud')
+#
+#     @staticmethod
+#     def on_post(req, resp, model_name):
+#         req.context['data']['model'] = model_name
+#         wf_connector(req, resp, 'crud')
 
 
 wf_engine = ZEngine()
@@ -97,7 +97,7 @@ def view_connector(view_path):
     return Caller
 
 
-falcon_app.add_route('/crud/{model_name}/', crud_handler)
+# falcon_app.add_route('/crud/{model_name}/', crud_handler)
 
 for url, view_path in settings.VIEW_URLS:
     falcon_app.add_route(url, view_connector(view_path))
