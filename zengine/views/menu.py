@@ -32,23 +32,23 @@ class Menu(BaseView):
             results['other'].append({"text": mdl.Meta.verbose_name_plural,
                                      "wf": 'crud',
                                      "model": mdl.__name__,
-                                     "kategori": settings.DEFAULT_WF_CATEGORY_NAME,
+                                     "kategori": settings.DEFAULT_OBJECT_CATEGORY_NAME,
                                      "param": 'id'})
         return results
 
     def get_crud_menus(self):
         results = defaultdict(list)
-        for user_type in settings.CRUD_MENUS:
-            for model_data in settings.CRUD_MENUS[user_type]:
+        for object_type in settings.OBJECT_MENU:
+            for model_data in settings.OBJECT_MENU[object_type]:
                 if self.current.has_permission(model_data['name']):
-                    self.add_crud(model_data, user_type, results)
+                    self.add_crud(model_data, object_type, results)
         return results
 
     def add_crud(self, model_data, user_type, results):
         model = model_registry.get_model(model_data['name'])
         field_name = model_data.get('field', user_type + '_id')
         verbose_name = model_data.get('verbose_name', model.Meta.verbose_name_plural)
-        category = model_data.get('category', settings.DEFAULT_WF_CATEGORY_NAME)
+        category = model_data.get('category', settings.DEFAULT_OBJECT_CATEGORY_NAME)
         results[user_type].append({"text": verbose_name,
                                    "wf": model_data.get('wf', "crud"),
                                    "model": model_data['name'],
@@ -63,7 +63,7 @@ class Menu(BaseView):
         return results
 
     def add_wf(self, wf, results):
-        category = wf.spec.wf_properties.get("menu_category", 'Genel')
+        category = wf.spec.wf_properties.get("menu_category", settings.DEFAULT_WF_CATEGORY_NAME)
         object_of_wf = wf.spec.wf_properties.get('object', 'other')
         if category != 'hidden':
             results[object_of_wf].append({"text": wf.spec.wf_name,
