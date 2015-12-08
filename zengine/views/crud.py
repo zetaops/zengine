@@ -330,14 +330,16 @@ class CrudView(BaseView):
         :return: query
         """
         filters = self.Meta.allow_filters and self.input.get('filters')
+        if isinstance(filters, list):  # backwards compatibility
+            filters = dict([(f['field'], f) for f in filters])
         if filters:
-            for fltr in filters:
+            for field, fltr in filters.items():
                 if fltr.get('type') == 'date':
                     start = fltr['values'][0]
                     end = fltr['values'][1]
-                    query = query.filter(**{'%s__range' % fltr['field']: (start, end)})
+                    query = query.filter(**{'%s__range' % field: (start, end)})
                 else:
-                    query = query.filter(**{'%s__in' % fltr['field']: fltr['values']})
+                    query = query.filter(**{'%s__in' % field: fltr['values']})
         return query
 
     @list_query
