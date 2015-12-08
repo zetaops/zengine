@@ -210,7 +210,11 @@ class WFCurrent(Current):
         filters = self.input.get('filters', {})
 
         try:
-            self.task_data['object_id'] = filters.get('object_id')['values'][0]
+            if isinstance(filters, dict):
+                # this is the new form, others will be removed when ui be ready
+                self.task_data['object_id'] = filters.get('object_id')['values'][0]
+            elif filters[0]['field'] == 'object_id':
+                self.task_data['object_id'] = filters[0]['values'][0]
         except:
             self.task_data['object_id'] = self.input.get('object_id')
 
