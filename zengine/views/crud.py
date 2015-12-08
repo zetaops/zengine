@@ -320,6 +320,9 @@ class CrudView(BaseView):
         else:
             self.output['objects'].append('-1')
 
+    def _parse_date(self, d):
+        return "{y}-{m}-{day}T00:00:00Z".format(day=d[:2], m=d[3:5], y=d[6:]) if d else d
+
     @list_query
     def _apply_list_filters(self, query):
         """
@@ -330,13 +333,13 @@ class CrudView(BaseView):
         :return: query
         """
         filters = self.Meta.allow_filters and self.input.get('filters')
-        if isinstance(filters, list):  # backwards compatibility
-            filters = dict([(f['field'], f) for f in filters])
+        # if isinstance(filters, list):  # backwards compatibility
+        #     filters = dict([(f['field'], f) for f in filters])
         if filters:
             for field, fltr in filters.items():
                 if fltr.get('type') == 'date':
-                    start = fltr['values'][0]
-                    end = fltr['values'][1]
+                    start = self._parse_date(fltr['values'][0])
+                    end = self._parse_date(fltr['values'][1])
                     query = query.filter(**{'%s__range' % field: (start, end)})
                 else:
                     query = query.filter(**{'%s__in' % field: fltr['values']})
