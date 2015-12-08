@@ -8,6 +8,7 @@ from __future__ import print_function, absolute_import, division
 from __future__ import division
 
 import importlib
+import traceback
 from io import BytesIO
 import os
 from uuid import uuid4
@@ -206,7 +207,12 @@ class WFCurrent(Current):
 
         self.task_data['flow'] = self.input.get('flow')
 
-        self.task_data['object_id'] = self.input.get('object_id')
+        filters = self.input.get('filters', {})
+
+        try:
+            self.task_data['object_id'] = filters.get('object_id')['values'][0]
+        except:
+            self.task_data['object_id'] = self.input.get('object_id')
 
 
 class ZEngine(object):
@@ -486,6 +492,7 @@ class ZEngine(object):
         """
         fpths = []
         full_path = ''
+        errors = []
         paths = settings.ACTIVITY_MODULES_IMPORT_PATHS
         number_of_paths = len(paths)
         for index_no in range(number_of_paths):
@@ -502,9 +509,14 @@ class ZEngine(object):
                     return
                 except (ImportError, AttributeError):
                     fpths.append(full_path)
-                    errmsg = "{activity} not found under these paths: {paths}"
+                    errmsg = "{activity} not found under these paths:\n\n >>> {paths} \n\n" \
+                             "Error Messages:\n {errors}"
+                    errors.append(traceback.format_exc())
                     # self.current.log.exception("Cannot found the %s" % activity)
-                    assert index_no != number_of_paths - 1, errmsg.format(activity=activity, paths=fpths)
+                    assert index_no != number_of_paths - 1, errmsg.format(activity=activity,
+                                                                          paths='\n >>> '.join(set(fpths)),
+                                                                          errors='\n ************ \n\n'.join(errors)
+                                                                          )
                 except:
                     self.current.log.exception("Cannot found the %s" % activity)
 
