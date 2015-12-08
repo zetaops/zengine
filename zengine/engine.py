@@ -511,11 +511,13 @@ class ZEngine(object):
                     fpths.append(full_path)
                     errmsg = "{activity} not found under these paths:\n\n >>> {paths} \n\n" \
                              "Error Messages:\n {errors}"
-                    errors.append(traceback.format_exc())
-                    # self.current.log.exception("Cannot found the %s" % activity)
+                    errors.append("\n========================================================>\n"
+                                  "| PATH | %s"
+                                  "\n========================================================>\n\n"
+                                  "%s" % (full_path, traceback.format_exc()))
                     assert index_no != number_of_paths - 1, errmsg.format(activity=activity,
                                                                           paths='\n >>> '.join(set(fpths)),
-                                                                          errors='\n ************ \n\n'.join(errors)
+                                                                          errors='\n\n'.join(errors)
                                                                           )
                 except:
                     self.current.log.exception("Cannot found the %s" % activity)
