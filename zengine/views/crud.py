@@ -194,7 +194,7 @@ class CrudView(BaseView):
 
             self.output['meta'] = {
                 'allow_selection': self.Meta.allow_selection,
-                'allow_search': self.Meta.allow_search,
+                'allow_search': self.Meta.allow_search and bool(self.object.Meta.search_fields),
                 'attributes': self.Meta.attributes,
             }
 
