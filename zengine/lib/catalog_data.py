@@ -36,6 +36,7 @@ class CatalogData(object):
         return self.parse_db_data(data, cat)
 
     def parse_db_data(self, data, cat):
+        assert data, "Catalog Data is not set for %s" % cat
         lang_dict = defaultdict(list)
         for k, v in data.items():
             for lang_code, lang_val in v.items():
