@@ -133,6 +133,9 @@ class CrudView(BaseView):
 
         wf: Workflow to be run. Should not be used in conjunction with "cmd".
 
+        object_key: defaults to "object_id".
+            To bypass automatic object fetching, override this with any value.
+
         show_as:
             "button",
             "context_menu" appends to context_menu of the row
