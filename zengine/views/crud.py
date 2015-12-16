@@ -230,6 +230,8 @@ class CrudView(BaseView):
         """
         _form = _form or self.object_form
         self.output['forms'] = _form.serialize()
+        self.output['forms']['grouping'] = _form.Meta.grouping
+        self.output['forms']['constraints'] = _form.Meta.constraints
         self._apply_form_modifiers(self.output['forms'])
         self.set_client_cmd('form')
 
