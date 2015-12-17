@@ -12,7 +12,7 @@ from pyoko.lib.utils import get_object_from_path
 
 from pyoko.conf import settings
 from zengine.dispatch.dispatcher import receiver
-from zengine.signals import lane_user_change
+from zengine.signals import lane_user_change, crud_post_save
 from zengine.lib.catalog_data import gettxt as _
 
 DEFAULT_LANE_CHANGE_INVITE_MSG = {
@@ -39,3 +39,12 @@ def send_message_for_lane_change(sender, *args, **kwargs):
                                           type=Notify.TaskInfo,
                                           url=current.get_wf_url()
                                           )
+
+# encrypting password on save
+@receiver(crud_post_save)
+def set_password(sender, *args, **kwargs):
+    if sender.model_class.__name__ == 'User':
+        usr = kwargs['object']
+        if not usr.password.startswith('$pbkdf2'):
+            usr.set_password(usr.password)
+            usr.save()
