@@ -69,7 +69,9 @@ class JsonForm(Form):
         if itm.get('choices'):
             choices = itm.get('choices')
             item_props['type'] = 'select'
-            if not isinstance(choices, (list, tuple)):
+            if callable(choices):
+                choices_data = choices()
+            elif not isinstance(choices, (list, tuple)):
                 choices_data = catalog_data_manager.get_all(itm['choices'])
             else:
                 choices_data = _choices_cache.get(id(choices), convert_choices(choices))
