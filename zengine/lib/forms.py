@@ -4,16 +4,7 @@ from datetime import datetime, date
 import six
 
 from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
-from pyoko.form import Form
-from zengine.lib.catalog_data import catalog_data_manager
-
-_choices_cache = {}
-
-
-def convert_choices(chc):
-    _id = id(chc)
-    _choices_cache[_id] = [{'name': name, 'value': value} for value, name in chc]
-    return _choices_cache[_id]
+from pyoko.form import Form, get_choices
 
 
 class JsonForm(Form):
@@ -67,14 +58,8 @@ class JsonForm(Form):
     def _handle_choices(self, itm, item_props, result):
         # ui expects a different format for select boxes
         if itm.get('choices'):
-            choices = itm.get('choices')
+            choices_data = get_choices(itm.get('choices'))
             item_props['type'] = 'select'
-            if callable(choices):
-                choices_data = choices()
-            elif not isinstance(choices, (list, tuple)):
-                choices_data = catalog_data_manager.get_all(itm['choices'])
-            else:
-                choices_data = _choices_cache.get(id(choices), convert_choices(choices))
             result["form"].append({'key': itm['name'],
                                    'type': 'select',
                                    'title': itm['title'],
