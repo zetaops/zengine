@@ -4,7 +4,7 @@ from datetime import datetime, date
 import six
 
 from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
-from pyoko.form import Form, get_choices
+from pyoko.form import Form
 
 
 class JsonForm(Form):
@@ -58,7 +58,7 @@ class JsonForm(Form):
     def _handle_choices(self, itm, item_props, result):
         # ui expects a different format for select boxes
         if itm.get('choices'):
-            choices_data = get_choices(itm.get('choices'))
+            choices_data = self.get_choices(itm.get('choices'))
             item_props['type'] = 'select'
             result["form"].append({'key': itm['name'],
                                    'type': 'select',
