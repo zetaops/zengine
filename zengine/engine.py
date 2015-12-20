@@ -240,6 +240,8 @@ class ZEngine(object):
         """
         if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
+            self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
+                                                             self.current.token))
         else:
             # self.current.task_data['flow'] = None
             task_data = self.current.task_data.copy()
