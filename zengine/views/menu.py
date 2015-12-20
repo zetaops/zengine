@@ -7,6 +7,9 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from collections import defaultdict
+
+from pyoko.lib.utils import get_object_from_path
+from pyoko.lib.utils import lazy_property
 from pyoko.model import model_registry
 from zengine.auth.permissions import get_workflows
 from zengine.views.base import BaseView
@@ -16,6 +19,7 @@ from zengine.config import settings
 class Menu(BaseView):
     def __init__(self, current):
         super(Menu, self).__init__(current)
+        self.output['quick_menu'] = []
         if settings.ENABLE_SIMPLE_CRUD_MENU:
             result = self.simple_crud()
         else:
@@ -25,6 +29,20 @@ class Menu(BaseView):
         if current.user.superuser:
             result['other'].extend(settings.ADMIN_MENUS)
         self.output.update(result)
+        self.get_user()
+
+    @lazy_property
+    def file_manager(self):
+        return get_object_from_path(settings.FILE_MANAGER)
+
+    def get_user(self):
+        self.output['current_user'] = {
+            "name": self.current.user.name,
+            "surname": self.current.user.surname,
+            "username": self.current.user.username,
+            "avatar": self.file_manager.get_url(self.current.user.avatar),
+            "roles": [{"role": role.role.__unicode__()} for role in self.current.user.role_set]
+        }
 
     def simple_crud(self):
         results = defaultdict(list)
@@ -49,11 +67,17 @@ class Menu(BaseView):
         field_name = model_data.get('field', user_type + '_id')
         verbose_name = model_data.get('verbose_name', model.Meta.verbose_name_plural)
         category = model_data.get('category', settings.DEFAULT_OBJECT_CATEGORY_NAME)
-        results[user_type].append({"text": verbose_name,
-                                   "wf": model_data.get('wf', "crud"),
-                                   "model": model_data['name'],
-                                   "kategori": category,
-                                   "param": field_name})
+        wf_dict = {"text": verbose_name,
+                   "wf": model_data.get('wf', "crud"),
+                   "model": model_data['name'],
+                   "kategori": category,
+                   "param": field_name}
+        results[user_type].append(wf_dict)
+        self.add_to_quick_menu(wf_dict['model'], wf_dict)
+
+    def add_to_quick_menu(self, key, wf):
+        if key in settings.QUICK_MENU:
+            self.output['quick_menu'].append(wf)
 
     def get_workflow_menus(self):
         results = defaultdict(list)
@@ -66,8 +90,10 @@ class Menu(BaseView):
         category = wf.spec.wf_properties.get("menu_category", settings.DEFAULT_WF_CATEGORY_NAME)
         object_of_wf = wf.spec.wf_properties.get('object', 'other')
         if category != 'hidden':
-            results[object_of_wf].append({"text": wf.spec.wf_name,
-                                          "wf": wf.spec.name,
-                                          "kategori": category,
-                                          "param": "id"}
-                                         )
+            wf_dict = {
+                "text": wf.spec.wf_name,
+                "wf": wf.spec.name,
+                "kategori": category,
+                "param": "id"}
+            results[object_of_wf].append(wf_dict)
+            self.add_to_quick_menu(wf_dict['wf'], wf_dict)
