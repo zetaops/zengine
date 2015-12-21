@@ -160,11 +160,13 @@ class CrudView(BaseView):
         objects_per_page = 8
         title = None
         attributes = {}
-        object_actions = [
-            {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
-            {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal', 'show_as': 'button'},
-            {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
-        ]
+        object_actions = {
+            'delete': {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
+            'add_edit_form': {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal', 'show_as': 'button'},
+            'show': {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
+        }
+
+
 
     class ObjectForm(JsonForm):
         save_edit = form.Button("Kaydet", cmd="save::add_edit_form")
@@ -359,7 +361,6 @@ class CrudView(BaseView):
 
     @obj_filter
     def _get_list_obj(self, obj, result):
-
         fields = self.object.Meta.list_fields
         if fields:
             for f in self.object.Meta.list_fields:
@@ -377,8 +378,14 @@ class CrudView(BaseView):
         :param obj: pyoko model instance
         :return: (obj, result) model instance
         """
-        result = {'key': obj.key, 'fields': [],
-                  'actions': self.Meta.object_actions[:]}
+
+        actions = []
+        if self.Meta.object_actions:
+            for perm, action in self.Meta.object_actions.items():
+                permission = "%s.%s" % (self.object.__class__.__name__, perm)
+                if self.current.has_permission(permission):
+                   actions.append(action)
+        result = {'key': obj.key, 'fields': [], 'actions': actions}
         for method in self.FILTER_METHODS:
             method(self, obj, result)
         return result
