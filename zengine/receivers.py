@@ -6,6 +6,11 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+__all__ = [
+    'send_message_for_lane_change',
+    'set_password',
+]
+
 from zengine.notifications import Notify
 
 from pyoko.lib.utils import get_object_from_path
@@ -39,6 +44,7 @@ def send_message_for_lane_change(sender, *args, **kwargs):
                                           type=Notify.TaskInfo,
                                           url=current.get_wf_url()
                                           )
+
 
 # encrypting password on save
 @receiver(crud_post_save)
