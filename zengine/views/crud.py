@@ -354,7 +354,9 @@ class CrudView(BaseView):
 
     @list_query
     def _apply_list_search(self, query):
-        q = self.Meta.allow_search and (self.input.get('query') or self.req.params.get('query'))
+        q = (self.object.Meta.search_fields and
+             self.Meta.allow_search and
+             self.input.get('query'))
         if q:
             return query.search_on(*self.object.Meta.search_fields, contains=q)
         return query
