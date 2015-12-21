@@ -28,7 +28,7 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']
     if 'lane_change_invite' in current.task_data:
-        msg_context = current.task_data.pop('lane_change_invite ')
+        msg_context = current.task_data.pop('lane_change_invite')
     else:
         msg_context = DEFAULT_LANE_CHANGE_INVITE_MSG
     for recipient in owners:
