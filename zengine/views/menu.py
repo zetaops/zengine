@@ -44,6 +44,7 @@ class Menu(BaseView):
             "name": usr.name,
             "surname": usr.surname,
             "username": usr.username,
+            "role": self.current.role.abstract_role.name,
             "avatar": self.file_manager.get_url(usr.avatar),
             "is_staff": self.current.role.typ == 1,
             "is_student": self.current.role.typ == 2,
