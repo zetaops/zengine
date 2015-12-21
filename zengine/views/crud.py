@@ -508,8 +508,15 @@ class CrudView(BaseView):
         """
         query = self.object.objects.filter()
         query = self._apply_list_search(query)
-        self.output['objects'] = [{'key': obj.key, 'value': six.text_type(obj)}
-                                  for obj in query]
+        num_of_rec = query.count()
+        searched = 'query' in self.input
+        if not searched and num_of_rec > settings.MAX_NUM_DROPDOWN_LINKED_MODELS:
+            self.output['objects'] = [-1]
+        elif not num_of_rec:
+            self.output['objects'] = [0]
+        else:
+            self.output['objects'] = [{'key': obj.key, 'value': six.text_type(obj)}
+                                      for obj in query]
 
     @view_method
     def show(self):
