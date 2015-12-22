@@ -51,6 +51,13 @@ class Menu(BaseView):
             "roles": [{"role": role.role.__unicode__()} for role in self.current.user.role_set]
         }
 
+    def reporters(self, results):
+        for mdl in ReporterRegistry.get_reporters():
+            results['other'].append({"text": mdl.Meta.verbose_name_plural,
+                                     "wf": 'crud',
+                                     "model": mdl.__name__,
+                                     "kategori": settings.DEFAULT_OBJECT_CATEGORY_NAME,
+                                     "param": 'id'})
     def simple_crud(self):
         results = defaultdict(list)
         for mdl in model_registry.get_base_models():
