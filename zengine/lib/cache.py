@@ -32,7 +32,11 @@ class Cache(object):
 
     def __init__(self, *args, **kwargs):
         self.serialize = kwargs.get('serialize', self.SERIALIZE)
-        self.key = "%s:%s" % (self.PREFIX, ':'.join(args))
+        self.key = self._make_key(args)
+
+    @classmethod
+    def _make_key(cls, args):
+        return "%s:%s" % (cls.PREFIX, ':'.join(args))
 
     def __unicode__(self):
         return 'Cache object for %s' % self.key
@@ -90,14 +94,14 @@ class Cache(object):
         return cache.lrem(self.key, json.dumps(val))
 
     @classmethod
-    def flush(cls):
+    def flush(cls, *args):
         """
         removes all keys in this current namespace
         If called from class itself, clears all keys starting with cls.PREFIX
-        if called from class instance, clears keys starting with given key.
+        if called with args, clears keys starting with given cls.PREFIX + args
         :return: list of removed keys
         """
-        return _remove_keys([], [getattr(cls, 'key', cls.PREFIX) + '*'])
+        return _remove_keys([], [(cls._make_key(args) if args else cls.PREFIX) + '*'])
 
 
 
