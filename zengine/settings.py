@@ -73,7 +73,7 @@ SESSION_OPTIONS = {
 
 VIEW_URLS = [
     # ('falcon URI template', 'python path to view method/class'),
-    ('/menu', 'zengine.views.menu.Menu'),
+    ('/menu', 'zengine.views.system.Menu'),
 ]
 
 MESSAGES = {
@@ -98,3 +98,5 @@ DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
 
 
 ENABLE_SIMPLE_CRUD_MENU = True
+
+PERMISSION_PROVIDER = 'zengine.auth.permissions.get_all_permissions'

@@ -15,12 +15,12 @@ class UpdatePermissions(Command):
 
     def run(self):
         from pyoko.lib.utils import get_object_from_path
-        from zengine.auth.permissions import get_all_permissions
         from zengine.config import settings
         model = get_object_from_path(settings.PERMISSION_MODEL)
+        perm_provider = get_object_from_path(settings.PERMISSION_PROVIDER)
         existing_perms = []
         new_perms = []
-        for code, name, desc in get_all_permissions():
+        for code, name, desc in perm_provider():
             perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
             if new:
                 new_perms.append(perm)
