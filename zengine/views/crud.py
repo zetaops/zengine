@@ -15,8 +15,11 @@ from pyoko import form
 from pyoko.conf import settings
 from pyoko.model import Model, model_registry
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
+from zengine.dispatch.dispatcher import receiver
+from zengine.lib.cache import Cache
 from zengine.lib.forms import JsonForm
 from zengine.log import log
+from zengine.signals import crud_post_save
 from zengine.views.base import BaseView
 
 
@@ -102,6 +105,19 @@ def list_query(func):
     return func
 
 
+class ModelListCache(Cache):
+    PREFIX = 'MDLST'
+
+    def __init__(self, model_name, query=''):
+        super(ModelListCache, self).__init__(model_name, query)
+
+
+# invalidate permission cache on crud updates on Role and AbstractRole models
+@receiver(crud_post_save)
+def clear_model_list_cache(sender, *args, **kwargs):
+    ModelListCache.flush(sender.model_class.__name__)
+
+
 @six.add_metaclass(CRUDRegistry)
 class CrudView(BaseView):
     """
@@ -162,11 +178,10 @@ class CrudView(BaseView):
         attributes = {}
         object_actions = {
             'delete': {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
-            'add_edit_form': {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal', 'show_as': 'button'},
+            'add_edit_form': {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal',
+                              'show_as': 'button'},
             'show': {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         }
-
-
 
     class ObjectForm(JsonForm):
         save_edit = form.Button("Kaydet", cmd="save::add_edit_form")
@@ -386,7 +401,7 @@ class CrudView(BaseView):
             for perm, action in self.Meta.object_actions.items():
                 permission = "%s.%s" % (self.object.__class__.__name__, perm)
                 if self.current.has_permission(permission):
-                   actions.append(action)
+                    actions.append(action)
         result = {'key': obj.key, 'fields': [], 'actions': actions}
         for method in self.FILTER_METHODS:
             method(self, obj, result)
@@ -517,13 +532,18 @@ class CrudView(BaseView):
         elif not num_of_rec:
             self.output['objects'] = [0]
         else:
-            self.output['objects'] = [{'key': obj.key, 'value': six.text_type(obj)}
-                                      for obj in query]
+            search_str = self.input.get('query', '')
+            cache = ModelListCache(self.model_class.__name__, search_str)
+            self.output['objects'] = cache.get() or cache.set(
+                    [{'key': obj.key, 'value': six.text_type(obj)}
+                     for obj in query])
 
     @view_method
     def show(self):
         self.set_client_cmd('show')
-        self.output['object'] = self.object_form.serialize(readable=True)['model']
+        self.output['object'] = self.ObjectForm(self.object,
+                                                current=self.current,
+                                                list_nodes=False).serialize(readable=True)['model']
         self.output['object']['key'] = self.object.key
 
     @view_method
