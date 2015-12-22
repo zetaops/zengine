@@ -118,6 +118,8 @@ def clear_model_list_cache(sender, *args, **kwargs):
     ModelListCache.flush(sender.model_class.__name__)
 
 
+
+
 @six.add_metaclass(CRUDRegistry)
 class CrudView(BaseView):
     """
@@ -371,7 +373,7 @@ class CrudView(BaseView):
     def _apply_list_search(self, query):
         q = (self.object.Meta.search_fields and
              self.Meta.allow_search and
-             self.input.get('query'))
+             (self.input.get('query') or self.current.request.params.get('query')))
         if q:
             return query.search_on(*self.object.Meta.search_fields, contains=q)
         return query

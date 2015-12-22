@@ -7,6 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
+from zengine.views.crud import ModelListCache
 
 
 class UpdatePermissions(Command):
@@ -34,9 +35,11 @@ class UpdatePermissions(Command):
             report += 'No new perms added. '
 
         if new_perms:
+            ModelListCache.flush(model.__name__)
             report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
             report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
         print(report + "\n")
+
 
 
 class CreateUser(Command):
