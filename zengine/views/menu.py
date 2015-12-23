@@ -29,35 +29,7 @@ class Menu(BaseView):
         if current.user.superuser:
             result['other'].extend(settings.ADMIN_MENUS)
         self.output.update(result)
-        self.add_user_data()
-        self.output['settings'] = {
-            'static_url': settings.S3_PUBLIC_URL,
-        }
 
-    @lazy_property
-    def file_manager(self):
-        return get_object_from_path(settings.FILE_MANAGER)
-
-    def add_user_data(self):
-        usr = self.current.user
-        self.output['current_user'] = {
-            "name": usr.name,
-            "surname": usr.surname,
-            "username": usr.username,
-            "role": self.current.role.abstract_role.name,
-            "avatar": self.file_manager.get_url(usr.avatar),
-            "is_staff": self.current.role.typ == 1,
-            "is_student": self.current.role.typ == 2,
-            "roles": [{"role": role.role.__unicode__()} for role in self.current.user.role_set]
-        }
-
-    def reporters(self, results):
-        for mdl in ReporterRegistry.get_reporters():
-            results['other'].append({"text": mdl.Meta.verbose_name_plural,
-                                     "wf": 'crud',
-                                     "model": mdl.__name__,
-                                     "kategori": settings.DEFAULT_OBJECT_CATEGORY_NAME,
-                                     "param": 'id'})
     def simple_crud(self):
         results = defaultdict(list)
         for mdl in model_registry.get_base_models():
