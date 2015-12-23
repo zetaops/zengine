@@ -18,6 +18,7 @@ from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.dispatch.dispatcher import receiver
 from zengine.lib.cache import Cache
 from zengine.lib.forms import JsonForm
+from zengine.lib.utils import date_to_solr
 from zengine.log import log
 from zengine.signals import crud_post_save
 from zengine.views.base import BaseView
@@ -355,9 +356,6 @@ class CrudView(BaseView):
         else:
             self.output['objects'].append('-1')
 
-    def _parse_date(self, d):
-        return "{y}-{m}-{day}T00:00:00Z".format(day=d[:2], m=d[3:5], y=d[6:]) if d else d
-
     @list_query
     def _apply_list_filters(self, query):
         """
@@ -373,8 +371,8 @@ class CrudView(BaseView):
         if filters:
             for field, fltr in filters.items():
                 if fltr.get('type') == 'date':
-                    start = self._parse_date(fltr['values'][0])
-                    end = self._parse_date(fltr['values'][1])
+                    start = date_to_solr(fltr['values'][0])
+                    end = date_to_solr(fltr['values'][1])
                     query = query.filter(**{'%s__range' % field: (start, end)})
                 else:
                     query = query.filter(**{'%s__in' % field: fltr['values']})
