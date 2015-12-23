@@ -28,6 +28,8 @@ class Menu(BaseView):
             result[k].extend(v)
         if current.user.superuser:
             result['other'].extend(settings.ADMIN_MENUS)
+            for m in settings.ADMIN_MENUS:
+                self.add_to_quick_menu(m['model'], m)
         self.output.update(result)
 
     def simple_crud(self):
