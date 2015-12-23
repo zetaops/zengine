@@ -25,6 +25,17 @@ from zengine.views.base import BaseView
 
 # GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
 
+class ListForm(JsonForm):
+    add = form.Button("Ekle", cmd="add_edit_form")
+
+
+class ObjectForm(JsonForm):
+    save_edit = form.Button("Kaydet", cmd="save::add_edit_form")
+    save_list = form.Button("Kaydet ve Listele", cmd="save::list")
+    save_as_new_edit = form.Button("Yeni Olarak Kaydet",
+                                   cmd="save_as_new::add_edit_form")
+    save_as_new_list = form.Button("Yeni Olarak Kaydet ve Listele",
+                                   cmd="save_as_new::list")
 
 class CRUDRegistry(type):
     registry = {}
@@ -33,6 +44,8 @@ class CRUDRegistry(type):
     def __new__(mcs, name, bases, attrs):
         # for key, prop in attrs.items():
         #     if hasattr(prop, 'view_method'):
+        attrs['ListForm'] = type('ListForm', (ListForm,), dict(ListForm.__dict__))
+        attrs['ObjectForm'] = type('ObjectForm', (ObjectForm,), dict(ObjectForm.__dict__))
         if name == 'CrudView':
             CRUDRegistry._meta = attrs['Meta']
         else:
@@ -193,8 +206,6 @@ class CrudView(BaseView):
         save_as_new_list = form.Button("Yeni Olarak Kaydet ve Listele",
                                        cmd="save_as_new::list")
 
-    class ListForm(JsonForm):
-        add = form.Button("Ekle", cmd="add_edit_form")
 
     def __init__(self, current=None):
         self.FILTER_METHODS = []
