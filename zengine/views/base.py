@@ -39,8 +39,8 @@ class BaseView(object):
     def reset(self):
         self.set_client_cmd('reset')
 
-    def set_client_cmd(self, cmd):
-        self.client_cmd.add(cmd)
+    def set_client_cmd(self, *args):
+        self.client_cmd.update(args)
         self.output['client_cmd'] = list(self.client_cmd)
 
 
