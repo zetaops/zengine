@@ -9,6 +9,8 @@ import datetime
 import falcon
 from falcon import HTTPNotFound
 import six
+from pyoko.form import Form
+
 from zengine import signals
 
 from pyoko import form
@@ -552,10 +554,21 @@ class CrudView(BaseView):
     @view_method
     def show(self):
         self.set_client_cmd('show')
-        self.output['object'] = self.ObjectForm(self.object,
-                                                current=self.current,
-                                                list_nodes=False).serialize(readable=True)['model']
-        self.output['object']['key'] = self.object.key
+        obj_form = Form(self.object, current=self.current, models=False,
+                        list_nodes=False)._serialize(readable=True)
+        obj_data = {}
+        for d in obj_form:
+            val = d['value']
+            key = d['title']
+            if d['type'] in ('button',) or d['title'] in ('Password', 'key'):
+                continue
+            if d['type'] == 'file' and d['value'] and d['value'][-3:] in ('jpg', 'png'):
+                continue  # passing for now, needs client support
+
+            obj_data[key] = val
+        self.form_out(JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
+                                                 self.object)))
+        self.output['object'] = obj_data
 
     @view_method
     def list_form(self):
