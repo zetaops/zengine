@@ -553,6 +553,10 @@ class CrudView(BaseView):
                      for obj in query])
 
     @view_method
+    def object_name(self):
+        self.output['object_name'] = self.object.__unicode__()
+
+    @view_method
     def show(self):
         self.set_client_cmd('show')
         obj_form = Form(self.object, current=self.current, models=False,
