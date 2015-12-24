@@ -492,7 +492,8 @@ class CrudView(BaseView):
             if isinstance(field, (form.Date, form.DateTime)):
                 f['type'] = 'date'
             elif field.choices:
-                f['values'] = self.object.get_choices_for(field_name)
+                f['values'] = [{'name': k, 'value': v} for v, k in
+                               self.object.get_choices_for(field_name)]
             else:
                 f['values'] = [{'name': k, 'value': k} for k, v in
                                model_class.objects.distinct_values_of(field_name).items()]
