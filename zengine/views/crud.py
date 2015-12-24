@@ -336,7 +336,7 @@ class CrudView(BaseView):
         elif 'added_obj' in self.current.task_data:
             self.object = self.model_class(self.current).objects.get(
                     self.current.task_data['added_obj'])
-            del self.current.task_data['added_obj']
+            # del self.current.task_data['added_obj']
         else:
             self.object = self.model_class(self.current)
 
@@ -454,7 +454,7 @@ class CrudView(BaseView):
             obj = self.object.objects.get(new_added_key)
             list_obj = self._parse_object_actions(obj)
             if 'exclude' not in list_obj:
-                self.output['objects'].append(list_obj)
+                self.output['objects'].insert(1,list_obj)
 
     @list_query
     def _handle_list_pagination(self, query):
