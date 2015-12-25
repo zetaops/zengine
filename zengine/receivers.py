@@ -11,24 +11,26 @@ __all__ = [
     'set_password',
 ]
 
-from zengine.notifications import Notify
 
-from pyoko.lib.utils import get_object_from_path
+
 
 from pyoko.conf import settings
 from zengine.dispatch.dispatcher import receiver
 from zengine.signals import lane_user_change, crud_post_save
-from zengine.lib.catalog_data import gettxt as _
+
 
 DEFAULT_LANE_CHANGE_INVITE_MSG = {
     'title': settings.MESSAGES['lane_change_invite_title'],
     'body': settings.MESSAGES['lane_change_invite_body'],
 }
-UserModel = get_object_from_path(settings.USER_MODEL)
 
 
 @receiver(lane_user_change)
 def send_message_for_lane_change(sender, *args, **kwargs):
+    from zengine.lib.catalog_data import gettxt as _
+    from pyoko.lib.utils import get_object_from_path
+    UserModel = get_object_from_path(settings.USER_MODEL)
+    from zengine.notifications import Notify
     current = kwargs['current']
     old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']

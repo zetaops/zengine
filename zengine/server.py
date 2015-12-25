@@ -24,6 +24,11 @@ from pyoko.lib.utils import get_object_from_path
 from zengine.config import settings
 from zengine.engine import ZEngine, Current
 
+# receivers should be imported at right time, right place
+# they will not registered if not placed in a central location
+# but they can cause "cannot import settings" errors if imported too early
+from zengine.receivers import *
+
 falcon_app = falcon.API(middleware=[get_object_from_path(mw_class)()
                                     for mw_class in settings.ENABLED_MIDDLEWARES])
 app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="session")
