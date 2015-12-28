@@ -5,21 +5,18 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-import datetime
 import falcon
-from falcon import HTTPNotFound
 import six
-from pyoko.form import Form
+from falcon import HTTPNotFound
 
-from zengine import signals
-
-from pyoko import form
 from pyoko.conf import settings
 from pyoko.model import Model, model_registry
+from zengine import signals
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 from zengine.dispatch.dispatcher import receiver
+from zengine import forms
+from zengine.forms import fields
 from zengine.lib.cache import Cache
-from zengine.lib.forms import JsonForm
 from zengine.lib.utils import date_to_solr
 from zengine.log import log
 from zengine.signals import crud_post_save
@@ -28,17 +25,17 @@ from zengine.views.base import BaseView
 
 # GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
 
-class ListForm(JsonForm):
-    add = form.Button("Ekle", cmd="add_edit_form")
+class ListForm(forms.JsonForm):
+    add = fields.Button("Ekle", cmd="add_edit_form")
 
 
-class ObjectForm(JsonForm):
-    save_edit = form.Button("Kaydet", cmd="save::add_edit_form")
-    save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-    save_as_new_edit = form.Button("Yeni Olarak Kaydet",
-                                   cmd="save_as_new::add_edit_form")
-    save_as_new_list = form.Button("Yeni Olarak Kaydet ve Listele",
-                                   cmd="save_as_new::list")
+class ObjectForm(forms.JsonForm):
+    save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
+    save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
+    save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
+                                         cmd="save_as_new::add_edit_form")
+    save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
+                                         cmd="save_as_new::list")
 
 class CRUDRegistry(type):
     registry = {}
@@ -201,13 +198,13 @@ class CrudView(BaseView):
             'show': {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         }
 
-    class ObjectForm(JsonForm):
-        save_edit = form.Button("Kaydet", cmd="save::add_edit_form")
-        save_list = form.Button("Kaydet ve Listele", cmd="save::list")
-        save_as_new_edit = form.Button("Yeni Olarak Kaydet",
-                                       cmd="save_as_new::add_edit_form")
-        save_as_new_list = form.Button("Yeni Olarak Kaydet ve Listele",
-                                       cmd="save_as_new::list")
+    class ObjectForm(forms.JsonForm):
+        save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
+        save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
+        save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
+                                             cmd="save_as_new::add_edit_form")
+        save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
+                                             cmd="save_as_new::list")
 
 
     def __init__(self, current=None):
@@ -258,6 +255,7 @@ class CrudView(BaseView):
         for method in self.FORM_MODIFIERS:
             method.filter_func(self, serialized_form)
 
+    # noinspection PyUnresolvedReferences
     def form_out(self, _form=None):
         """
         renders form. applies modifier method then outputs the result
@@ -367,17 +365,17 @@ class CrudView(BaseView):
         :param query:
         :return: query
         """
-        filters = self.Meta.allow_filters and self.input.get('filters')
+        filters = self.input.get('filters') if self.Meta.allow_filters else {}
         # if isinstance(filters, list):  # backwards compatibility
         #     filters = dict([(f['field'], f) for f in filters])
         if filters:
-            for field, fltr in filters.items():
-                if fltr.get('type') == 'date':
-                    start = date_to_solr(fltr['values'][0])
-                    end = date_to_solr(fltr['values'][1])
+            for field, filter in filters.items():
+                if filter.get('type') == 'date':
+                    start = date_to_solr(filter['values'][0])
+                    end = date_to_solr(filter['values'][1])
                     query = query.filter(**{'%s__range' % field: (start, end)})
                 else:
-                    query = query.filter(**{'%s__in' % field: fltr['values']})
+                    query = query.filter(**{'%s__in' % field: filter['values']})
         return query
 
     @list_query
@@ -489,7 +487,7 @@ class CrudView(BaseView):
                  'verbose_name': field.title,
                  # 'type': 'button'
                  }
-            if isinstance(field, (form.Date, form.DateTime)):
+            if isinstance(field, (fields.Date, fields.DateTime)):
                 f['type'] = 'date'
             elif field.choices:
                 f['values'] = [{'name': k, 'value': v} for v, k in
@@ -559,7 +557,7 @@ class CrudView(BaseView):
     @view_method
     def show(self):
         self.set_client_cmd('show')
-        obj_form = Form(self.object, current=self.current, models=False,
+        obj_form = forms.Form(self.object, current=self.current, models=False,
                         list_nodes=False)._serialize(readable=True)
         obj_data = {}
         for d in obj_form:
@@ -571,7 +569,7 @@ class CrudView(BaseView):
                 continue  # passing for now, needs client support
 
             obj_data[key] = val
-        self.form_out(JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
+        self.form_out(forms.JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
                                                  self.object)))
         self.output['object'] = obj_data
 

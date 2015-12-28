@@ -1,10 +1,10 @@
 # -*-  coding: utf-8 -*-
 
 # from tests.deep_eq import deep_eq
-from pprint import pprint
+from zengine.forms.json_form import JsonForm
 from zengine.lib.test_utils import BaseTestCase
 from zengine.models import User
-from zengine.lib.forms import JsonForm
+
 
 class TestCase(BaseTestCase):
     def test_serialize(self):

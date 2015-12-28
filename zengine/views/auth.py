@@ -8,8 +8,8 @@
 import falcon
 
 from pyoko import fields
+from zengine.forms.json_form import JsonForm
 from zengine.views.base import SimpleView
-from zengine.lib.forms import JsonForm
 
 
 class LoginForm(JsonForm):

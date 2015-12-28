@@ -8,9 +8,9 @@
 # (GPLv3).  See LICENSE.txt for details.
 from falcon import HTTPError
 
-from pyoko import form
+from zengine import forms
 # from zengine.models import User
-from zengine.lib.forms import JsonForm
+from zengine.forms.json_form import JsonForm
 from zengine.views.crud import CrudView, obj_filter, view_method
 
 
@@ -28,7 +28,7 @@ class UserCrud(CrudView):
         }
 
     class CrudForm(JsonForm):
-        save_list = form.Button("Btn1", cmd="list_form::list_form")
+        save_list = forms.Button("Btn1", cmd="list_form::list_form")
 
     @obj_filter
     def silinemez_kullanicilar(self, obj, result):

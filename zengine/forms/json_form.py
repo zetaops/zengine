@@ -1,10 +1,6 @@
-from collections import defaultdict
-from datetime import datetime, date
-
 import six
 
-from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
-from pyoko.form import Form
+from .custom_form import Form
 
 
 class JsonForm(Form):
