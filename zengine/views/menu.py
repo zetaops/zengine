@@ -26,10 +26,6 @@ class Menu(BaseView):
             result = self.get_crud_menus()
         for k, v in self.get_workflow_menus().items():
             result[k].extend(v)
-        if current.user.superuser:
-            result['other'].extend(settings.ADMIN_MENUS)
-            for m in settings.ADMIN_MENUS:
-                self.add_to_quick_menu(m['model'], m)
         self.output.update(result)
 
     def simple_crud(self):
@@ -38,8 +34,7 @@ class Menu(BaseView):
             results['other'].append({"text": mdl.Meta.verbose_name_plural,
                                      "wf": 'crud',
                                      "model": mdl.__name__,
-                                     "kategori": settings.DEFAULT_OBJECT_CATEGORY_NAME,
-                                     "param": 'id'})
+                                     "kategori": settings.DEFAULT_OBJECT_CATEGORY_NAME})
         return results
 
     def get_crud_menus(self):
@@ -52,14 +47,15 @@ class Menu(BaseView):
 
     def add_crud(self, model_data, user_type, results):
         model = model_registry.get_model(model_data['name'])
-        field_name = model_data.get('field', user_type + '_id')
+        field_name = model_data.get('field')
         verbose_name = model_data.get('verbose_name', model.Meta.verbose_name_plural)
         category = model_data.get('category', settings.DEFAULT_OBJECT_CATEGORY_NAME)
         wf_dict = {"text": verbose_name,
                    "wf": model_data.get('wf', "crud"),
                    "model": model_data['name'],
-                   "kategori": category,
-                   "param": field_name}
+                   "kategori": category}
+        if field_name:
+            wf_dict['param'] = field_name
         results[user_type].append(wf_dict)
         self.add_to_quick_menu(wf_dict['model'], wf_dict)
 
