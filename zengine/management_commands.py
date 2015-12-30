@@ -13,6 +13,9 @@ from zengine.views.crud import ModelListCache
 class UpdatePermissions(Command):
     CMD_NAME = 'update_permissions'
     HELP = 'Syncs permissions with DB'
+    PARAMS = [
+        {'name': 'dry', 'action':'store_true', 'help': 'Dry run, just list new found permissions'},
+    ]
 
     def run(self):
         from pyoko.lib.utils import get_object_from_path
@@ -22,11 +25,20 @@ class UpdatePermissions(Command):
         existing_perms = []
         new_perms = []
         for code, name, desc in perm_provider():
-            perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
-            if new:
-                new_perms.append(perm)
+            if self.manager.args.dry:
+                exists = model.objects.filter(code=code, name=name)
+                if exists:
+                    perm = exists[0]
+                    new = False
+                else:
+                    new = True
+                    perm = model(code=code, name=name)
             else:
-                existing_perms.append(perm)
+                perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
+                if new:
+                    new_perms.append(perm)
+                else:
+                    existing_perms.append(perm)
 
         report = "\n\n%s permission(s) were found in DB. " % len(existing_perms)
         if new_perms:
@@ -35,9 +47,12 @@ class UpdatePermissions(Command):
             report += 'No new perms added. '
 
         if new_perms:
-            ModelListCache.flush(model.__name__)
+            if not self.manager.args.dry:
+                ModelListCache.flush(model.__name__)
             report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
             report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
+        if self.manager.args.dry:
+            print("\n~~~~~~~~~~~~~~ DRY RUN ~~~~~~~~~~~~~~\n")
         print(report + "\n")
 
 
