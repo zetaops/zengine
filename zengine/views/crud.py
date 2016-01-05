@@ -201,10 +201,11 @@ class CrudView(BaseView):
     class ObjectForm(forms.JsonForm):
         save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
         save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
-        save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
-                                             cmd="save_as_new::add_edit_form")
-        save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
-                                             cmd="save_as_new::list")
+        if settings.DEBUG:
+            save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
+                                                 cmd="save_as_new::add_edit_form")
+            save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
+                                                 cmd="save_as_new::list")
 
 
     def __init__(self, current=None):
