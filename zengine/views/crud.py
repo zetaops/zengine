@@ -254,7 +254,7 @@ class CrudView(BaseView):
                 prop['widget'] = 'filter_interface'
 
         for method in self.FORM_MODIFIERS:
-            method.filter_func(self, serialized_form)
+            method(self, serialized_form)
 
     # noinspection PyUnresolvedReferences
     def form_out(self, _form=None):
