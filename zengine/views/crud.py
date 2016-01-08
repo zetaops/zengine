@@ -110,7 +110,7 @@ def list_query(func):
     """
     last first only
     query extend
-    :param function query_method: query method to be chained. Takes and returns a queryset.
+
     :return: query_method
     """
 
@@ -125,7 +125,7 @@ class ModelListCache(Cache):
         super(ModelListCache, self).__init__(model_name, query)
 
 
-# invalidate permission cache on crud updates on Role and AbstractRole models
+# invalidate select_list cache on crud updates
 @receiver(crud_post_save)
 def clear_model_list_cache(sender, *args, **kwargs):
     ModelListCache.flush(sender.model_class.__name__)
@@ -235,7 +235,17 @@ class CrudView(BaseView):
     def _apply_form_modifiers(self, serialized_form):
         """
         This method will be called by self.form_out() method
-        with serialized form data.
+        with serialized form data and applies predefined and
+        custom modifications.
+        Custom modifiers can be defined by methods
+        that decorated with @form_modifier decorator:
+
+        @form_modifier
+        def foo_mod(self, serialized_form):
+            # do whatever you want with serialized_form
+            # changes are effective in place
+            # no need to return
+            pass
 
         :param dict serialized_form:
         :return:
@@ -449,7 +459,6 @@ class CrudView(BaseView):
         """
         to compensate riak~solr sync delay, add just created
         object to the object list
-        :param objects:
         """
         if new_added_key and not new_added_listed:
             obj = self.object.objects.get(new_added_key)
