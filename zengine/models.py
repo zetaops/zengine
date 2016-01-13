@@ -51,6 +51,9 @@ class User(Model):
 
 
 class Role(Model):
+    """
+    This model binds group of Permissions with a certain User.
+    """
     user = User()
 
     class Meta:
