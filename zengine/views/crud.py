@@ -326,7 +326,7 @@ class CrudView(BaseView):
         self.model_class = self.get_model_class()
         object_id = self.current.task_data.get('object_id')
         if not object_id and 'form' in self.input:
-            object_id = self.input['form'].get('object_key')
+            object_id = self.input['form'].pop('object_key', None)
         if object_id and object_id != self.current.task_data.get('deleted_obj'):
             try:
                 self.object = self.model_class(self.current).objects.get(object_id)
