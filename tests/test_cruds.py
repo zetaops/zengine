@@ -46,12 +46,11 @@ class TestCase(BaseTestCase):
         # resp = self.client.post(model=model_name, filters={"username": "fake_user"})
 
         # delete the first object then go to list view
-        resp = self.client.post(model=model_name,
-                                cmd='delete::list',
-                                object_id=resp.json['object_key'])
-
+        print("Delete this %s" % resp.json['object_key'])
+        resp = self.client.post(model=model_name, cmd='delete', object_id=resp.json['object_key'])
         # resp = self.client.post(model=model_name, cmd='list')
         # number of objects should be equal to starting point
+        resp = self.client.post(model=model_name, cmd='list')
         resp.raw()
         assert num_of_objects == len(resp.json['objects']) - 1
 
