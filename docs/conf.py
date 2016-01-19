@@ -37,6 +37,7 @@ extensions = [
 ]
 
 napoleon_numpy_docstring = False
+napoleon_include_private_with_doc = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -274,7 +275,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   (master_doc, 'Zengine', 'Zengine Documentation',
-   author, 'Zengine', 'One line description of project.',
+   author, 'Zengine', 'Workflow Centric Web Framework.',
    'Miscellaneous'),
 ]
 
