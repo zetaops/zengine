@@ -99,7 +99,7 @@ class ModelForm(object):
             if key.endswith('_id') and val:  # linked model
                 name = key[:-3]
                 linked_model = self._model.get_link(field=name)['mdl']
-                linked_model_instance = linked_model(self._model.context).objects.get(val)
+                linked_model_instance = linked_model(self._model._context).objects.get(val)
                 setattr(new_instance, name, linked_model_instance)
             elif isinstance(val, (six.string_types, bool, int, float)):  # field
                 setattr(new_instance, key, val)
@@ -125,7 +125,7 @@ class ModelForm(object):
                         if k.endswith('_id'):  # linked model in a ListNode
                             name = k[:-3]
                             kwargs[name] = getattr(list_node, name).__class__(
-                                    self._model.context).objects.get(ln_item_data[k])
+                                    self._model._context).objects.get(ln_item_data[k])
                         else:
                             kwargs[k] = ln_item_data[k]
                     list_node(**kwargs)

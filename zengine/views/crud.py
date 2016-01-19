@@ -360,11 +360,19 @@ class CrudView(BaseView):
     @list_query
     def _apply_list_filters(self, query):
         """
-        applies query filters.
-        accepts comma separated multiple values for single field
+        Applies query filters.
+        Accepts comma separated multiple values for single field
 
-        :param query:
-        :return: query
+        Example:
+
+        .. code-block:: javascript
+
+            filters: {
+                ulke: {values: ["1", "2"], type: "check"},
+                kurum_disi_gorev_baslama_tarihi: {values: ["20.01.2016", null], type: "date"}
+                ulke: {values: ["1", "2"], type: "check"}
+                }
+
         """
         filters = self.input.get('filters') if self.Meta.allow_filters else {}
         # if isinstance(filters, list):  # backwards compatibility
@@ -513,7 +521,7 @@ class CrudView(BaseView):
         for obj in query:
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
-            list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', 0))
+            list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', ''))
             if 'exclude' not in list_obj:
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
@@ -572,6 +580,7 @@ class CrudView(BaseView):
             obj_data[key] = val
         self.form_out(forms.JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
                                                  self.object)))
+        self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
 
     @view_method
