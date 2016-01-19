@@ -73,7 +73,7 @@ SESSION_OPTIONS = {
 
 VIEW_URLS = [
     # ('falcon URI template', 'python path to view method/class'),
-    ('/menu', 'zengine.views.system.Menu'),
+    ('/menu', 'zengine.views.menu.Menu'),
 ]
 
 MESSAGES = {

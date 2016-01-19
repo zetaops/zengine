@@ -55,6 +55,8 @@ class Form(ModelForm):
         return []
 
     def _prepare_fields(self):
+        if self._ordered_fields:
+            return
         _items = list(self.__class__.__dict__.items()) + list(self.__dict__.items())
         for key, val in _items:
             if isinstance(val, BaseField):
@@ -62,6 +64,7 @@ class Form(ModelForm):
                 self._fields[key] = val
             if isinstance(val, (Button,)):
                 self.non_data_fields.append(key)
+
         for v in sorted(self._fields.items(), key=lambda x: x[1]._order):
             self._ordered_fields.append((v[0], v[1]))
 
@@ -69,8 +72,8 @@ class Form(ModelForm):
         _items = list(self.__class__.__dict__.items()) + list(self.__dict__.items())
         for key, val in _items:
             if getattr(val, '_TYPE', '') in ['Node', 'ListNode']:
-                self._nodes[key] = val(root=self)
-                setattr(self, key, val(root=self))
+                self._nodes[key] = val(_root_node=self)
+                setattr(self, key, val(_root_node=self))
 
     def get_humane_value(self, name):
         return name
