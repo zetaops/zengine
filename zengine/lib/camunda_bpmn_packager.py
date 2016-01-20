@@ -8,7 +8,7 @@
 __author__ = "Evren Esat Ozkan"
 
 from SpiffWorkflow.bpmn.storage.Packager import Packager, main
-from zengine.camunda_parser import CamundaBMPNParser
+from zengine.lib.camunda_parser import CamundaBMPNParser
 
 
 class CamundaPackager(Packager):

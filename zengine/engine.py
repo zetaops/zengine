@@ -252,7 +252,7 @@ class ZEngine(object):
                 del task_data['cmd']
             wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
             if self.current.lane_name:
-                self.current.pool[self.current.lane_name] = self.current.role_id
+                self.current.pool[self.current.lane_name] = self.current.role.key
             wf_cache['pool'] = self.current.pool
             self.current.wfcache.set(wf_cache)
 
@@ -442,8 +442,10 @@ class ZEngine(object):
 
     def parse_workflow_messages(self):
         """
-        transmits client message that defined in
+        Transmits client message that defined in
         a workflow task's inputOutput extension
+
+       .. code-block:: javascript
 
          <bpmn2:extensionElements>
         <camunda:inputOutput>
@@ -558,7 +560,13 @@ class ZEngine(object):
         if self.current.lane_relations:
             context = self.get_pool_context()
             log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
-            if not eval(self.current.lane_relations, context):
+            try:
+                cond_result = eval(self.current.lane_relations, context)
+            except:
+                log.exception("CONDITION EVAL ERROR : %s || %s" % (
+                self.current.lane_relations, context))
+                raise
+            if not cond_result:
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
                 raise falcon.HTTPForbidden(
                     "Permission denied",

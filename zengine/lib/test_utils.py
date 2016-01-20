@@ -9,7 +9,7 @@ from pyoko.lib.utils import pprnt
 from zengine.server import app
 from pprint import pprint
 import json
-from zengine.models import User, Permission
+from zengine.models import User, Permission, Role
 from zengine.log import log
 from pyoko.model import super_context
 
@@ -122,6 +122,7 @@ class BaseTestCase:
                                                                           "superuser": True},
                                                                          username=username)
         if new:
+            Role(super_context, user=cls.client.user).save()
             for perm in Permission(super_context).objects.raw("*:*"):
                 cls.client.user.Permissions(permission=perm)
             cls.client.user.save()

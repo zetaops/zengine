@@ -16,7 +16,6 @@ class UpdatePermissions(Command):
     PARAMS = [
         {'name': 'dry', 'action':'store_true', 'help': 'Dry run, just list new found permissions'},
     ]
-
     def run(self):
         from pyoko.lib.utils import get_object_from_path
         from zengine.config import settings

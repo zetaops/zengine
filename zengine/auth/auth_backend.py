@@ -30,6 +30,10 @@ class AuthBackend(object):
         else:
             return User()
 
+    def get_role(self):
+        # TODO: This should work
+        return self.get_user().role_set[0].role
+
     def get_permissions(self):
         return self.get_user().get_permissions()
 
