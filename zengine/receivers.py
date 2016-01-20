@@ -42,8 +42,8 @@ def send_message_for_lane_change(sender, *args, **kwargs):
         if not isinstance(recipient, UserModel):
             recipient = recipient.get_user()
         Notify(recipient.key).set_message(title=_(msg_context['title']),
-                                          body=_(msg_context['body']),
-                                          type=Notify.TaskInfo,
+                                          msg=_(msg_context['body']),
+                                          typ=Notify.TaskInfo,
                                           url=current.get_wf_url()
                                           )
 

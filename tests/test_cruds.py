@@ -42,7 +42,7 @@ class TestCase(BaseTestCase):
         # we should have 1 more object relative to previous listing
         # assert num_of_objects + 1 == len(resp.json['objects']) - 1
         # since we are searching for a just created record, we have to wait
-        sleep(1)
+        # sleep(1)
         # resp = self.client.post(model=model_name, filters={"username": "fake_user"})
 
         # delete the first object then go to list view
@@ -50,13 +50,8 @@ class TestCase(BaseTestCase):
         resp = self.client.post(model=model_name, cmd='delete', object_id=resp.json['object_key'])
         # resp = self.client.post(model=model_name, cmd='list')
         # number of objects should be equal to starting point
+        # sleep(1)
         resp = self.client.post(model=model_name, cmd='list')
         resp.raw()
         assert num_of_objects == len(resp.json['objects']) - 1
 
-    def test_list_form(self):
-        self.prepare_client('/extended_crud/')
-        resp = self.client.post()
-        assert sorted(resp.json["client_cmd"]) == sorted(["list", "form"])
-
-        resp.raw()

@@ -422,7 +422,7 @@ class CrudView(BaseView):
                 permission = "%s.%s" % (self.object.__class__.__name__, perm)
                 if self.current.has_permission(permission):
                     actions.append(action)
-        result = {'key': obj.key, 'fields': [], 'actions': actions}
+        result = {'key': obj.key, 'fields': [], 'actions': actions}.copy()
         for method in self.FILTER_METHODS:
             method(self, obj, result)
         return result
@@ -462,7 +462,7 @@ class CrudView(BaseView):
         if new_added_key and not new_added_listed:
             obj = self.object.objects.get(new_added_key)
             list_obj = self._parse_object_actions(obj)
-            if 'exclude' not in list_obj:
+            if not ('exclude' in list_obj or obj.deleted):
                 self.output['objects'].insert(1,list_obj)
 
     @list_query
@@ -522,7 +522,7 @@ class CrudView(BaseView):
             new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
             list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', ''))
-            if 'exclude' not in list_obj:
+            if not ('exclude' in list_obj or obj.deleted):
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
         title = getattr(self.object.Meta, 'verbose_name_plural', self.object.__class__.__name__)
@@ -622,6 +622,8 @@ class CrudView(BaseView):
         # TODO: add confirmation dialog
         # to overcome 1s riak-solr delay
         signals.crud_pre_delete.send(self, current=self.current, object=self.object)
+        if self.current.task_data.get('added_object') == self.object.key:
+            del self.current.task_data['added_object']
         self.current.task_data['deleted_obj'] = self.object.key
         if 'object_id' in self.current.task_data:
             del self.current.task_data['object_id']
