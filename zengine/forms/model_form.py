@@ -267,6 +267,8 @@ class ModelForm(object):
                            'title': model_instance.Meta.verbose_name,
                            'required': None,})
         for name, field in node._fields.items():
+            if field.kwargs.get('hidden'):
+                continue
             choices =  getattr(field, 'choices', None)
             typ = 'select' if choices else self.customize_types.get(name, field.solr_type)
             data = {
