@@ -258,10 +258,10 @@ class ZEngine(object):
 
     def get_pool_context(self):
         # TODO: Add in-process caching
-        context = {self.current.lane_name: self.current.user, 'self': self.current.user}
+        context = {self.current.lane_name: self.current.role, 'self': self.current.role}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
-            context[model_name] = model_registry.get_model(model_name).objects
+            context[model_name] = model_registry.get_model(model_name)
         for lane_name, role_id in self.current.pool.items():
             if role_id:
                 context[lane_name] = lazy_object_proxy.Proxy(
