@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import datetime
 from time import sleep
-from zengine.forms import ModelForm, Form
+from zengine.forms import ModelForm, JsonForm
 from zengine.forms import fields
 # from pyoko.tests.data.test_data import clean_data
 # from pyoko.tests.models import *
@@ -30,7 +30,7 @@ received_data = {
     'surname': 'Jackson'}
 
 
-class LoginForm(Form):
+class LoginForm(JsonForm):
     username = fields.String("Username")
     password = fields.String("Password", type="password")
 

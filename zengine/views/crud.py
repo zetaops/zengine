@@ -566,7 +566,7 @@ class CrudView(BaseView):
     @view_method
     def show(self):
         self.set_client_cmd('show')
-        obj_form = forms.Form(self.object, current=self.current, models=False,
+        obj_form = forms.JsonForm(self.object, current=self.current, models=False,
                         list_nodes=False)._serialize(readable=True)
         obj_data = {}
         for d in obj_form:
