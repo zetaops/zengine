@@ -23,45 +23,65 @@ from .model_form import ModelForm
 
 class JsonForm(ModelForm):
     """
-    A base class for a custom form with pyoko.fields.
-    Has some fake properties to simulate model object
+    A base class for building customizable forms with pyoko fields and models.
+    Has some fake methods and attributes to simulate model API
+
+    .. code-block:: python
+
+        from zengine.forms import fields, JsonForm
+
+        class TestForm(JsonForm):
+            class Meta:
+                title = 'Form Title'
+                help_text = "Form help text"
+
+            code = fields.String("Code Field")
+            no = fields.Integer('Part No', required=False)
+            save = fields.Button("Save", cmd="save_it", flow="goto_finish")
+
+            class SomeFoos(ListNode):
+                foo = fields.String('Foo Field')
+                hid = fields.String(hidden=True)
+
+
+
     """
 
     def __init__(self, *args, **kwargs):
         self.context = kwargs.get('current')
+        # Fake method to emulate pyoko model API.
         self._nodes = {}
         self._fields = {}
         self._field_values = {}
         self.key = None
         self._data = {}
+        self.exist = False
         self._ordered_fields = []
         self.processed_nodes = []
         super(JsonForm, self).__init__(*args, **kwargs)
         self._prepare_nodes()
 
     def get_links(self, **kw):
-        """
-        to imitate real model
-
-        :return: empty list
-        """
+        # Fake method to emulate pyoko model API.
         return []
 
     def _get_bucket_name(self):
-        """
-        to imitate real model
-
-        :return: empty string
-        """
+        # Fake method to emulate pyoko model API.
         return ''
 
     def get_unpermitted_fields(self):
-        """
-        to imitate real model
-
-        :return: empty list
-        """
+        # Fake method to emulate pyoko model API.
         return []
+
+    def get_humane_value(self, name):
+        # Fake method to emulate pyoko model API.
+        return name
+
+    def is_in_db(self):
+        # Fake method to emulate pyoko model API.
+        return False
+
+
 
     def _prepare_fields(self):
         if self._ordered_fields:
@@ -84,28 +104,75 @@ class JsonForm(ModelForm):
                 self._nodes[key] = val(_root_node=self)
                 setattr(self, key, val(_root_node=self))
 
-    def get_humane_value(self, name):
-        return name
-
-    def is_in_db(self):
-        """
-        to imitate real model
-
-        :return: False
-        """
-        return False
-
     def set_data(self, data):
         """
-        fills form with data
-        :param dict data:
-        :return: self
+        Fills form with data
+
+        Args:
+            data (dict): Data to assign form fields.
+
+        Returns:
+            Self. Form object.
+
         """
         for name in self._fields:
             setattr(self, name, data.get(name))
         return self
 
-    def serialize(self, readable=False):
+    def serialize(self):
+        """
+        Converts the form/model into JSON ready dicts/lists compatible
+        with `Ulakbus-UI API`_.
+
+        Example:
+
+            .. code-block:: json
+
+                {
+                  "forms": {
+                    "constraints": {},
+                    "model": {
+                      "code": null,
+                      "name": null,
+                      "save_edit": null,
+                    },
+                    "grouping": {},
+                    "form": [
+                      {
+                        "helpvalue": null,
+                        "type": "help"
+                      },
+                      "name",
+                      "code",
+                      "save_edit"
+                    ],
+                    "schema": {
+                      "required": [
+                        "name",
+                        "code",
+                        "save_edit"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "title": "Code Name"
+                        },
+                        "name": {
+                          "type": "string",
+                          "title": "Name"
+                        },
+                        "save_edit": {
+                          "cmd": "save::add_edit_form",
+                          "type": "button",
+                          "title": "Save"
+                        }
+                      },
+                      "title": "Add Permission"
+                    }
+                  }
+                }
+        """
         result = {
             "schema": {
                 "title": self.title,
@@ -126,7 +193,7 @@ class JsonForm(ModelForm):
             result["model"]['object_key'] = self._model.key
             result["model"]['unicode'] = six.text_type(self._model)
 
-        for itm in self._serialize(readable):
+        for itm in self._serialize():
             item_props = {'type': itm['type'], 'title': itm['title']}
             result["model"][itm['name']] = itm['value'] or itm['default']
 
@@ -140,8 +207,10 @@ class JsonForm(ModelForm):
                     continue
                 else:
                     item_props.update(itm['kwargs'])
-
-            self._handle_choices(itm, item_props, result)
+            if itm.get('choices'):
+                self._handle_choices(itm, item_props, result)
+            else:
+                result["form"].append(itm['name'])
 
             if 'schema' in itm:
                 item_props['schema'] = itm['schema']
@@ -154,12 +223,9 @@ class JsonForm(ModelForm):
 
     def _handle_choices(self, itm, item_props, result):
         # ui expects a different format for select boxes
-        if itm.get('choices'):
-            choices_data = self.get_choices(itm.get('choices'))
-            item_props['type'] = 'select'
-            result["form"].append({'key': itm['name'],
-                                   'type': 'select',
-                                   'title': itm['title'],
-                                   'titleMap': choices_data})
-        else:
-            result["form"].append(itm['name'])
+        choices_data = self.get_choices(itm.get('choices'))
+        item_props['type'] = 'select'
+        result["form"].append({'key': itm['name'],
+                               'type': 'select',
+                               'title': itm['title'],
+                               'titleMap': choices_data})

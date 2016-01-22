@@ -1,10 +1,13 @@
 # -*-  coding: utf-8 -*-
-"""Base view classes"""
-# -
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+"""
+This module holds CrudView and related classes that helps building
+CRUDS (Create Read Update Delete Search) type of views.
+"""
+
 import falcon
 import six
 from falcon import HTTPNotFound
@@ -23,9 +26,13 @@ from zengine.signals import crud_post_save
 from zengine.views.base import BaseView
 
 
-# GENERIC_COMMANDS = ['edit', 'add', 'update', 'list', 'delete', 'do', 'show', 'save']
 
 class ListForm(forms.JsonForm):
+    """
+    Basic ListForm object.
+    Used by CrudMeta metaclass to create distinct
+    copies for each subclass of CrudView.
+    """
     add = fields.Button("Ekle", cmd="add_edit_form")
 
 
@@ -37,7 +44,7 @@ class ObjectForm(forms.JsonForm):
     save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
                                          cmd="save_as_new::list")
 
-class CRUDRegistry(type):
+class CrudMeta(type):
     registry = {}
     _meta = None
 
@@ -47,17 +54,17 @@ class CRUDRegistry(type):
         attrs['ListForm'] = type('ListForm', (ListForm,), dict(ListForm.__dict__))
         attrs['ObjectForm'] = type('ObjectForm', (ObjectForm,), dict(ObjectForm.__dict__))
         if name == 'CrudView':
-            CRUDRegistry._meta = attrs['Meta']
+            CrudMeta._meta = attrs['Meta']
         else:
-            CRUDRegistry.registry[mcs.__name__] = mcs
+            CrudMeta.registry[mcs.__name__] = mcs
             if 'Meta' not in attrs:
-                attrs['Meta'] = type('Meta', (object,), CRUDRegistry._meta.__dict__)
+                attrs['Meta'] = type('Meta', (object,), CrudMeta._meta.__dict__)
             else:
-                for k, v in CRUDRegistry._meta.__dict__.items():
+                for k, v in CrudMeta._meta.__dict__.items():
                     if k not in attrs['Meta'].__dict__:
                         setattr(attrs['Meta'], k, v)
 
-        new_class = super(CRUDRegistry, mcs).__new__(mcs, name, bases, attrs)
+        new_class = super(CrudMeta, mcs).__new__(mcs, name, bases, attrs)
         return new_class
 
     @classmethod
@@ -133,7 +140,7 @@ def clear_model_list_cache(sender, *args, **kwargs):
 
 
 
-@six.add_metaclass(CRUDRegistry)
+@six.add_metaclass(CrudMeta)
 class CrudView(BaseView):
     """
     A base class for "Create List Show Update Delete" type of views.
