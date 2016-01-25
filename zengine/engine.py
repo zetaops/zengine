@@ -445,21 +445,20 @@ class ZEngine(object):
         Transmits client message that defined in
         a workflow task's inputOutput extension
 
-       .. code-block:: javascript
+       .. code-block:: xml
 
-         <bpmn2:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="client_message">
+            <bpmn2:extensionElements>
+            <camunda:inputOutput>
+            <camunda:inputParameter name="client_message">
             <camunda:map>
               <camunda:entry key="title">Teşekkürler</camunda:entry>
               <camunda:entry key="body">İşlem Başarılı</camunda:entry>
               <camunda:entry key="type">info</camunda:entry>
             </camunda:map>
-          </camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn2:extensionElements>
+            </camunda:inputParameter>
+            </camunda:inputOutput>
+            </bpmn2:extensionElements>
 
-        :return:
         """
         if 'client_message' in self.current.spec.data:
             m = self.current.spec.data['client_message']

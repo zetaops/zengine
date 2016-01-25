@@ -37,13 +37,14 @@ class FormMeta(type):
 
 @six.add_metaclass(FormMeta)
 class ModelForm(object):
+    """
+    Serializes / Deserializes pyoko models.
+
+    """
+
     class Meta:
         """
-        attribute customisation:
-        attributes = {
-           # field_name    attrib_name   value(s)
-            'kadro_id': [('filters', {'durum': 1}), ]
-        }
+        Meta class to hold config data for modifying  the behaviour of form objects.
         """
         customize_types = {}
         help_text = None

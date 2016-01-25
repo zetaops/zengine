@@ -2,9 +2,10 @@
 """
 This module contains JsonForm class which extends ModelForm to achieve
 three main goals:
-    - Allow custom forms.
-    - Allow attaching of additional fields and buttons to existing Forms.
-    - Implement JSON serialization compatible with `Ulakbus-UI API`_.
+
+- Allow custom forms.
+- Allow attaching of additional fields and buttons to existing Forms.
+- Implement JSON serialization compatible with `Ulakbus-UI API`_.
 
 .. _Ulakbus-UI API: http://www.ulakbus.org/wiki/ulakbus-ui-api.html
 

@@ -25,6 +25,39 @@ return keys
 _remove_keys = cache.register_script(REMOVE_SCRIPT)
 
 class Cache(object):
+    """
+    Base cache object to implement specific cache object for each use case.
+
+    Subclasses of this class can be consist of just a ```PREFIX``` attribute;
+
+    .. code-block:: python
+
+        class MyFooCache(Cache):
+            PREFIX = 'FOO'
+
+        # create cache object
+        mycache = MyFooCache(*args)
+
+        # set value
+        mycache.set(value)
+
+        # clear the whole PREFIX namespace
+        MyFooCache.flush()
+        # initial part(s) of keys can be used for finer control over keys.
+        MyFooCache.flush('EXTRA_PREFIX')
+
+    Or you can override the __init__ method to define strict positional
+    args with docstrings.
+
+    .. code-block:: python
+
+        class MyFooCache(Cache):
+            PREFIX = 'FOO'
+
+            def __init__(self, model_name, obj_key):
+                super(MyFooCache, self).__init__(model_name, obj_key)
+
+    """
     PREFIX = 'DFT'
     SERIALIZE = True
 
@@ -96,10 +129,15 @@ class Cache(object):
     @classmethod
     def flush(cls, *args):
         """
-        removes all keys in this current namespace
+        Removes all keys in this current namespace
         If called from class itself, clears all keys starting with cls.PREFIX
         if called with args, clears keys starting with given cls.PREFIX + args
-        :return: list of removed keys
+
+        Args:
+            *args: Arbitrary number of arguments.
+
+        Returns:
+            List of removed keys.
         """
         return _remove_keys([], [(cls._make_key(args) if args else cls.PREFIX) + '*'])
 

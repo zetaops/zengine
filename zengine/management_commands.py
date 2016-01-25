@@ -7,7 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
-from zengine.views.crud import ModelListCache
+from zengine.views.crud import SelectBoxCache
 
 
 class UpdatePermissions(Command):
@@ -47,7 +47,7 @@ class UpdatePermissions(Command):
 
         if new_perms:
             if not self.manager.args.dry:
-                ModelListCache.flush(model.__name__)
+                SelectBoxCache.flush(model.__name__)
             report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
             report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
         if self.manager.args.dry:

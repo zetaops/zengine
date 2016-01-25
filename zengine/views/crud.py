@@ -114,7 +114,7 @@ def obj_filter(func):
     """
     To mark a method to work as a builder method for the object listings.
 
-    Args
+    Args:
         func (function): a filter method that takes object instance and
     result dictionary and modifies that result dict in place.
 
@@ -135,7 +135,7 @@ def view_method(func):
 
     Mainly used by for auto-generated model based CRUD views.
 
-    Args
+    Args:
         func (function): A view method that will be called by "call"
          dispatcher according to current "cmd".
     """
@@ -147,7 +147,7 @@ def list_query(func):
     """
     To manipulate list querysets
 
-    Args
+    Args:
         func (function): Query method to be chained. Takes and returns a queryset.
 
     .. code-block:: python
@@ -162,17 +162,21 @@ def list_query(func):
     return func
 
 
-class ModelListCache(Cache):
+class SelectBoxCache(Cache):
+    """
+    Cache object for queries that will be made to fill auto-complete
+    select boxes of relations.
+    """
     PREFIX = 'MDLST'
 
     def __init__(self, model_name, query=''):
-        super(ModelListCache, self).__init__(model_name, query)
+        super(SelectBoxCache, self).__init__(model_name, query)
 
 
 # invalidate permission cache on crud updates on Role and AbstractRole models
 @receiver(crud_post_save)
 def clear_model_list_cache(sender, *args, **kwargs):
-    ModelListCache.flush(sender.model_class.__name__)
+    SelectBoxCache.flush(sender.model_class.__name__)
 
 
 
@@ -185,44 +189,44 @@ class CrudView(BaseView):
 
     class Meta:
         """
-        attributes
-        ----------------
-        To customize form fields
-        attributes = {
-           # field_name    attrib_name   value(s)
-            'kadro_id': [('filters', {'durum': 1}), ]
+        Attributes of this class defines the client side and backend
+         behaviour of CrudView instances.
 
-        }
+        Attributes:
 
+            model (str): Name of the model for this CrudView subclass.
+            object_actions ({}): A dict that will be passed to client
+             for each list item.
 
+                .. code-block:: python
 
-        object_actions
-        ----------------
+                    {'code_name_of_action':
+                        {'name': '', 'cmd': '', 'mode': '', 'show_as': ''},
+                    }
 
-        List of dicts.
-        {'name': '', 'cmd': '', 'mode': '', 'show_as': ''},
+                    # name: Visible name of action, useless when "show_as" set to "link".
 
-        name: Name of action, not used when "show_as" set to "link".
+                    # cmd: Command to be run. Should not be used in conjunction with "wf".
 
-        cmd: Command to be run. Should not be used in conjunction with "wf".
+                    # wf: Workflow to be run. Should not be used in conjunction with "cmd".
 
-        wf: Workflow to be run. Should not be used in conjunction with "cmd".
+                    # object_key: defaults to "object_id".
+                    #    To bypass automatic object fetching, override this with any value.
 
-        object_key: defaults to "object_id".
-            To bypass automatic object fetching, override this with any value.
+                    #show_as:
+                    #    "button",
+                    #    "context_menu" appends to context_menu of the row
+                    #    "group_action". appends to actions drop down menu
+                    #    "link" this option expects "fields" param with index numbers
+                    #    of fields to be shown  as links.
 
-        show_as:
-            "button",
-            "context_menu" appends to context_menu of the row
-            "group_action". appends to actions drop down menu
-            "link" this option expects "fields" param with index numbers
-            of fields to be shown  as links.
+                    #mode:
+                    #   various values can be given to define how to run an activity
+                    #   normal: open in same window
+                    #   modal: open in modal window
+                    #   new: new browser window
 
-        mode:
-            various values can be given to define how to run an activity
-            normal: open in same window
-            modal: open in modal window
-            new: new browser window
+            allow_search (bool): Enables or disables search feature.
 
         """
         allow_search = True
@@ -598,7 +602,7 @@ class CrudView(BaseView):
             self.output['objects'] = [0]
         else:
             search_str = self.input.get('query', '')
-            cache = ModelListCache(self.model_class.__name__, search_str)
+            cache = SelectBoxCache(self.model_class.__name__, search_str)
             self.output['objects'] = cache.get() or cache.set(
                     [{'key': obj.key, 'value': six.text_type(obj)}
                      for obj in query])
