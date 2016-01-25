@@ -29,7 +29,8 @@ from zengine.views.base import BaseView
 
 class ListForm(forms.JsonForm):
     """
-    Basic ListForm object.
+    Holds list view form elements.
+
     Used by CrudMeta metaclass to create distinct
     copies for each subclass of CrudView.
     """
@@ -37,6 +38,12 @@ class ListForm(forms.JsonForm):
 
 
 class ObjectForm(forms.JsonForm):
+    """
+    Holds object add / edit form elements.
+
+    Used by CrudMeta metaclass to create distinct
+    copies for each subclass of CrudView.
+    """
     save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
     save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
     save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
@@ -45,6 +52,11 @@ class ObjectForm(forms.JsonForm):
                                          cmd="save_as_new::list")
 
 class CrudMeta(type):
+    """
+    Meta class that prepares CrudView's subclasses.
+
+    Handles passing of default "Meta" class attributes and List/Object forms into subclasses.
+    """
     registry = {}
     _meta = None
 
@@ -81,9 +93,16 @@ def form_modifier(func):
     """
     To mark a method to work as a modifier for the form output.
 
-    @form_modifier
+    Args:
+        func (function): a filter method that takes form's serialized output as
+    the sole argument and changes it in place as required.
 
-    :param func: a filter method that takes
+    .. code-block:: python
+
+        @form_modifier
+        def foo(self, serialized_form):
+            if 'x' in serialized_form['schema']['properties']:
+                serialized_form['inline_edit'] = ['y', 'z']
 
     """
 
@@ -95,8 +114,16 @@ def obj_filter(func):
     """
     To mark a method to work as a builder method for the object listings.
 
-    :param func: a filter method that takes object instance and
-    result dictionary and modifiec this dict in place
+    Args
+        func (function): a filter method that takes object instance and
+    result dictionary and modifies that result dict in place.
+
+    .. code-block:: python
+
+        def foo(self, obj, result):
+            if obj.status < self.CONFIRMED:
+                result['actions'].append(
+                        {'name': 'Confirm', 'cmd': 'confrim', 'show_as': 'button'})
     """
     func.filter_method = True
     return func
@@ -104,10 +131,13 @@ def obj_filter(func):
 
 def view_method(func):
     """
-    marks view methods to use with dynamic dispatching
+    Marks view methods to be used with dynamic dispatcher (self.call).
 
-    :param func: view method
-    :return:
+    Mainly used by for auto-generated model based CRUD views.
+
+    Args
+        func (function): A view method that will be called by "call"
+         dispatcher according to current "cmd".
     """
     func.view_method = True
     return func
@@ -115,10 +145,17 @@ def view_method(func):
 
 def list_query(func):
     """
-    last first only
-    query extend
-    :param function query_method: query method to be chained. Takes and returns a queryset.
-    :return: query_method
+    To manipulate list querysets
+
+    Args
+        func (function): Query method to be chained. Takes and returns a queryset.
+
+    .. code-block:: python
+
+        def foo(self, obj, result):
+            if obj.status < self.CONFIRMED:
+                result['actions'].append(
+                        {'name': 'Confirm', 'cmd': 'confrim', 'show_as': 'button'})
     """
 
     func.query_method = True

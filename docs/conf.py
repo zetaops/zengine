@@ -15,6 +15,7 @@
 
 import sys
 import os
+os.environ['PYOKO_SETTINGS'] = 'zengine.settings'
 import shlex
 
 # If extensions (or modules to document with autodoc) are in another directory,
