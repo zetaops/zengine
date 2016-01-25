@@ -1,0 +1,13 @@
+git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow
+git+https://github.com/zetaops/pyoko.git#egg=pyoko
+beaker
+git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions
+falcon
+redis
+passlib
+lazy_object_proxy
+enum34
+werkzeug
+pytest
+celery
+
