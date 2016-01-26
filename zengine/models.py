@@ -13,6 +13,9 @@ from passlib.hash import pbkdf2_sha512
 
 
 class Permission(Model):
+    """
+    Permission model
+    """
     name = field.String("Name", index=True)
     code = field.String("Code Name", index=True)
     description = field.String("Description", index=True)
@@ -22,6 +25,9 @@ class Permission(Model):
 
 
 class User(Model):
+    """
+    Basic User model
+    """
     username = field.String("Username", index=True)
     password = field.String("Password")
     superuser = field.Boolean("Super user", default=False)
@@ -57,23 +63,8 @@ class Role(Model):
     user = User()
 
     class Meta:
-        """
-        Meta class
-        """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
-
-    def foo(self, fo):
-        """
-        Foo
-
-        Args:
-            fo: fo
-
-        Returns:
-            None
-        """
-        pass
 
     def __unicode__(self):
         try:

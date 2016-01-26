@@ -67,6 +67,7 @@ zengine.models module
 
 .. automodule:: zengine.models
     :members:
+    :undoc-members:
     :show-inheritance:
 
 zengine.notifications module

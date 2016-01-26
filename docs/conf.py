@@ -101,7 +101,7 @@ exclude_patterns = ['_build']
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+# pygments_style = 'monokai'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -172,6 +172,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
+#html_additional_pages = {}
 #html_additional_pages = {}
 
 # If false, no module index is generated.

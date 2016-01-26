@@ -22,8 +22,6 @@ zengine.forms.json_form module
 
 zengine.forms.model_form module
 -------------------------------
-.. autoattribute:: zengine.forms.model_form
-
 
 .. automodule:: zengine.forms.model_form
     :members:
