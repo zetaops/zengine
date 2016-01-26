@@ -220,6 +220,25 @@ class WFCurrent(Current):
 
 
 class ZEngine(object):
+    """
+    Workflow Engine Class
+
+    This object handles following jobs;
+
+    - Loading of BPMN workflow diagrams,
+    - Iteration of task steps,
+    - Importing and calling view and service tasks of task steps.
+    - Caching and reloading of workflow states between steps.
+
+    .. code-block:: python
+
+        wf_engine = ZEngine()
+        wf_engine.start_engine(request=request_object,
+                               response=response_object,
+                               workflow_name=wf_name)
+        wf_engine.run()
+
+    """
     def __init__(self):
         self.use_compact_serializer = True
         # self.current = None
@@ -281,9 +300,7 @@ class ZEngine(object):
             return wf_cache['wf_state']
 
     def _load_workflow(self):
-        """
-        gets the serialized wf data from cache and deserializes it
-        """
+        # gets the serialized wf data from cache and deserializes it
         serialized_wf = self.load_workflow_from_cache()
         if serialized_wf:
             return self.deserialize_workflow(serialized_wf)
@@ -311,9 +328,10 @@ class ZEngine(object):
 
     def find_workflow_path(self):
         """
-        tries to find the path of the workflow diagram file
-        in WORKFLOW_PACKAGES_PATHS
-        :return: path of the workflow spec file (BPMN diagram)
+        Tries to find the path of the workflow diagram file
+        in `WORKFLOW_PACKAGES_PATHS`
+        Returns:
+            Path of the workflow spec file (BPMN diagram)
         """
         for pth in settings.WORKFLOW_PACKAGES_PATHS:
             path = "%s/%s.bpmn" % (pth, self.current.workflow_name)
@@ -328,10 +346,11 @@ class ZEngine(object):
 
     def get_worfklow_spec(self):
         """
-        generates and caches the workflow spec package from
-        bpmn diagrams that read from disk
+        Generates and caches the workflow spec package from
+        BPMN diagrams that read from disk
 
-        :return: workflow spec package
+        Returns:
+            SpiffWorkflow Spec object.
         """
         # TODO: convert from in-process to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
@@ -343,12 +362,22 @@ class ZEngine(object):
 
     def _save_workflow(self):
         """
-        calls the real save method if we pass the beggining of the wf
+        Calls the real save method if we pass the beggining of the wf
         """
         if not self.current.task_type.startswith('Start'):
             self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
 
     def start_engine(self, **kwargs):
+        """
+        Initializes the workflow with given request, response objects and diagram name.
+
+        Args:
+            request: Falcon Request object.
+            response: Falcon Response object.
+            workflow_name (str): Name of workflow diagram without ".bpmn" suffix.
+             File must be placed under one of configured :py:attr:`~zengine.settings.WORKFLOW_PACKAGES_PATHS`
+
+        """
         self.current = WFCurrent(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
@@ -363,9 +392,7 @@ class ZEngine(object):
         self.current.workflow = self.workflow
 
     def log_wf_state(self):
-        """
-        logging the state of the workflow and data
-        """
+        # logs the state of workflow and content of task_data
         output = '\n- - - - - -\n'
         output += "WORKFLOW: %s ( %s )" % (self.current.workflow_name.upper(),
                                            self.current.workflow.name)
@@ -384,8 +411,14 @@ class ZEngine(object):
     def run(self):
         """
         Main loop of the workflow engine
-        Activates all READY tasks, calls their diagrams, saves wf state,
-        Stops if current task is a UserTask or EndTask
+
+        - Updates ::class:`~WFCurrent` object.
+        - Checks for Permissions.
+        - Activates all READY tasks.
+        - Runs referenced activities (method calls).
+        - Saves WF states.
+        - Stops if current task is a UserTask or EndTask.
+        - Deletes state object if we finish the WF.
 
         """
         # FIXME: raise if first task after line change isn't a UserTask
@@ -425,14 +458,17 @@ class ZEngine(object):
             self.current.old_lane = self.current.lane_name
 
     def sendoff_current_user(self):
-        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
-        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
-
-    def set_job_goes_bg(self):
+        """
+        Tell current user that s/he finished it's job for now.
+        We'll notify if workflow arrives again to his/her WF Lane.
+        """
         msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
         self.current.msg_box(title=msgs['title'], msg=msgs['body'])
 
     def invite_other_party(self):
+        """
+        Invites the next lane's (possible) owner(s) to participate
+        """
         possible_owners = eval(self.current.lane_owners, self.get_pool_context())
         signals.lane_user_change.send(sender=self,
                                       current=self.current,
@@ -469,7 +505,7 @@ class ZEngine(object):
 
     def run_activity(self):
         """
-        imports, caches and calls the associated activity of the current task
+        runs the method that referenced from current task
         """
         activity = self.current.activity
         if activity:
@@ -479,13 +515,24 @@ class ZEngine(object):
                 "Calling Activity %s from %s" % (activity, self.wf_activities[activity]))
             self.wf_activities[self.current.activity](self.current)
 
-    def _import_object(self, path, look4kls_method):
-        last_nth = 2 if look4kls_method else 1
+    def _import_object(self, path, look_for_cls_method):
+        """
+        Imports the module that contains the referenced method.
+
+        Args:
+            path: python path of class/function
+            look_for_cls_method (bool): If True, treat the last part of path as class method.
+
+        Returns:
+            Tuple. (class object, class name, method to be called)
+
+        """
+        last_nth = 2 if look_for_cls_method else 1
         path = path.split('.')
         module_path = '.'.join(path[:-last_nth])
         class_name = path[-last_nth]
         module = importlib.import_module(module_path)
-        if look4kls_method and path[-last_nth:][0] == path[-last_nth]:
+        if look_for_cls_method and path[-last_nth:][0] == path[-last_nth]:
             class_method = path[-last_nth:][1]
         else:
             class_method = None
@@ -495,7 +542,7 @@ class ZEngine(object):
 
     def _load_activity(self, activity):
         """
-        imports, caches and calls the associated activity of the current task
+        Iterates trough the all enabled `~ACTIVITY_MODULES_IMPORT_PATHS` to find the given path.
         """
         fpths = []
         full_path = ''

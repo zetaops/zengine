@@ -1,6 +1,13 @@
 zengine package
 ===============
 
+
+.. automodule:: zengine
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 Subpackages
 -----------
 
@@ -103,11 +110,3 @@ zengine.signals module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: zengine
-    :members:
-    :undoc-members:
-    :show-inheritance:

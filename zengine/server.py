@@ -54,9 +54,10 @@ wf_engine = ZEngine()
 
 def wf_connector(req, resp, wf_name):
     """
-    this will be used to catch all unhandled requests from falcon and
+    This will be used to catch all unhandled requests from falcon and
     map them to workflow engine.
-    a request to http://HOST_NAME/show_dashboard/ will invoke a workflow
+
+    A request to http://HOST_NAME/show_dashboard/ will invoke a workflow
     named show_dashboard with the payload json data
     """
     try:
