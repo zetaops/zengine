@@ -45,6 +45,42 @@ class ModelForm(object):
     class Meta:
         """
         Meta class to hold config data for modifying  the behaviour of form objects.
+
+        Attributes:
+            `~ModelForm.Meta.title` (str): Title text to be shown top of the form.
+
+            `~ModelForm.Meta.help_text` (str): Help text to shown under form title.
+
+            `~ModelForm.Meta.customize_types` (dict): Override field types.
+                A dict that maps fields names with desired field types.
+
+                >>> customize_types={"user_password": "password"}
+
+            `~ModelForm.Meta.include` ([]): List of field names to be included.
+             If given, all other fields will be excluded.
+
+            `~ModelForm.Meta.exclude` ([]): List of field names to be excluded.
+             If given, all other fields will be included.
+
+            `~ModelForm.Meta.constraints` (dict): Form constraints to be enforced by
+             both client side and backend form processors.
+
+             Please see `Ulakbus-UI API`_ docs for possible constraints.
+
+             .. code-block: python
+
+                constraints = [
+                            {
+                                'cons': [{'id': 'field2_id', 'cond': 'exists'}],
+                                'do': 'change_fields', 'fields': [{'field2_id': None}]
+                            },
+                            {
+                                'cons': [{'id': 'field2_id', 'cond': 'exists'}],
+                                'do': 'change_fields', 'fields': [{'field1_id': None}]
+                            }
+                        ]
+
+
         """
         customize_types = {}
         help_text = None
@@ -53,19 +89,17 @@ class ModelForm(object):
         exclude = []
         grouping = {}
         constraints = {}
-        # attributes = defaultdict(list)
 
     def __init__(self, model=None, exclude=None, include=None, types=None, title=None, **kwargs):
         """
-        A serializer / deserializer for models and custom
-        forms that built with pyoko.fields
 
         .. note:: *include* and *exclude* does not support fields that placed in nodes.
 
-        :param pyoko.Model model: A pyoko model instance, may be empty
-        :param list exclude: list of fields to be excluded from serialization
-        :param list include: list of fields to be included into serialization
-        :param dict types: override type of fields
+        Args:
+            model: A pyoko model instance, may be empty
+            exclude ([]): list of fields to be excluded from serialization
+            include ([]): list of fields to be included into serialization
+            types (dict): override type of fields
         """
         self._model = model or self
         self._config = {'fields': True, 'nodes': True, 'models': True, 'list_nodes': True}

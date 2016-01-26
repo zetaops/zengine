@@ -57,8 +57,23 @@ class Role(Model):
     user = User()
 
     class Meta:
+        """
+        Meta class
+        """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
+
+    def foo(self, fo):
+        """
+        Foo
+
+        Args:
+            fo: fo
+
+        Returns:
+            None
+        """
+        pass
 
     def __unicode__(self):
         try:

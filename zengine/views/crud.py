@@ -184,7 +184,13 @@ def clear_model_list_cache(sender, *args, **kwargs):
 @six.add_metaclass(CrudMeta)
 class CrudView(BaseView):
     """
-    A base class for "Create List Show Update Delete" type of views.
+    A base class for "Create List Show Update Delete" type of
+    views that works primarily on one model.
+
+    While it's possible to get model's name from client input
+    (`self.current.input['model']`) generally subclasses of
+    CrudView explicitly define the name of their primary model's
+    name in :class:`~Meta.model` Meta class variable.
     """
 
     class Meta:
@@ -194,39 +200,45 @@ class CrudView(BaseView):
 
         Attributes:
 
-            model (str): Name of the model for this CrudView subclass.
+            model (str): Name of the model to work on.
+             self.current.input['model'] will be used if not defined.
             object_actions ({}): A dict that will be passed to client
              for each list item.
 
                 .. code-block:: python
 
-                    {'code_name_of_action':
+                    object_actions = {'code_name_of_action':
                         {'name': '', 'cmd': '', 'mode': '', 'show_as': ''},
                     }
+                    '''
+                    name: Visible name of action, useless when "show_as" set to "link".
 
-                    # name: Visible name of action, useless when "show_as" set to "link".
+                    cmd: Command to be run. Should not be used in conjunction with "wf".
 
-                    # cmd: Command to be run. Should not be used in conjunction with "wf".
+                    wf: Workflow to be run. Should not be used in conjunction with "cmd".
 
-                    # wf: Workflow to be run. Should not be used in conjunction with "cmd".
+                    object_key: Defaults to "object_id". To bypass automatic object fetching,
+                    override this with any value.
 
-                    # object_key: defaults to "object_id".
-                    #    To bypass automatic object fetching, override this with any value.
+                    show_as:
+                        "button",
+                        "context_menu" appends to context_menu of the row
+                        "group_action". appends to actions drop down menu
+                        "link" this option expects "fields" param with index numbers
+                        of fields to be shown  as links.
 
-                    #show_as:
-                    #    "button",
-                    #    "context_menu" appends to context_menu of the row
-                    #    "group_action". appends to actions drop down menu
-                    #    "link" this option expects "fields" param with index numbers
-                    #    of fields to be shown  as links.
-
-                    #mode:
-                    #   various values can be given to define how to run an activity
-                    #   normal: open in same window
-                    #   modal: open in modal window
-                    #   new: new browser window
-
+                    mode:
+                       various values can be given to define how to run an activity
+                       normal: open in same window
+                       modal: open in modal window
+                       new: new browser window
+                    '''
+            init_view (str): Default view for dispatcher (call) mode.
             allow_search (bool): Enables or disables search feature.
+            allow_filters (bool): Enables or disables filters.
+            allow_selection (bool): Enables or disables selection of items on object list.
+            objects_per_page (int): number of items per object list page.
+
 
         """
         allow_search = True
@@ -234,11 +246,7 @@ class CrudView(BaseView):
         init_view = 'list'
         allow_filters = True
         allow_selection = False
-        allow_edit = True
-        allow_add = True
-        objects_per_page = 8
-        title = None
-        attributes = {}
+        objects_per_page = 10
         object_actions = {
             'delete': {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
             'add_edit_form': {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal',
@@ -277,7 +285,6 @@ class CrudView(BaseView):
             self.output['meta'] = {
                 'allow_selection': self.Meta.allow_selection,
                 'allow_search': self.Meta.allow_search and bool(self.object.Meta.search_fields),
-                'attributes': self.Meta.attributes,
             }
 
     def _apply_form_modifiers(self, serialized_form):
