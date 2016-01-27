@@ -12,12 +12,14 @@ Subpackages
 -----------
 
 .. toctree::
+    :maxdepth: 4
 
     zengine.auth
     zengine.dispatch
     zengine.forms
     zengine.lib
-    zengine.views
+    views/crud
+
 
 Submodules
 ----------

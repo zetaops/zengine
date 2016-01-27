@@ -1,6 +1,7 @@
 # -*-  coding: utf-8 -*-
 """
-This module holds Menu class that builds user menus/
+This module holds Menu class that builds user
+menus from workflows and models.
 """
 
 # Copyright (C) 2015 ZetaOps Inc.
@@ -19,7 +20,7 @@ from zengine.config import settings
 
 class Menu(BaseView):
     """
-    Menu view
+    Menu view class
     """
     def __init__(self, current):
         super(Menu, self).__init__(current)

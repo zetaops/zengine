@@ -65,7 +65,7 @@ class ModelForm(object):
             `~ModelForm.Meta.constraints` (dict): Form constraints to be enforced by
              both client side and backend form processors.
 
-             Please see `Ulakbus-UI API`_ docs for possible constraints.
+             See `Ulakbus-UI API`_ docs for possible constraints.
 
              .. code-block:: python
 

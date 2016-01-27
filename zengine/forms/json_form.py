@@ -82,8 +82,6 @@ class JsonForm(ModelForm):
         # Fake method to emulate pyoko model API.
         return False
 
-
-
     def _prepare_fields(self):
         if self._ordered_fields:
             return

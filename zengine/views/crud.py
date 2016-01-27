@@ -55,7 +55,8 @@ class CrudMeta(type):
     """
     Meta class that prepares CrudView's subclasses.
 
-    Handles passing of default "Meta" class attributes and List/Object forms into subclasses.
+    Handles passing of default "Meta" class attributes and
+    List/Object forms into subclasses.
     """
     registry = {}
     _meta = None
@@ -91,7 +92,7 @@ class CrudMeta(type):
 
 def form_modifier(func):
     """
-    To mark a method to work as a modifier for the form output.
+    Decorator for marking a method to work as a modifier for the form output.
 
     Args:
         func (function): a filter method that takes form's serialized output as
@@ -112,7 +113,7 @@ def form_modifier(func):
 
 def obj_filter(func):
     """
-    To mark a method to work as a builder method for the object listings.
+    Decorator for marking a method to work as a builder method for the object listings.
 
     Args:
         func (function): a filter method that takes object instance and
@@ -131,13 +132,18 @@ def obj_filter(func):
 
 def view_method(func):
     """
-    Marks view methods to be used with dynamic dispatcher (self.call).
+    Decorator for marking view methods to be used with dynamic
+    dispatcher :py:attr:`~zengine.views.crud.CrudView.call`.
 
-    Mainly used by for auto-generated model based CRUD views.
+    Note:
+        Dynamic dispaching mainly used for auto-generated model
+        based CRUD views. In this mode, methods called according
+        to current "cmd".
 
     Args:
-        func (function): A view method that will be called by "call"
-         dispatcher according to current "cmd".
+        func (function): A view method that will be called by
+         :py:attr:`~zengine.views.crud.CrudView.call`
+         dispatcher method.
     """
     func.view_method = True
     return func
@@ -173,9 +179,11 @@ class SelectBoxCache(Cache):
         super(SelectBoxCache, self).__init__(model_name, query)
 
 
-# invalidate permission cache on crud updates on Role and AbstractRole models
 @receiver(crud_post_save)
 def clear_model_list_cache(sender, *args, **kwargs):
+    """
+    Invalidate permission cache on crud updates on Role and AbstractRole models
+    """
     SelectBoxCache.flush(sender.model_class.__name__)
 
 
@@ -190,7 +198,7 @@ class CrudView(BaseView):
     While it's possible to get model's name from client input
     (`self.current.input['model']`) generally subclasses of
     CrudView explicitly define the name of their primary model's
-    name in :class:`~Meta.model` Meta class variable.
+    name in :class:`~zengine.views.crud.CrudView.Meta.model` Meta class variable.
     """
 
     class Meta:
@@ -237,7 +245,7 @@ class CrudView(BaseView):
             allow_search (bool): Enables or disables search feature.
             allow_filters (bool): Enables or disables filters.
             allow_selection (bool): Enables or disables selection of items on object list.
-            objects_per_page (int): number of items per object list page.
+            objects_per_page (int): Number of items per object list page.
 
 
         """
