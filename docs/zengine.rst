@@ -19,6 +19,7 @@ Subpackages
     zengine.forms
     zengine.lib
     views/crud
+    zengine.views
 
 
 Submodules
