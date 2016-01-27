@@ -11,6 +11,7 @@ zengine.forms.fields module
     :members:
     :undoc-members:
     :show-inheritance:
+    :special-members: __init__
 
 zengine.forms.json_form module
 ------------------------------
@@ -18,6 +19,7 @@ zengine.forms.json_form module
 .. automodule:: zengine.forms.json_form
     :members:
     :show-inheritance:
+    :special-members: __init__
 
 
 zengine.forms.model_form module
@@ -27,3 +29,5 @@ zengine.forms.model_form module
     :members:
     :undoc-members:
     :show-inheritance:
+    :special-members: __init__
+

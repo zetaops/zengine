@@ -1,5 +1,7 @@
 # -*-  coding: utf-8 -*-
-"""project settings"""
+"""
+Zengine Default Project Settings
+"""
 
 # Copyright (C) 2015 ZetaOps Inc.
 #
@@ -9,60 +11,84 @@
 
 import os.path
 
+#: Default lang
 DEFAULT_LANG = 'en'
 
+#: Project base
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-# path of the activity modules which will be invoked by workflow tasks
+#: Path of the activity modules which will be invoked by workflow tasks
 ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.views']
-# absolute path to the workflow packages
+
+#: Absolute path to the workflow packages
 WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'diagrams')]
 
+#: Authentication backend
 AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
+#: Permissions model
 PERMISSION_MODEL = 'zengine.models.Permission'
+
+#: User model
 USER_MODEL = 'zengine.models.User'
+
+#: Role model
 ROLE_MODEL = 'zengine.models.Role'
-# left blank to use StreamHandler aka stderr
-# set 'file' for logging 'LOG_FILE'
+
+#: Logging Settings
+#:
+#: Left blank to use StreamHandler aka stderr
+#:
+#: Set to 'file' for logging 'LOG_FILE'
 LOG_HANDLER = os.environ.get('LOG_HANDLER')
 
+#: Logging Level. Can be one INFO or DEBUG.
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG')
 
-# logging dir for file handler
-# LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
-
-# log file
+#: Log file path.
 LOG_FILE = os.environ.get('LOG_FILE', '/tmp/zengine.log')
 
-DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
+#: Default cache expire time in seconds
+DEFAULT_CACHE_EXPIRE_TIME = 99999999
 
-# workflows that dosen't require logged in user
+#: Workflows that dosen't require logged in user.
 ANONYMOUS_WORKFLOWS = ['login', 'login.']
 
-# currently only affects logging level
+#: Currently only affects logging level
 DEBUG = bool(int(os.environ.get('DEBUG', 0)))
 
 
-# PYOKO SETTINGS
+#: Pyoko (DB) Settings
+#:
+#: Bucket Type
 DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
+
+#: RIAK Server address
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
+
+#: Riak access protocol. Can be 'http' or 'pbc'
 RIAK_PROTOCOL = os.environ.get('RIAK_PROTOCOL', 'http')
+
+#: Riak port. By default 8098 for http, 8087 for pbc.
 RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
 
+#: Redis address and port.
 REDIS_SERVER = os.environ.get('REDIS_SERVER', '127.0.0.1:6379')
 
+#: Allowed origins for serving client from a different host.
 ALLOWED_ORIGINS = [
                       'http://127.0.0.1:8080',
                       'http://127.0.0.1:9001',
                   ] + os.environ.get('ALLOWED_ORIGINS', '').split(',')
 
+#: Enabled middlewares.
 ENABLED_MIDDLEWARES = [
     'zengine.middlewares.CORS',
     'zengine.middlewares.RequireJSON',
     'zengine.middlewares.JSONTranslator',
 ]
 
+#: Beaker session options.
 SESSION_OPTIONS = {
     'session.cookie_expires': True,
     'session.type': 'redis',
@@ -71,11 +97,14 @@ SESSION_OPTIONS = {
     'session.path': '/',
 }
 
+#: View URL list for non-workflow views.
+#:
+#: ('falcon URI template', 'python path to view method/class'),
 VIEW_URLS = [
-    # ('falcon URI template', 'python path to view method/class'),
     ('/menu', 'zengine.views.menu.Menu'),
 ]
 
+#: System Messages
 MESSAGES = {
     'lane_change_invite_title': 'System needs you!',
     'lane_change_invite_body': 'Some workflow reached a state that needs your action, '
@@ -86,17 +115,24 @@ MESSAGES = {
 
 }
 
+#: A manager object for DB stored catalog data.
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
 
-OBJECT_MENU = {}
-ADMIN_MENUS = []
+#: Default category for un-categorized workflows.
 DEFAULT_WF_CATEGORY_NAME = 'General Workflows'
-DEFAULT_OBJECT_CATEGORY_NAME = 'Object Tasks'
 
-DATE_DEFAULT_FORMAT = "%d.%m.%Y"
-DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
-
-
+#: Enable auto generated CRUD menu for all models.
 ENABLE_SIMPLE_CRUD_MENU = True
 
+#: Category name for auto generated CRUD items.
+DEFAULT_OBJECT_CATEGORY_NAME = 'Object Tasks'
+
+#: Default date format
+DATE_DEFAULT_FORMAT = "%d.%m.%Y"
+
+#: Default datetime format
+DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
+
+#: Permission provider.
+#: UpdatePermissions command uses this object to get available permmissions
 PERMISSION_PROVIDER = 'zengine.auth.permissions.get_all_permissions'

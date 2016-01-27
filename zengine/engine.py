@@ -578,9 +578,10 @@ class ZEngine(object):
 
     def check_for_authentication(self):
         """
-        Checks current workflow against anonymous_workflows list,
-        raises HTTPUnauthorized error when WF needs an authenticated user
-        and current user isn't.
+        Checks current workflow against :py:data:`~zengine.settings.ANONYMOUS_WORKFLOWS` list.
+
+        Raises:
+            HTTPUnauthorized: if WF needs an authenticated user and current user isn't.
         """
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
@@ -589,11 +590,16 @@ class ZEngine(object):
 
     def check_for_lane_permission(self):
         """
-        One or more permissions can be associated with a lane of a workflow.
-        In a similar way, a lane can be restricted with relation to other lanes of the workflow.
+        One or more permissions can be associated with a lane
+        of a workflow. In a similar way, a lane can be
+        restricted with relation to other lanes of the workflow.
 
-        When this method called on lane changes, it checks if the current user has the required
-         permissions and proper relations. Raises a HTTPForbidden error if it is not.
+        This method called on lane changes and checks user has
+        required permissions and relations.
+
+        Raises:
+             HTTPForbidden: if the current user hasn't got the
+              required permissions and proper relations
 
         """
         # TODO: Cache lane_data in app memory

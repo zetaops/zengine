@@ -57,8 +57,13 @@ def wf_connector(req, resp, wf_name):
     This will be used to catch all unhandled requests from falcon and
     map them to workflow engine.
 
-    A request to http://HOST_NAME/show_dashboard/ will invoke a workflow
-    named show_dashboard with the payload json data
+    A request to `http://HOST_NAME/show_dashboard/` will invoke a workflow
+    named *show_dashboard* with the payload json data
+
+    Args:
+        wf_name (str): Workflow name
+        resp: Falcon Response object.
+        req: Falcon Request object.
     """
     try:
         wf_engine.start_engine(request=req, response=resp, workflow_name=wf_name)
@@ -75,7 +80,18 @@ def wf_connector(req, resp, wf_name):
 
 def view_connector(view_path):
     """
-    A connector for non-workflow views
+    A factory method for non-workflow views.
+
+    Falcon's `add_route` method requires an object that
+    implements on_get, on_post or on_put methods. This
+    method returns a handler object that calls the given
+    view class / function.
+
+    Prevention of unauthenticated access and re-raising of
+    internal server errors also done at this stage.
+
+    Args:
+        view_path: Python path of the view class/function.
     """
 
     view = get_object_from_path(view_path)

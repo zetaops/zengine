@@ -27,6 +27,7 @@ zengine.views.crud module
     :members:
     :undoc-members:
     :show-inheritance:
+    :special-members: __init__
 
 zengine.views.menu module
 -------------------------

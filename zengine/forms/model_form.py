@@ -44,12 +44,12 @@ class ModelForm(object):
 
     class Meta:
         """
-        Meta class to hold config data for modifying  the behaviour of form objects.
+        ModelForm Meta class holds config data that modifies the behaviour of form objects.
 
         Attributes:
             `~ModelForm.Meta.title` (str): Title text to be shown top of the form.
 
-            `~ModelForm.Meta.help_text` (str): Help text to shown under form title.
+            `~ModelForm.Meta.help_text` (str): Help text to be shown under the title.
 
             `~ModelForm.Meta.customize_types` (dict): Override field types.
                 A dict that maps fields names with desired field types.
@@ -67,7 +67,7 @@ class ModelForm(object):
 
              Please see `Ulakbus-UI API`_ docs for possible constraints.
 
-             .. code-block: python
+             .. code-block:: python
 
                 constraints = [
                             {
@@ -80,7 +80,7 @@ class ModelForm(object):
                             }
                         ]
 
-
+        .. _Ulakbus-UI API: http://www.ulakbus.org/wiki/ulakbus-api-ui-iliskisi.html
         """
         customize_types = {}
         help_text = None
@@ -118,9 +118,13 @@ class ModelForm(object):
 
     def deserialize(self, data):
         """
-        returns the model loaded with received form data.
+        Creates a model instance with given form data.
 
-        :param dict data: received form data from client
+        Args:
+            data (dict): Form data in key / value form.
+
+        Returns:
+            Un-saved model instance.
         """
         # FIXME: investigate and integrate necessary security precautions on received data
         # ie: received keys should  be defined in the form
@@ -168,12 +172,51 @@ class ModelForm(object):
 
     def _serialize(self, readable=False):
         """
-        returns serialized version of all parts of the model or form
+        Converts model/form data into a serialization ready dictionary format.
 
-        :type readable: create human readable output
-            ie: use get_field_name_display()
-        :return: list of serialized model fields
-        :rtype: list
+        Args:
+            readable (bool): creates human readable output.
+                *e.g.* Instead of raw values, uses get_field_name_display() when available.
+
+        Returns:
+            List of dicts.
+
+        Example:
+
+            .. code-block:: python
+
+                In [1]: from zengine.forms.model_form import ModelForm
+
+                In [2]: from zengine.models import User
+
+                In [3]: user = User.objects.get(username='test_user')
+
+                In [4]: ModelForm(user)._serialize()
+                Out[4]:
+                [{'choices': None,
+                  'default': None,
+                  'kwargs': {},
+                  'name': 'username',
+                  'required': True,
+                  'title': 'Username',
+                  'type': 'string',
+                  'value': 'test_user'},
+                 {'choices': None,
+                  'default': None,
+                  'kwargs': {},
+                  'name': 'password',
+                  'required': True,
+                  'title': 'Password',
+                  'type': 'string',
+                  'value': '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITH...'},
+                 {'choices': None,
+                  'default': False,
+                  'kwargs': {},
+                  'name': 'superuser',
+                  'required': False,
+                  'title': 'Super user',
+                  'type': 'boolean',
+                  'value': True}]
         """
         self._prepare_fields()
         self.readable = readable

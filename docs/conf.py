@@ -13,10 +13,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
+# import sys
 import os
 os.environ['PYOKO_SETTINGS'] = 'zengine.settings'
-import shlex
+# import shlex
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -40,6 +40,7 @@ extensions = [
 napoleon_numpy_docstring = False
 napoleon_include_private_with_doc = True
 napoleon_use_ivar = True
+napoleon_include_special_with_doc = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -110,7 +111,7 @@ exclude_patterns = ['_build']
 #keep_warnings = False
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
+# todo_include_todos = False
 
 
 # -- Options for HTML output ----------------------------------------------

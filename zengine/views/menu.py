@@ -1,5 +1,6 @@
 # -*-  coding: utf-8 -*-
 """
+This module holds Menu class that builds user menus/
 """
 
 # Copyright (C) 2015 ZetaOps Inc.
@@ -17,6 +18,9 @@ from zengine.config import settings
 
 
 class Menu(BaseView):
+    """
+    Menu view
+    """
     def __init__(self, current):
         super(Menu, self).__init__(current)
         self.output['quick_menu'] = []
