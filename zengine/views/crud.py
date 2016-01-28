@@ -95,8 +95,13 @@ def form_modifier(func):
     Decorator for marking a method to work as a modifier for the form output.
 
     Args:
-        func (function): a filter method that takes form's serialized output as
-    the sole argument and changes it in place as required.
+        func (function): a filter method that takes form's
+         serialized output as the sole argument and changes
+         it in place as required.
+
+    Note:
+        This is a workaround till we decide and implement a
+         better method for fine grained form customizations.
 
     .. code-block:: python
 
@@ -104,9 +109,8 @@ def form_modifier(func):
         def foo(self, serialized_form):
             if 'x' in serialized_form['schema']['properties']:
                 serialized_form['inline_edit'] = ['y', 'z']
-
     """
-
+    # TODO: Implement a better method for form modifications.
     func.form_modifier = True
     return func
 
@@ -300,8 +304,13 @@ class CrudView(BaseView):
         This method will be called by self.form_out() method
         with serialized form data.
 
-        :param dict serialized_form:
-        :return:
+        Args:
+            serialized_form (dict): JSON serializable representation
+             of form data.
+
+        Note:
+            This is a workaround till we decide and implement a
+             better method for fine grained form customizations.
         """
         for field, prop in serialized_form['schema']['properties'].items():
             # this adds default directives for building
@@ -385,7 +394,7 @@ class CrudView(BaseView):
 
     def create_object_form(self):
         """
-        Creates an instance of :py:attr:`ObjectForm` and
+        Creates an instance of :attr:`ObjectForm` and
         assigns it to ``self.object_form``.
 
         Can be overridden to easily replace the default
@@ -443,15 +452,27 @@ class CrudView(BaseView):
         elif 'added_obj' in self.current.task_data:
             self.object = self.model_class(self.current).objects.get(
                     self.current.task_data['added_obj'])
-            # del self.current.task_data['added_obj']
         else:
             self.object = self.model_class(self.current)
 
     def get_selected_objects(self):
+        """
+        An iterator for object instances of selected list items.
+
+        Yields:
+            :class:`Model<pyoko:pyoko.model.Model>` instance.
+        """
         return {self.model_class(self.current).get(itm_key)
                 for itm_key in self.input['selected_items']}
 
     def make_list_header(self):
+        """
+        Sets header row of object list.
+
+        First item of ``output['objects']`` list used as header.
+        If it's not defined to which fields to be used in object
+        listing, then no header is set and first item set to ``-1``.
+        """
         if self.object.Meta.list_fields:
             list_headers = []
             for f in self.object.Meta.list_fields:
@@ -464,37 +485,54 @@ class CrudView(BaseView):
             self.output['objects'].append('-1')
 
     @list_query
-    def _apply_list_filters(self, query):
+    def _apply_list_filters(self, queryset):
         """
-        Applies query filters.
-        Accepts comma separated multiple values for single field
+        Applies client filters to object listing queryset.
 
+        Args:
+            queryset (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+                Object listing queryset.
+
+        Returns:
+            queryset (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+                Object listing queryset.
         Example:
 
         .. code-block:: javascript
 
             filters: {
                 ulke: {values: ["1", "2"], type: "check"},
-                kurum_disi_gorev_baslama_tarihi: {values: ["20.01.2016", null], type: "date"}
+                kurum_disi_gorev_baslama_tarihi: {
+                    values: ["20.01.2016", null], type: "date"
+                    }
                 ulke: {values: ["1", "2"], type: "check"}
                 }
 
         """
         filters = self.input.get('filters') if self.Meta.allow_filters else {}
-        # if isinstance(filters, list):  # backwards compatibility
-        #     filters = dict([(f['field'], f) for f in filters])
         if filters:
             for field, filter in filters.items():
                 if filter.get('type') == 'date':
                     start = date_to_solr(filter['values'][0])
                     end = date_to_solr(filter['values'][1])
-                    query = query.filter(**{'%s__range' % field: (start, end)})
+                    queryset = queryset.filter(**{'%s__range' % field: (start, end)})
                 else:
-                    query = query.filter(**{'%s__in' % field: filter['values']})
-        return query
+                    queryset = queryset.filter(**{'%s__in' % field: filter['values']})
+        return queryset
 
     @list_query
     def _apply_list_search(self, query):
+        """
+        Applies search queries to object listing queryset.
+
+        Args:
+            query (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+             Object listing queryset.
+
+        Returns:
+            queryset (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+                Object listing queryset.
+        """
         q = (self.object.Meta.search_fields and
              self.Meta.allow_search and
              (self.input.get('query') or self.current.request.params.get('query')))
@@ -517,9 +555,49 @@ class CrudView(BaseView):
 
     def _parse_object_actions(self, obj):
         """
-        applies registered object filter methods
-        :param obj: pyoko model instance
-        :return: (obj, result) model instance
+        Applies registered (with ``@obj_filter`` decorator)
+        object filter methods
+
+        Args:
+            obj (:class:`Model<pyoko:pyoko.model.Model>`): Model instance
+
+        Returns:
+            Result dict that transforms into a row of object
+            listing.
+
+            .. code-block:: python
+
+                {
+                      "fields": [ # cell contents
+                        "Title of the obj",
+                        "Description of obj",
+                        "06.01.2016"
+                      ],
+                      "actions": [ # per row actions
+                        {
+                          "fields": [
+                            0 # cell indexes to be shown as link
+                          ],
+                          "cmd": "show",
+                          "mode": "normal",
+                          "show_as": "link"
+                        },
+                        {
+                          "cmd": "add_edit_form",
+                          "name": "Edit",
+                          "show_as": "button",
+                          "mode": "normal"
+                        },
+                        {
+                          "cmd": "delete",
+                          "name": "Delete",
+                          "show_as": "button",
+                          "mode": "normal"
+                        }
+                      ],
+                      "key": "LbFDElbgINMaYA4meOHgMhkOFQc"
+                    }
+
         """
 
         actions = []
@@ -533,26 +611,36 @@ class CrudView(BaseView):
             method(self, obj, result)
         return result
 
-    def _apply_list_queries(self, query):
+    def _apply_list_queries(self, queryset):
         """
-        applies registered query methods
-        :param query: queryset
+        Applies registered (with ``@list_query`` decorator)
+        list query methods.
+
+        Args:
+            queryset (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+             Object listing queryset
         """
         for f in self.QUERY_METHODS:
-            query = f(self, query)
-        return query
+            queryset = f(self, queryset)
+        return queryset
 
     @obj_filter
     def _remove_just_deleted_object(self, obj, result):
         """
-        to compensate riak~solr sync delay, remove just deleted
+        To compensate riak~solr sync delay, remove just deleted
         object from from object list (if exists)
 
-        :param obj: pyoko Model instance
-        :param dict result: {'key': obj.key, 'fields': [],
-                           'actions': self.Meta.object_actions}
+        Args:
+            obj (:class:`Model<pyoko:pyoko.model.Model>`): Model instance
+            result (dict): Result dict.
 
-        :return: result
+                .. code-block:: python
+
+                    {
+                        'key': obj.key,
+                        'fields': [],
+                        'actions': self.Meta.object_actions
+                    }
         """
         if ('deleted_obj' in self.current.task_data and
                     self.current.task_data['deleted_obj'] == obj.key):
@@ -561,9 +649,13 @@ class CrudView(BaseView):
 
     def _add_just_created_object(self, new_added_key, new_added_listed):
         """
-        to compensate riak~solr sync delay, add just created
-        object to the object list
-        :param objects:
+        To compensate 1sec Riak~Solr sync delay, manually add
+        just created object to the object listing.
+
+        Args:
+            new_added_key (str): Key of just created object.
+            new_added_listed (bool): Is already listed.
+
         """
         if new_added_key and not new_added_listed:
             obj = self.object.objects.get(new_added_key)
@@ -573,6 +665,16 @@ class CrudView(BaseView):
 
     @list_query
     def _handle_list_pagination(self, query):
+        """
+        Handles pagination of object listings.
+
+        Args:
+            query (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+                Object listing queryset.
+
+        Returns:
+
+        """
         current_page = int(self.current.input.get('page', 1))
         per_page = self.Meta.objects_per_page
         total_objects = query.count()
@@ -589,7 +691,14 @@ class CrudView(BaseView):
 
     def display_list_filters(self):
         """
-        calculates and renders list filters for the model
+        Calculates and renders list filters according to
+        :attr:`model.Meta.list_filters<pyoko:pyoko.model.Model.Meta.list_filters>`.
+
+            .. code-block:: python
+
+                class Foo(Model):
+                    class Meta:
+                        list_filters = ['field_name', 'another_field_name']
         """
         model_class = self.object.__class__
         if not (self.Meta.allow_filters and model_class.Meta.list_filters):
@@ -616,7 +725,7 @@ class CrudView(BaseView):
     @view_method
     def list(self):
         """
-        creates object listing for the model
+        Creates object listings for the model.
         """
         query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
@@ -638,17 +747,37 @@ class CrudView(BaseView):
 
     @view_method
     def reload(self):
+        """
+        Tells the client to reload it's current view.
+        """
         self.set_client_cmd('reload')
 
     @view_method
     def reset(self):
+        """
+        Tells the client to reset (restart) it's current workflow.
+        """
         self.set_client_cmd('reset')
 
     @view_method
     def select_list(self):
         """
-        creates a brief object list to fill the select boxes
-        :return: [object_name_1 ...]
+        Creates a simple object list for auto-complete dropdown
+        boxes.
+
+        By default it tries to return all items. But if number of
+        items is more than
+        :attr:`~zengine.settings.MAX_NUM_DROPDOWN_LINKED_MODELS`
+        then, it returns back ``[-1]`` which means "Too many
+        items, please filter".
+
+        If queryset doesn't return any items, it returns back
+        ``[0]`` value.
+
+        Note:
+            Output of this method will be cached with
+            :class:`SelectBoxCache` object.
+
         """
         query = self.object.objects.filter()
         query = self._apply_list_search(query)
@@ -667,13 +796,20 @@ class CrudView(BaseView):
 
     @view_method
     def object_name(self):
+        """
+        Writes current objects (``self.object``) text
+        representation to ``output['object_name']``.
+        """
         self.output['object_name'] = self.object.__unicode__()
 
     @view_method
     def show(self):
+        """
+        Returns details of the selected object.
+        """
         self.set_client_cmd('show')
         obj_form = forms.JsonForm(self.object, current=self.current, models=False,
-                        list_nodes=False)._serialize(readable=True)
+            list_nodes=False)._serialize(readable=True)
         obj_data = {}
         for d in obj_form:
             val = d['value']
@@ -691,6 +827,9 @@ class CrudView(BaseView):
 
     @view_method
     def list_form(self):
+        """
+        Simple view to combine :attr:`list()` and :attr:`form()` views.
+        """
         self.list()
         self.form()
 

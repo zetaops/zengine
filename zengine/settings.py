@@ -136,3 +136,6 @@ DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
 #: Permission provider.
 #: UpdatePermissions command uses this object to get available permmissions
 PERMISSION_PROVIDER = 'zengine.auth.permissions.get_all_permissions'
+
+#: Max number of items for non-filtered dropdown boxes.
+MAX_NUM_DROPDOWN_LINKED_MODELS = 20

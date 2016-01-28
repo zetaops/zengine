@@ -1,6 +1,5 @@
 # -*-  coding: utf-8 -*-
 
-# from tests.deep_eq import deep_eq
 from zengine.forms.json_form import JsonForm
 from zengine.lib.test_utils import BaseTestCase
 from zengine.models import User

@@ -35,14 +35,19 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
 ]
+intersphinx_mapping = {
+    # 'python': ('https://docs.python.org/3.4', 'python-inv.txt'),
+    'pyoko': ('http://pyoko.readthedocs.org/en/latest/', None),
+                       }
 
 napoleon_numpy_docstring = False
 napoleon_include_private_with_doc = True
 napoleon_use_ivar = True
 napoleon_include_special_with_doc = True
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ['_templates', 'source/_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -102,7 +107,7 @@ exclude_patterns = ['_build']
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-# pygments_style = 'monokai'
+pygments_style = 'friendly'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -120,15 +125,12 @@ exclude_patterns = ['_build']
 # a list of builtin themes.
 # html_theme = 'classic'
 
-import sphinx_rtd_theme
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
-html_theme = "sphinx_rtd_theme"
-
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
+if not on_rtd:  # only import and set the theme if we're building docs locally
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
