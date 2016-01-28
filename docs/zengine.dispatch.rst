@@ -1,8 +1,10 @@
 zengine.dispatch package
 ========================
 
-Submodules
-----------
+.. automodule:: zengine.dispatch
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 zengine.dispatch.dispatcher module
 ----------------------------------
@@ -20,11 +22,3 @@ zengine.dispatch.weakref_backports module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: zengine.dispatch
-    :members:
-    :undoc-members:
-    :show-inheritance:

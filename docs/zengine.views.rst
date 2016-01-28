@@ -7,9 +7,6 @@ zengine.views package
     :show-inheritance:
 
 
-Submodules
-----------
-
 zengine.views.auth module
 -------------------------
 
@@ -33,3 +30,12 @@ zengine.views.menu module
     :members:
     :undoc-members:
     :show-inheritance:
+
+zengine.views.crud module
+-------------------------
+
+.. automodule:: zengine.views.crud
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :special-members: __init__

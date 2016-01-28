@@ -1,8 +1,10 @@
 zengine.auth package
 ====================
 
-Submodules
-----------
+.. automodule:: zengine.auth
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 zengine.auth.auth_backend module
 --------------------------------
@@ -21,10 +23,3 @@ zengine.auth.permissions module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: zengine.auth
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -1,8 +1,10 @@
 zengine.lib package
 ===================
 
-Submodules
-----------
+.. automodule:: zengine.lib
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 zengine.lib.cache module
 ------------------------
@@ -60,11 +62,3 @@ zengine.lib.utils module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: zengine.lib
-    :members:
-    :undoc-members:
-    :show-inheritance:

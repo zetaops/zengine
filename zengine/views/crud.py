@@ -196,7 +196,7 @@ class CrudView(BaseView):
     views that works primarily on one model.
 
     While it's possible to get model's name from client input
-    (`self.current.input['model']`) generally subclasses of
+    (`self.current.input['model']`) usually subclasses of
     CrudView explicitly define the name of their primary model's
     name in :class:`~zengine.views.crud.CrudView.Meta.model` Meta class variable.
     """
@@ -322,9 +322,14 @@ class CrudView(BaseView):
     # noinspection PyUnresolvedReferences
     def form_out(self, _form=None):
         """
-        renders form. applies modifier method then outputs the result
+        Renders form. Applies form modifiers, then writes
+        result to response payload. If supplied, given form
+        object instance will be used instead of view's
+        default ObjectForm.
 
-        :param JsonForm _form: JsonForm object
+        Args:
+             _form (:py:attr:`~zengine.forms.json_form.JsonForm`):
+              Form object to override `self.object_form`
         """
         _form = _form or self.object_form
         self.output['forms'] = _form.serialize()
@@ -335,10 +340,9 @@ class CrudView(BaseView):
 
     def _prepare_decorated_methods(self):
         """
-        collects various methods in to their related lists
-        TODO: To decrease the overhead, this will be moved to metaclass of CrudView (CRUDRegistry)
-        :return:
+        Collects decorated methods into their related lists.
         """
+        # TODO: Move this to CrudMeta for decrease the overhead of init.
         items = list(self.__class__.__dict__.items())
         for base in self.__class__.__bases__:
             items.extend(list(base.__dict__.items()))
@@ -354,8 +358,9 @@ class CrudView(BaseView):
 
     def call(self):
         """
-        this method act as a method dispatcher
-        for non-wf based flow handling
+        This method act as a method dispatcher for non-WF
+        based flow handling. Mainly used for auto-generated
+        CRUD views.
         """
         self.check_for_permission()
         self.VIEW_METHODS[self.cmd](self)
@@ -363,8 +368,11 @@ class CrudView(BaseView):
 
     def check_for_permission(self):
         """
-        since wf task has their own perm. checker,
-        this method called only by "call()" dispatcher
+        Checks permissions of auto-generated CRUD views.
+
+        Required permissions calculated according to
+        ``ModelName . self.cmd`` scheme.
+
         """
         permission = "%s.%s" % (self.object.__class__.__name__, self.cmd)
         log.debug("CHECK CRUD PERM: %s" % permission)
@@ -376,9 +384,27 @@ class CrudView(BaseView):
                                        "You don't have required CRUD permission: %s" % permission)
 
     def create_object_form(self):
+        """
+        Creates an instance of :py:attr:`ObjectForm` and
+        assigns it to ``self.object_form``.
+
+        Can be overridden to easily replace the default
+        ObjectForm.
+        """
         self.object_form = self.ObjectForm(self.object, current=self.current)
 
     def get_model_class(self):
+        """
+        Looks for the default model of this view from
+        :py:attr:`Meta.model`. If it's not set, tries to get
+        model name from ``current.input['model']``.
+
+        Can be overridden to implement different model
+        selection mechanism.
+
+        Returns:
+            :py:attr:`~pyoko.models.Model` class.
+        """
         model = self.Meta.model if self.Meta.model else self.current.input['model']
         if isinstance(model, Model):
             return model
@@ -386,6 +412,23 @@ class CrudView(BaseView):
             return model_registry.get_model(model)
 
     def create_initial_object(self):
+        """
+        Creates an instance of default (or selected) model.
+
+        If an existing objects key found in
+
+        ``current.input['object_id']``
+
+        or
+
+        ``current.input['form']['object_key']``
+
+        or
+
+        ``current.task_data['added_obj']``
+
+        then it will be retrieved from DB and assigned to ``self.object``.
+        """
         self.model_class = self.get_model_class()
         object_id = self.current.task_data.get('object_id')
         if not object_id and 'form' in self.input:

@@ -542,7 +542,7 @@ class ZEngine(object):
 
     def _load_activity(self, activity):
         """
-        Iterates trough the all enabled `~ACTIVITY_MODULES_IMPORT_PATHS` to find the given path.
+        Iterates trough the all enabled `~zengine.settings.ACTIVITY_MODULES_IMPORT_PATHS` to find the given path.
         """
         fpths = []
         full_path = ''

@@ -1,15 +1,11 @@
 zengine package
 ===============
 
-
 .. automodule:: zengine
     :members:
     :undoc-members:
     :show-inheritance:
     :special-members: __init__
-
-Subpackages
------------
 
 .. toctree::
     :maxdepth: 4
@@ -18,7 +14,6 @@ Subpackages
     zengine.dispatch
     zengine.forms
     zengine.lib
-    views/crud
     zengine.views
 
 
