@@ -12,7 +12,7 @@ NEXT_CMD_SPLITTER = '::'
 
 class BaseView(object):
     """
-    All view classes should extend this class
+    Base view class.
     """
 
     def __init__(self, current=None):
@@ -50,14 +50,17 @@ class BaseView(object):
 
 class SimpleView(BaseView):
     """
-    simple form based views can be build  up on this class.
-    we call self.%s_view() method with %s substituted with self.input['cmd']
-    self.show_view() will be called if client doesn't give any cmd
+    Simple form based views can be build  up on this class.
+
+    We call self.%s_view() method with %s substituted with
+    ``self.input['cmd']`` if given or with
+    :attr:`DEFAULT_VIEW` which has ``show`` as
+    default value.
     """
-    DEFAULT_VIEW = ''
+    DEFAULT_VIEW = 'show'
 
     def __init__(self, current):
         super(SimpleView, self).__init__(current)
-        view = "%s_view" % (self.cmd or self.DEFAULT_VIEW or 'show')
+        view = "%s_view" % (self.cmd or self.DEFAULT_VIEW)
         if view in self.__class__.__dict__:
             self.__class__.__dict__[view](self)

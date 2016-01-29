@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
+    # 'sphinx.ext.automodule',
 ]
 intersphinx_mapping = {
     # 'python': ('https://docs.python.org/3.4', 'python-inv.txt'),
@@ -131,6 +132,26 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+#
+# import alabaster
+#
+# html_theme_path = [alabaster.get_path()]
+# # extensions = ['alabaster']
+# html_theme = 'alabaster'
+# html_sidebars = {
+#     '**': [
+#         'about.html',
+#         'navigation.html',
+#         'relations.html',
+#         'searchbox.html',
+#         'donate.html',
+#     ]
+# }
+# html_theme_options = {
+#  #   'logo': 'logo.png',
+#     'github_user': 'zetaops',
+#     'github_repo': 'zengine',
+# }
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.

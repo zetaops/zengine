@@ -310,7 +310,7 @@ class CrudView(BaseView):
 
         Note:
             This is a workaround till we decide and implement a
-             better method for fine grained form customizations.
+            better method for fine grained form customizations.
         """
         for field, prop in serialized_form['schema']['properties'].items():
             # this adds default directives for building
@@ -825,16 +825,12 @@ class CrudView(BaseView):
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
 
-    @view_method
-    def list_form(self):
-        """
-        Simple view to combine :attr:`list()` and :attr:`form()` views.
-        """
-        self.list()
-        self.form()
 
     @view_method
     def add_edit_form(self):
+        """
+        Add edit form
+        """
         self.form_out()
         # self.output['forms'] = self.object_form.serialize()
         # self.set_client_cmd('form')
