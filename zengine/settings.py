@@ -139,3 +139,6 @@ PERMISSION_PROVIDER = 'zengine.auth.permissions.get_all_permissions'
 
 #: Max number of items for non-filtered dropdown boxes.
 MAX_NUM_DROPDOWN_LINKED_MODELS = 20
+
+#: Internal Server Error message description
+ERROR_MESSAGE_500 = 'Internal Server Error'

@@ -5,7 +5,7 @@ Integrated session support with beaker.
 Then route all requests to ZEngine.run() that runs SpiffWorkflow engine
 and invokes associated activity methods.
 
-Request and response objects for json data processing at middleware layer,
+Request and response objects for json data processing done at the middleware layer,
 thus, activity methods (which will be invoked from workflow engine)
 can simply read json data from current.input and write back to current.output
 
@@ -20,6 +20,7 @@ from falcon.http_error import HTTPError
 import falcon
 from beaker.middleware import SessionMiddleware
 from pyoko.lib.utils import get_object_from_path
+from zengine import log
 
 from zengine.config import settings
 from zengine.engine import ZEngine, Current
@@ -32,22 +33,6 @@ from zengine.receivers import *
 falcon_app = falcon.API(middleware=[get_object_from_path(mw_class)()
                                     for mw_class in settings.ENABLED_MIDDLEWARES])
 app = SessionMiddleware(falcon_app, settings.SESSION_OPTIONS, environ_key="session")
-
-
-# class crud_handler(object):
-#     """
-#     this object redirects /ModelName/ type queries to /crud with ModelName as part of JSON payload
-#     """
-#     @staticmethod
-#     def on_get(req, resp, model_name):
-#         req.context['data']['model'] = model_name
-#         wf_connector(req, resp, 'crud')
-#
-#     @staticmethod
-#     def on_post(req, resp, model_name):
-#         req.context['data']['model'] = model_name
-#         wf_connector(req, resp, 'crud')
-
 
 wf_engine = ZEngine()
 
@@ -75,7 +60,9 @@ def wf_connector(req, resp, wf_name):
             resp.status = falcon.HTTP_500
             resp.body = json.dumps({'error': traceback.format_exc()})
         else:
-            raise
+            log.exception("500ERROR")
+            raise falcon.HTTPInternalServerError("Internal Error",
+                                                 settings.ERROR_MESSAGE_500)
 
 
 def view_connector(view_path):
@@ -95,13 +82,29 @@ def view_connector(view_path):
     """
 
     view = get_object_from_path(view_path)
+
+    # noinspection PyMissingOrEmptyDocstring
     class Caller(object):
         @staticmethod
         def on_get(req, resp, *args, **kwargs):
+            """
+            GET method http handler
+
+            Args:
+                req: Request object.
+                resp: Response object
+            """
             Caller.on_post(req, resp, *args, **kwargs)
 
         @staticmethod
         def on_post(req, resp, *args, **kwargs):
+            """
+                POST method http handler
+
+                Args:
+                    req: Request object.
+                    resp: Response object
+            """
             try:
                 current = Current(request=req, response=resp)
                 if not (current.is_auth or view_path in settings.ANONYMOUS_WORKFLOWS):
@@ -114,12 +117,12 @@ def view_connector(view_path):
                     resp.status = falcon.HTTP_500
                     resp.body = json.dumps({'error': traceback.format_exc()})
                 else:
-                    raise
+                    log.exception("500ERROR")
+                    raise falcon.HTTPInternalServerError("Internal Error",
+                                                         settings.ERROR_MESSAGE_500)
 
     return Caller
 
-
-# falcon_app.add_route('/crud/{model_name}/', crud_handler)
 
 for url, view_path in settings.VIEW_URLS:
     falcon_app.add_route(url, view_connector(view_path))
@@ -128,8 +131,18 @@ falcon_app.add_sink(wf_connector, '/(?P<wf_name>.*)')
 
 
 class Ping(object):
+    """
+    Simple ping view for health checks
+    """
+
     @staticmethod
     def on_get(req, resp):
+        """
+        GET method handler
+        Args:
+            req: Request object.
+            resp: Response object.
+        """
         resp.body = 'OK'
 
 
