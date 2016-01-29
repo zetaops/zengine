@@ -4,17 +4,6 @@
    contain the root `toctree` directive.
 .. include:: ../_readme.rst
 
-API Documentation
-=================
 
-.. toctree::
-   :maxdepth: 5
 
-   zengine
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`search`
 
