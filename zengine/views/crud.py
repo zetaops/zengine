@@ -107,7 +107,7 @@ def form_modifier(func):
 
     Note:
         This is a workaround till we decide and implement a
-         better method for fine grained form customizations.
+        better method for fine grained form customizations.
 
     .. code-block:: python
 
@@ -864,7 +864,9 @@ class CrudView(BaseView):
     def save_object(self):
         """
         Saves object into DB.
+
         Triggers pre_save and post_save signals.
+
         Sets task_data['``added_obj``'] if object is new.
         """
         signals.crud_pre_save.send(self, current=self.current, object=self.object)
