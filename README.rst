@@ -29,10 +29,11 @@ Feel free to fork this and send back Pull Requests for any
 defects or features that you want to contribute back.
 Opening issues here is also recommended.
 
-If you need to get the attention of the ZETAOPS team send an email
-to info@zetaops.io.  Commerical support from ZetaOps
-requires a valid support contract.
+If you need to get the attention of the ZetaOps team send an email
+to info ~at~ zetaops.io.
+Commerical support from ZetaOps_ requires a valid support contract.
 
+.. _ZetaOps: http://zetaops.io
 
 Authors
 -------
