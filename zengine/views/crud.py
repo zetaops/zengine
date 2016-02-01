@@ -131,6 +131,7 @@ def obj_filter(func):
 
     .. code-block:: python
 
+        @obj_filter
         def foo(self, obj, result):
             if obj.status < self.CONFIRMED:
                 result['actions'].append(
@@ -168,10 +169,11 @@ def list_query(func):
 
     .. code-block:: python
 
-        def foo(self, obj, result):
-            if obj.status < self.CONFIRMED:
-                result['actions'].append(
-                        {'name': 'Confirm', 'cmd': 'confrim', 'show_as': 'button'})
+        @list_query
+        def foo(self, queryset):
+            queryset = queryset.filter(**{'%s__in' % field:
+                                        self.input['filter']['values']})
+            return queryset
     """
 
     func.query_method = True
