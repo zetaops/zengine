@@ -12,6 +12,9 @@ from zengine.lib.camunda_parser import CamundaBMPNParser
 
 
 class CamundaPackager(Packager):
+    """
+    Custom packager for output of Camunda Modeller
+    """
     def __init__(self, package_file, entry_point_process, meta_data=None, editor=None):
         super(CamundaPackager, self).__init__(package_file, entry_point_process, meta_data, editor)
         self.PARSER_CLASS = CamundaBMPNParser

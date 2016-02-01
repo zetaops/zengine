@@ -15,7 +15,7 @@ from collections import defaultdict
 from pyoko.lib.utils import get_object_from_path
 from pyoko.lib.utils import lazy_property
 from pyoko.model import model_registry
-from zengine.auth.permissions import get_workflows
+from zengine.auth.permissions import _get_workflows
 from zengine.views.base import BaseView
 from zengine.config import settings
 
@@ -113,7 +113,7 @@ class Menu(BaseView):
             Dict of list of dicts (``{'':[{}],}``). Menu entries.
         """
         results = defaultdict(list)
-        for wf in get_workflows():
+        for wf in _get_workflows():
             if self.current.has_permission(wf.spec.name):
                 self._add_wf(wf, results)
         return results

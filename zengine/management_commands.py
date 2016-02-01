@@ -11,12 +11,25 @@ from zengine.views.crud import SelectBoxCache
 
 
 class UpdatePermissions(Command):
+    """
+    Gets permissions from
+    :attr:`~zengine.settings.PERMISSION_PROVIDER`
+    then creates
+    :attr:`~zengine.settings.PERMISSION_MODEL`
+    objects if required.
+
+    Args:
+        dry: Dry run. Do nothing, just list.
+    """
     CMD_NAME = 'update_permissions'
     HELP = 'Syncs permissions with DB'
     PARAMS = [
         {'name': 'dry', 'action':'store_true', 'help': 'Dry run, just list new found permissions'},
     ]
     def run(self):
+        """
+        Creates new permissions.
+        """
         from pyoko.lib.utils import get_object_from_path
         from zengine.config import settings
         model = get_object_from_path(settings.PERMISSION_MODEL)

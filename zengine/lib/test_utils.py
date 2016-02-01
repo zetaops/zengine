@@ -25,6 +25,9 @@ CODE_EXCEPTION = {
 
 
 class RWrapper(object):
+    """
+    Wrapper object for werkzeug test client's response
+    """
     def __init__(self, *args):
         self.content = list(args[0])
         self.code = args[1]
@@ -47,6 +50,9 @@ class RWrapper(object):
                                        description=self.json.get('description'))
 
     def raw(self):
+        """
+        Pretty prints the response
+        """
         pprint(self.code)
         pprnt(self.json)
         pprint(self.headers)
@@ -56,6 +62,9 @@ class RWrapper(object):
 
 
 class TestClient(object):
+    """
+    TestClient to simplify writing API tests for Zengine based apps.
+    """
     def __init__(self, path):
         """
         this is a wsgi test client based on werkzeug.test.Client
@@ -68,6 +77,13 @@ class TestClient(object):
         self.path = ''
 
     def set_path(self, path, token=''):
+        """
+        Change the path (workflow)
+
+        Args:
+            path: New path (or wf name)
+            token: WF token.
+        """
         self.path = path
         self.token = token
 
@@ -106,10 +122,16 @@ sys.TEST_MODELS_RESET = False
 
 
 class BaseTestCase:
+    """
+    Base test case.
+    """
     client = None
 
     @staticmethod
     def cleanup():
+        """
+        Deletes User and Permission objects.
+        """
         if not sys.TEST_MODELS_RESET:
             for mdl in [User, Permission]:
                 mdl(super_context).objects._clear_bucket()
@@ -117,6 +139,9 @@ class BaseTestCase:
 
     @classmethod
     def create_user(cls):
+        """
+        Creates a new user and Role with all Permissions.
+        """
         cls.cleanup()
         cls.client.user, new = User(super_context).objects.get_or_create({"password": user_pass,
                                                                           "superuser": True},
@@ -131,12 +156,13 @@ class BaseTestCase:
     @classmethod
     def prepare_client(cls, path, reset=False, user=None, login=None, token=''):
         """
-        setups the path, logs in if necessary
+        Setups the path, logs in if necessary
 
-        :param path: change or set path
-        :param reset: create a new client
-        :param login: login to system
-        :return:
+        Args:
+            path: change or set path
+            reset: Create a new client
+            login: Login to system
+            token: Set token
         """
 
         if not cls.client or reset or user:
@@ -158,8 +184,7 @@ class BaseTestCase:
     @classmethod
     def _do_login(self):
         """
-        logs in the test user
-
+        logs in the "test_user"
         """
         self.client.set_path("/login/")
         resp = self.client.post()
