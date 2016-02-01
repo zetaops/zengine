@@ -33,6 +33,8 @@ class User(Model):
     superuser = field.Boolean("Super user", default=False)
 
     class Meta:
+        """ meta class
+        """
         list_fields = ['username', 'superuser']
 
     def __unicode__(self):
@@ -42,17 +44,48 @@ class User(Model):
         return "User_%s" % self.key
 
     def set_password(self, raw_password):
+        """
+        Encrypts user password.
+
+        Args:
+            raw_password: Clean password string.
+
+        """
         self.password = pbkdf2_sha512.encrypt(raw_password,
                                               rounds=10000,
                                               salt_size=10)
 
     def check_password(self, raw_password):
+        """
+        Checks given clean password against stored encrtyped password.
+
+        Args:
+            raw_password: Clean password.
+
+        Returns:
+            Boolean. True if given password match.
+        """
         return pbkdf2_sha512.verify(raw_password, self.password)
 
     def get_permissions(self):
+        """
+        Permissions of the user.
+
+        Returns:
+            List of Permission objects.
+        """
         return (p.permission.code for p in self.Permissions)
 
     def get_role(self, role_id):
+        """
+            Gets the first role of the user with given key.
+
+        Args:
+            role_id: Key of the Role object.
+
+        Returns:
+            :class:`Role` object
+        """
         return self.role_set.node_dict[role_id]
 
 
@@ -63,6 +96,9 @@ class Role(Model):
     user = User()
 
     class Meta:
+        """
+        Meta class
+        """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
 
@@ -73,16 +109,36 @@ class Role(Model):
             return "Role #%s" % self.key
 
     class Permissions(ListNode):
+        """
+        Stores :class:`Permission`'s of the role
+        """
         permission = Permission()
 
     def get_permissions(self):
+        """
+        Returns:
+            :class:`Permission`'s of the role
+        """
         return [p.permission.code for p in self.Permissions]
 
     def add_permission(self, perm):
+        """
+        Adds a :class:`Permission` to the role
+
+        Args:
+            perm: :class:`Permission` object.
+        """
         self.Permissions(permission=perm)
         self.save()
 
     def add_permission_by_name(self, code, save=False):
+        """
+        Adds a permission with given name.
+
+        Args:
+            code (str): Code name of the permission.
+            save (bool): If False, does nothing.
+        """
         if not save:
             return ["%s | %s" % (p.name, p.code) for p in
                     Permission.objects.filter(code='*' + code + '*')]

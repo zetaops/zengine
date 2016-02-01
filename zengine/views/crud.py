@@ -887,7 +887,7 @@ class CrudView(BaseView):
     def delete(self):
         """
         Object delete view.
-        Trigger pre_delete signal.
+        Triggers pre_delete and post_delete signals.
         """
         # TODO: add confirmation dialog
         # to overcome 1s riak-solr delay

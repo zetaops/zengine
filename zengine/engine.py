@@ -1,4 +1,7 @@
 # -*-  coding: utf-8 -*-
+"""
+Zengine's engine!
+"""
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
@@ -45,10 +48,23 @@ DEFAULT_LANE_CHANGE_MSG = {
 
 
 class InMemoryPackager(Packager):
+    """
+    Creates spiff's wf packages on the fly.
+    """
     PARSER_CLASS = CamundaBMPNParser
 
     @classmethod
     def package_in_memory(cls, workflow_name, workflow_files):
+        """
+        Generates wf packages from workflow diagrams.
+
+        Args:
+            workflow_name: Name of wf
+            workflow_files:  Diagram  file.
+
+        Returns:
+            Workflow package (file like) object
+        """
         s = BytesIO()
         p = cls(s, workflow_name, meta_data=[])
         p.add_bpmn_files_by_glob(workflow_files)
@@ -99,18 +115,54 @@ class Current(object):
         self.permissions = []
 
     def set_message(self, title, msg, typ, url=None):
+        """
+        Sets user notification message.
+        See :attr:`~zengine.notifications.Notify` for details.
+
+        Args:
+            title: Msg. title
+            msg:  Msg. text
+            typ: Msg. type
+            url: Additional URL (if exists)
+
+        Returns:
+            Message ID.
+        """
         return self.msg_cache.set_message(title=title, msg=msg, typ=typ, url=url)
 
     @property
     def is_auth(self):
+        """
+        A property that indicates if current user is logged in or not.
+
+        Returns:
+            Boolean.
+        """
         if self.user_id is None:
             self.user_id = self.session.get('user_id', '')
         return bool(self.user_id)
 
     def has_permission(self, perm):
+        """
+        Checks if current user (or role) has the given permission.
+
+        Args:
+            perm: Permmission code or object.
+             Depends on the :attr:`~zengine.auth.auth_backend.AuthBackend` implementation.
+
+        Returns:
+            Boolean.
+        """
         return self.user.superuser or self.auth.has_permission(perm)
 
     def get_permissions(self):
+        """
+        Returns permission objects.
+
+        Returns:
+            Permission objects or codes.
+            Depends on the :attr:`~zengine.auth.auth_backend.AuthBackend` implementation.
+        """
         return self.auth.get_permissions()
 
     def msg_box(self, msg, title=None, typ='info'):
@@ -172,12 +224,19 @@ class WFCurrent(Current):
                 self.lane_owners = lane_data['owners']
 
     def get_wf_url(self):
+        """
+        Returns:
+            Relative URL for the current workflow.
+        """
         return "#/%s/%s" % (self.workflow_name, self.token)
 
     def _update_task(self, task):
         """
-        assigns current task step to self.task
+        Assigns current task step to self.task
         then updates the task's data with self.task_data
+
+        Args:
+            task: Task object.
         """
         self.task = task
         self.task.data.update(self.task_data)
@@ -251,11 +310,11 @@ class ZEngine(object):
 
     def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
         """
-        if we aren't come to the end of the wf,
+        If we aren't come to the end of the wf,
         saves the wf state and task_data to cache
 
-        task_data items that starts with underscore "_" are treated as
-         local and does not passed to following task steps.
+        Task_data items that starts with underscore "_" are treated as
+         local and does not passed to subsequent task steps.
         """
         if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
@@ -277,6 +336,12 @@ class ZEngine(object):
 
     def get_pool_context(self):
         # TODO: Add in-process caching
+        """
+        Builds context for the WF pool.
+
+        Returns:
+            Context dict.
+        """
         context = {self.current.lane_name: self.current.role, 'self': self.current.role}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
@@ -306,15 +371,35 @@ class ZEngine(object):
             return self.deserialize_workflow(serialized_wf)
 
     def deserialize_workflow(self, serialized_wf):
+        """
+        Creates WF object instance from given state data.
+
+        Args:
+            serialized_wf: WF state data.
+
+        Returns:
+            BpmnWorkflow instance.
+        """
         return CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
                                                                 workflow_spec=self.workflow_spec)
 
     def serialize_workflow(self):
+        """
+        Serializes the current WF.
+
+        Returns:
+            WF state data.
+        """
         self.workflow.refresh_waiting_tasks()
         return CompactWorkflowSerializer().serialize_workflow(self.workflow,
                                                               include_spec=False)
 
     def create_workflow(self):
+        """
+        Creates WF instance for current WF spec.
+        Returns:
+            BpmnWorkflow
+        """
         return BpmnWorkflow(self.workflow_spec)
 
     def load_or_create_workflow(self):
@@ -329,7 +414,8 @@ class ZEngine(object):
     def find_workflow_path(self):
         """
         Tries to find the path of the workflow diagram file
-        in `WORKFLOW_PACKAGES_PATHS`
+        in `WORKFLOW_PACKAGES_PATHS`.
+
         Returns:
             Path of the workflow spec file (BPMN diagram)
         """
@@ -341,8 +427,6 @@ class ZEngine(object):
         log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    def get_task_specs(self):
-        return self.workflow.spec.task_specs
 
     def get_worfklow_spec(self):
         """
@@ -392,7 +476,9 @@ class ZEngine(object):
         self.current.workflow = self.workflow
 
     def log_wf_state(self):
-        # logs the state of workflow and content of task_data
+        """
+        Logs the state of workflow and content of task_data.
+        """
         output = '\n- - - - - -\n'
         output += "WORKFLOW: %s ( %s )" % (self.current.workflow_name.upper(),
                                            self.current.workflow.name)
@@ -626,6 +712,13 @@ class ZEngine(object):
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
+        """
+        Checks if current user (or role) has the required permission
+        for current workflow step.
+
+        Raises:
+            falcon.HTTPForbidden: if user doesn't have required permissions.
+        """
         if self.current.task:
             permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
         else:
@@ -640,5 +733,8 @@ class ZEngine(object):
                                        "You don't have required permission: %s" % permission)
 
     def handle_wf_finalization(self):
+        """
+        Removes the ``token`` key from ``current.output`` if WF is over.
+        """
         if self.current.task_type.startswith('End') and 'token' in self.current.output:
             del self.current.output['token']

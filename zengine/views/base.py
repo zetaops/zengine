@@ -21,6 +21,12 @@ class BaseView(object):
             self.set_current(current)
 
     def set_current(self, current):
+        """
+        Creates some aliases for attributes of ``current``.
+
+        Args:
+            current: :attr:`~zengine.engine.WFCurrent` object.
+        """
         self.current = current
         self.input = current.input
         self.req = current.request
@@ -34,18 +40,27 @@ class BaseView(object):
             self.next_cmd = None
 
     def reload(self):
+        """
+        Generic view for reloading client
+        """
         self.set_client_cmd('reload')
 
     def reset(self):
+        """
+        Generic view for resetting current WF.
+        """
         self.set_client_cmd('reset')
 
     def set_client_cmd(self, *args):
+        """
+        Adds given cmd(s) to ``self.output['client_cmd']``
+
+        Args:
+            *args: Client commands.
+        """
         self.client_cmd.update(args)
         self.output['client_cmd'] = list(self.client_cmd)
 
-
-    def modify_form_properties(self, serialized_form):
-        pass
 
 
 class SimpleView(BaseView):

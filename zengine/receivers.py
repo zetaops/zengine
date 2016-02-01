@@ -27,6 +27,13 @@ DEFAULT_LANE_CHANGE_INVITE_MSG = {
 
 @receiver(lane_user_change)
 def send_message_for_lane_change(sender, *args, **kwargs):
+    """
+    Sends a message to possible owners of the current workflows
+     next lane.
+
+    Args:
+        **kwargs: ``current`` and ``possible_owners`` are required.
+    """
     from zengine.lib.catalog_data import gettxt as _
     from pyoko.lib.utils import get_object_from_path
     UserModel = get_object_from_path(settings.USER_MODEL)
@@ -51,6 +58,9 @@ def send_message_for_lane_change(sender, *args, **kwargs):
 # encrypting password on save
 @receiver(crud_post_save)
 def set_password(sender, *args, **kwargs):
+    """
+    Encrypts password of the user.
+    """
     if sender.model_class.__name__ == 'User':
         usr = kwargs['object']
         if not usr.password.startswith('$pbkdf2'):
