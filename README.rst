@@ -14,18 +14,24 @@ Built on top of following major components;
 .. _Falcon: http://falconframework.org/
 .. _Pyoko: https://github.com/zetaops/pyoko
 
+API Documentation
+=================
 
-License
-=======
+`API Documentation`_
 
-ZEngine is licensed under the `GPL v3.0`_
+.. _`API Documentation`: http://zengine.readthedocs.org/en/latest/api-documentation.html
 
-.. _GPL v3.0: http://www.gnu.org/licenses/gpl-3.0.html
 
-Issues
-======
+Support
+-------
 
-Please report any bugs or requests that you have using the GitHub issue tracker.
+Feel free to fork this and send back Pull Requests for any
+defects or features that you want to contribute back.
+Opening issues here is also recommended.
+
+If you need to get the attention of the ZETAOPS team send an email
+to info@zetaops.io.  Commerical support from ZetaOps Inc.
+requires a valid support contract.
 
 
 Authors
@@ -35,3 +41,10 @@ Authors
 * Ali Rıza Keleş
 * Gökhan Boranalp
 
+
+License
+=======
+
+ZEngine is licensed under the `GPL v3.0`_
+
+.. _GPL v3.0: http://www.gnu.org/licenses/gpl-3.0.html

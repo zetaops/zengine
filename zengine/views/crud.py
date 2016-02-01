@@ -82,6 +82,12 @@ class CrudMeta(type):
 
     @classmethod
     def get_permissions(cls):
+        """
+
+
+        Returns:
+            List of Permission objects.
+        """
         perms = []
         for kls_name, kls in cls.registry.items():
             for method_name in cls.__dict__.keys():
