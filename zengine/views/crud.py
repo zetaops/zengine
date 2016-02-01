@@ -876,11 +876,19 @@ class CrudView(BaseView):
 
     @view_method
     def save(self):
+        """
+        Object save view. Actual work done at other methods.
+        Can be overridden.
+        """
         self.set_form_data_to_object()
         self.save_object()
 
     @view_method
     def delete(self):
+        """
+        Object delete view.
+        Trigger pre_delete signal.
+        """
         # TODO: add confirmation dialog
         # to overcome 1s riak-solr delay
         signals.crud_pre_delete.send(self, current=self.current, object=self.object)

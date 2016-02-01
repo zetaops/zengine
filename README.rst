@@ -15,7 +15,7 @@ Built on top of following major components;
 .. _Pyoko: https://github.com/zetaops/pyoko
 
 API Documentation
-=================
+-----------------
 
 `API Documentation`_
 
@@ -30,12 +30,12 @@ defects or features that you want to contribute back.
 Opening issues here is also recommended.
 
 If you need to get the attention of the ZETAOPS team send an email
-to info@zetaops.io.  Commerical support from ZetaOps Inc.
+to info@zetaops.io.  Commerical support from ZetaOps
 requires a valid support contract.
 
 
 Authors
-=======
+-------
 
 * Evren Esat Özkan
 * Ali Rıza Keleş
@@ -43,7 +43,7 @@ Authors
 
 
 License
-=======
+-------
 
 ZEngine is licensed under the `GPL v3.0`_
 

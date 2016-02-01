@@ -63,23 +63,23 @@ class JsonForm(ModelForm):
         self._prepare_nodes()
 
     def get_links(self, **kw):
-        # Fake method to emulate pyoko model API.
+        """ Fake method to emulate pyoko model API. """
         return []
 
     def _get_bucket_name(self):
-        # Fake method to emulate pyoko model API.
+        """ Fake method to emulate pyoko model API. """
         return ''
 
     def get_unpermitted_fields(self):
-        # Fake method to emulate pyoko model API.
+        """ Fake method to emulate pyoko model API. """
         return []
 
     def get_humane_value(self, name):
-        # Fake method to emulate pyoko model API.
+        """ Fake method to emulate pyoko model API. """
         return name
 
     def is_in_db(self):
-        # Fake method to emulate pyoko model API.
+        """ Fake method to emulate pyoko model API. """
         return False
 
     def _prepare_fields(self):
