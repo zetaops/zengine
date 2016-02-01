@@ -83,7 +83,7 @@ class CrudMeta(type):
     @classmethod
     def get_permissions(cls):
         """
-
+        Generates permissions for all CrudView based class methods.
 
         Returns:
             List of Permission objects.
@@ -273,6 +273,9 @@ class CrudView(BaseView):
         }
 
     class ObjectForm(forms.JsonForm):
+        """
+        Default ObjectForm for CrudViews. Can be overridden.
+        """
         save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
         save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
         if settings.DEBUG:
@@ -842,16 +845,28 @@ class CrudView(BaseView):
         # self.set_client_cmd('form')
 
     def set_form_data_to_object(self):
+        """
+        Handles the deserialization of incoming form data
+        into object instance.
+        """
         self.object = self.object_form.deserialize(self.current.input['form'])
 
     @view_method
     def save_as_new(self):
+        """
+        Saves an existing record as a new one.
+        """
         self.set_form_data_to_object()
         self.object.key = None
-        self.object.save()
+        self.save_object()
         self.current.task_data['object_id'] = self.object.key
 
     def save_object(self):
+        """
+        Saves object into DB.
+        Triggers pre_save and post_save signals.
+        Sets task_data['``added_obj``'] if object is new.
+        """
         signals.crud_pre_save.send(self, current=self.current, object=self.object)
         obj_is_new = not self.object.is_in_db()
         self.object.save()
