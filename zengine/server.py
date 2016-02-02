@@ -20,7 +20,7 @@ from falcon.http_error import HTTPError
 import falcon
 from beaker.middleware import SessionMiddleware
 from pyoko.lib.utils import get_object_from_path
-from zengine import log
+from zengine.log import log
 
 from zengine.config import settings
 from zengine.engine import ZEngine, Current
