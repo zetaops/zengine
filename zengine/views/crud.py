@@ -875,7 +875,7 @@ class CrudView(BaseView):
         obj_is_new = not self.object.is_in_db()
         self.object.save()
         signals.crud_post_save.send(self, current=self.current, object=self.object)
-        if self.next_cmd and obj_is_new:
+        if self.next_cmd:
             self.current.task_data['added_obj'] = self.object.key
 
     @view_method

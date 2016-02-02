@@ -27,6 +27,7 @@ class Menu(BaseView):
     def __init__(self, current):
         super(Menu, self).__init__(current)
         self.output['quick_menu'] = []
+        self.output['other'] = []
         if settings.ENABLE_SIMPLE_CRUD_MENU:
             result = self.simple_crud()
         else:
