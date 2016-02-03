@@ -31,7 +31,7 @@ Opening issues here is also recommended.
 
 If you need to get the attention of the ZetaOps team send an email
 to info ~at~ zetaops.io.
-Commerical support from ZetaOps_ requires a valid support contract.
+Commercial support from ZetaOps_ requires a valid support contract.
 
 .. _ZetaOps: http://zetaops.io
 
