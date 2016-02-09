@@ -216,7 +216,7 @@ class CrudView(BaseView):
     class Meta:
         """
         Attributes of this class defines the client side and backend
-         behaviour of CrudView instances.
+        behaviour of CrudView instances.
 
         Attributes:
 
