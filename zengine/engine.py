@@ -1,4 +1,7 @@
 # -*-  coding: utf-8 -*-
+"""
+Zengine's engine!
+"""
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
@@ -45,10 +48,23 @@ DEFAULT_LANE_CHANGE_MSG = {
 
 
 class InMemoryPackager(Packager):
+    """
+    Creates spiff's wf packages on the fly.
+    """
     PARSER_CLASS = CamundaBMPNParser
 
     @classmethod
     def package_in_memory(cls, workflow_name, workflow_files):
+        """
+        Generates wf packages from workflow diagrams.
+
+        Args:
+            workflow_name: Name of wf
+            workflow_files:  Diagram  file.
+
+        Returns:
+            Workflow package (file like) object
+        """
         s = BytesIO()
         p = cls(s, workflow_name, meta_data=[])
         p.add_bpmn_files_by_glob(workflow_files)
@@ -99,18 +115,54 @@ class Current(object):
         self.permissions = []
 
     def set_message(self, title, msg, typ, url=None):
+        """
+        Sets user notification message.
+        See :attr:`~zengine.notifications.Notify` for details.
+
+        Args:
+            title: Msg. title
+            msg:  Msg. text
+            typ: Msg. type
+            url: Additional URL (if exists)
+
+        Returns:
+            Message ID.
+        """
         return self.msg_cache.set_message(title=title, msg=msg, typ=typ, url=url)
 
     @property
     def is_auth(self):
+        """
+        A property that indicates if current user is logged in or not.
+
+        Returns:
+            Boolean.
+        """
         if self.user_id is None:
             self.user_id = self.session.get('user_id', '')
         return bool(self.user_id)
 
     def has_permission(self, perm):
+        """
+        Checks if current user (or role) has the given permission.
+
+        Args:
+            perm: Permmission code or object.
+             Depends on the :attr:`~zengine.auth.auth_backend.AuthBackend` implementation.
+
+        Returns:
+            Boolean.
+        """
         return self.user.superuser or self.auth.has_permission(perm)
 
     def get_permissions(self):
+        """
+        Returns permission objects.
+
+        Returns:
+            Permission objects or codes.
+            Depends on the :attr:`~zengine.auth.auth_backend.AuthBackend` implementation.
+        """
         return self.auth.get_permissions()
 
     def msg_box(self, msg, title=None, typ='info'):
@@ -172,12 +224,19 @@ class WFCurrent(Current):
                 self.lane_owners = lane_data['owners']
 
     def get_wf_url(self):
+        """
+        Returns:
+            Relative URL for the current workflow.
+        """
         return "#/%s/%s" % (self.workflow_name, self.token)
 
     def _update_task(self, task):
         """
-        assigns current task step to self.task
+        Assigns current task step to self.task
         then updates the task's data with self.task_data
+
+        Args:
+            task: Task object.
         """
         self.task = task
         self.task.data.update(self.task_data)
@@ -220,6 +279,25 @@ class WFCurrent(Current):
 
 
 class ZEngine(object):
+    """
+    Workflow Engine Class
+
+    This object handles following jobs;
+
+    - Loading of BPMN workflow diagrams,
+    - Iteration of task steps,
+    - Importing and calling view and service tasks of task steps.
+    - Caching and reloading of workflow states between steps.
+
+    .. code-block:: python
+
+        wf_engine = ZEngine()
+        wf_engine.start_engine(request=request_object,
+                               response=response_object,
+                               workflow_name=wf_name)
+        wf_engine.run()
+
+    """
     def __init__(self):
         self.use_compact_serializer = True
         # self.current = None
@@ -232,11 +310,11 @@ class ZEngine(object):
 
     def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
         """
-        if we aren't come to the end of the wf,
+        If we aren't come to the end of the wf,
         saves the wf state and task_data to cache
 
-        task_data items that starts with underscore "_" are treated as
-         local and does not passed to following task steps.
+        Task_data items that starts with underscore "_" are treated as
+         local and does not passed to subsequent task steps.
         """
         if self.current.task_name.startswith('End'):
             self.current.wfcache.delete()
@@ -252,16 +330,22 @@ class ZEngine(object):
                 del task_data['cmd']
             wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
             if self.current.lane_name:
-                self.current.pool[self.current.lane_name] = self.current.role_id
+                self.current.pool[self.current.lane_name] = self.current.role.key
             wf_cache['pool'] = self.current.pool
             self.current.wfcache.set(wf_cache)
 
     def get_pool_context(self):
         # TODO: Add in-process caching
-        context = {self.current.lane_name: self.current.user, 'self': self.current.user}
+        """
+        Builds context for the WF pool.
+
+        Returns:
+            Context dict.
+        """
+        context = {self.current.lane_name: self.current.role, 'self': self.current.role}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
-            context[model_name] = model_registry.get_model(model_name).objects
+            context[model_name] = model_registry.get_model(model_name)
         for lane_name, role_id in self.current.pool.items():
             if role_id:
                 context[lane_name] = lazy_object_proxy.Proxy(
@@ -281,23 +365,41 @@ class ZEngine(object):
             return wf_cache['wf_state']
 
     def _load_workflow(self):
-        """
-        gets the serialized wf data from cache and deserializes it
-        """
+        # gets the serialized wf data from cache and deserializes it
         serialized_wf = self.load_workflow_from_cache()
         if serialized_wf:
             return self.deserialize_workflow(serialized_wf)
 
     def deserialize_workflow(self, serialized_wf):
+        """
+        Creates WF object instance from given state data.
+
+        Args:
+            serialized_wf: WF state data.
+
+        Returns:
+            BpmnWorkflow instance.
+        """
         return CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
                                                                 workflow_spec=self.workflow_spec)
 
     def serialize_workflow(self):
+        """
+        Serializes the current WF.
+
+        Returns:
+            WF state data.
+        """
         self.workflow.refresh_waiting_tasks()
         return CompactWorkflowSerializer().serialize_workflow(self.workflow,
                                                               include_spec=False)
 
     def create_workflow(self):
+        """
+        Creates WF instance for current WF spec.
+        Returns:
+            BpmnWorkflow
+        """
         return BpmnWorkflow(self.workflow_spec)
 
     def load_or_create_workflow(self):
@@ -311,9 +413,11 @@ class ZEngine(object):
 
     def find_workflow_path(self):
         """
-        tries to find the path of the workflow diagram file
-        in WORKFLOW_PACKAGES_PATHS
-        :return: path of the workflow spec file (BPMN diagram)
+        Tries to find the path of the workflow diagram file
+        in `WORKFLOW_PACKAGES_PATHS`.
+
+        Returns:
+            Path of the workflow spec file (BPMN diagram)
         """
         for pth in settings.WORKFLOW_PACKAGES_PATHS:
             path = "%s/%s.bpmn" % (pth, self.current.workflow_name)
@@ -323,15 +427,14 @@ class ZEngine(object):
         log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    def get_task_specs(self):
-        return self.workflow.spec.task_specs
 
     def get_worfklow_spec(self):
         """
-        generates and caches the workflow spec package from
-        bpmn diagrams that read from disk
+        Generates and caches the workflow spec package from
+        BPMN diagrams that read from disk
 
-        :return: workflow spec package
+        Returns:
+            SpiffWorkflow Spec object.
         """
         # TODO: convert from in-process to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
@@ -343,12 +446,22 @@ class ZEngine(object):
 
     def _save_workflow(self):
         """
-        calls the real save method if we pass the beggining of the wf
+        Calls the real save method if we pass the beggining of the wf
         """
         if not self.current.task_type.startswith('Start'):
             self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
 
     def start_engine(self, **kwargs):
+        """
+        Initializes the workflow with given request, response objects and diagram name.
+
+        Args:
+            request: Falcon Request object.
+            response: Falcon Response object.
+            workflow_name (str): Name of workflow diagram without ".bpmn" suffix.
+             File must be placed under one of configured :py:attr:`~zengine.settings.WORKFLOW_PACKAGES_PATHS`
+
+        """
         self.current = WFCurrent(**kwargs)
         self.check_for_authentication()
         self.check_for_permission()
@@ -364,7 +477,7 @@ class ZEngine(object):
 
     def log_wf_state(self):
         """
-        logging the state of the workflow and data
+        Logs the state of workflow and content of task_data.
         """
         output = '\n- - - - - -\n'
         output += "WORKFLOW: %s ( %s )" % (self.current.workflow_name.upper(),
@@ -384,8 +497,14 @@ class ZEngine(object):
     def run(self):
         """
         Main loop of the workflow engine
-        Activates all READY tasks, calls their diagrams, saves wf state,
-        Stops if current task is a UserTask or EndTask
+
+        - Updates ::class:`~WFCurrent` object.
+        - Checks for Permissions.
+        - Activates all READY tasks.
+        - Runs referenced activities (method calls).
+        - Saves WF states.
+        - Stops if current task is a UserTask or EndTask.
+        - Deletes state object if we finish the WF.
 
         """
         # FIXME: raise if first task after line change isn't a UserTask
@@ -425,14 +544,17 @@ class ZEngine(object):
             self.current.old_lane = self.current.lane_name
 
     def sendoff_current_user(self):
-        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
-        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
-
-    def set_job_goes_bg(self):
+        """
+        Tell current user that s/he finished it's job for now.
+        We'll notify if workflow arrives again to his/her WF Lane.
+        """
         msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
         self.current.msg_box(title=msgs['title'], msg=msgs['body'])
 
     def invite_other_party(self):
+        """
+        Invites the next lane's (possible) owner(s) to participate
+        """
         possible_owners = eval(self.current.lane_owners, self.get_pool_context())
         signals.lane_user_change.send(sender=self,
                                       current=self.current,
@@ -442,22 +564,23 @@ class ZEngine(object):
 
     def parse_workflow_messages(self):
         """
-        transmits client message that defined in
+        Transmits client message that defined in
         a workflow task's inputOutput extension
 
-         <bpmn2:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="client_message">
+       .. code-block:: xml
+
+            <bpmn2:extensionElements>
+            <camunda:inputOutput>
+            <camunda:inputParameter name="client_message">
             <camunda:map>
               <camunda:entry key="title">Teşekkürler</camunda:entry>
               <camunda:entry key="body">İşlem Başarılı</camunda:entry>
               <camunda:entry key="type">info</camunda:entry>
             </camunda:map>
-          </camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn2:extensionElements>
+            </camunda:inputParameter>
+            </camunda:inputOutput>
+            </bpmn2:extensionElements>
 
-        :return:
         """
         if 'client_message' in self.current.spec.data:
             m = self.current.spec.data['client_message']
@@ -468,7 +591,7 @@ class ZEngine(object):
 
     def run_activity(self):
         """
-        imports, caches and calls the associated activity of the current task
+        runs the method that referenced from current task
         """
         activity = self.current.activity
         if activity:
@@ -478,13 +601,24 @@ class ZEngine(object):
                 "Calling Activity %s from %s" % (activity, self.wf_activities[activity]))
             self.wf_activities[self.current.activity](self.current)
 
-    def _import_object(self, path, look4kls_method):
-        last_nth = 2 if look4kls_method else 1
+    def _import_object(self, path, look_for_cls_method):
+        """
+        Imports the module that contains the referenced method.
+
+        Args:
+            path: python path of class/function
+            look_for_cls_method (bool): If True, treat the last part of path as class method.
+
+        Returns:
+            Tuple. (class object, class name, method to be called)
+
+        """
+        last_nth = 2 if look_for_cls_method else 1
         path = path.split('.')
         module_path = '.'.join(path[:-last_nth])
         class_name = path[-last_nth]
         module = importlib.import_module(module_path)
-        if look4kls_method and path[-last_nth:][0] == path[-last_nth]:
+        if look_for_cls_method and path[-last_nth:][0] == path[-last_nth]:
             class_method = path[-last_nth:][1]
         else:
             class_method = None
@@ -494,7 +628,7 @@ class ZEngine(object):
 
     def _load_activity(self, activity):
         """
-        imports, caches and calls the associated activity of the current task
+        Iterates trough the all enabled `~zengine.settings.ACTIVITY_MODULES_IMPORT_PATHS` to find the given path.
         """
         fpths = []
         full_path = ''
@@ -530,9 +664,10 @@ class ZEngine(object):
 
     def check_for_authentication(self):
         """
-        Checks current workflow against anonymous_workflows list,
-        raises HTTPUnauthorized error when WF needs an authenticated user
-        and current user isn't.
+        Checks current workflow against :py:data:`~zengine.settings.ANONYMOUS_WORKFLOWS` list.
+
+        Raises:
+            HTTPUnauthorized: if WF needs an authenticated user and current user isn't.
         """
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
@@ -541,11 +676,16 @@ class ZEngine(object):
 
     def check_for_lane_permission(self):
         """
-        One or more permissions can be associated with a lane of a workflow.
-        In a similar way, a lane can be restricted with relation to other lanes of the workflow.
+        One or more permissions can be associated with a lane
+        of a workflow. In a similar way, a lane can be
+        restricted with relation to other lanes of the workflow.
 
-        When this method called on lane changes, it checks if the current user has the required
-         permissions and proper relations. Raises a HTTPForbidden error if it is not.
+        This method called on lane changes and checks user has
+        required permissions and relations.
+
+        Raises:
+             HTTPForbidden: if the current user hasn't got the
+              required permissions and proper relations
 
         """
         # TODO: Cache lane_data in app memory
@@ -558,7 +698,13 @@ class ZEngine(object):
         if self.current.lane_relations:
             context = self.get_pool_context()
             log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
-            if not eval(self.current.lane_relations, context):
+            try:
+                cond_result = eval(self.current.lane_relations, context)
+            except:
+                log.exception("CONDITION EVAL ERROR : %s || %s" % (
+                self.current.lane_relations, context))
+                raise
+            if not cond_result:
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
                 raise falcon.HTTPForbidden(
                     "Permission denied",
@@ -566,6 +712,13 @@ class ZEngine(object):
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
+        """
+        Checks if current user (or role) has the required permission
+        for current workflow step.
+
+        Raises:
+            falcon.HTTPForbidden: if user doesn't have required permissions.
+        """
         if self.current.task:
             permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
         else:
@@ -580,5 +733,8 @@ class ZEngine(object):
                                        "You don't have required permission: %s" % permission)
 
     def handle_wf_finalization(self):
+        """
+        Removes the ``token`` key from ``current.output`` if WF is over.
+        """
         if self.current.task_type.startswith('End') and 'token' in self.current.output:
             del self.current.output['token']

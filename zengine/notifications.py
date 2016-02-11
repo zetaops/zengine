@@ -12,6 +12,9 @@ from zengine.lib.cache import Cache
 
 
 class Notify(Cache):
+    """
+    Cache based simple notification object.
+    """
     PREFIX = 'NTFY'
 
     TaskInfo = 1

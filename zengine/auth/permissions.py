@@ -34,13 +34,17 @@ class CustomPermission(object):
 
     @classmethod
     def get_permissions(cls):
+        """
+        Returns:
+            Permission list.
+        """
         return list(cls.registry.values())
 
 # skip permmission checking for this taks types
 NO_PERM_TASKS_TYPES = ('StartTask', 'StartEvent', 'EndEvent', 'EndTask', 'ExclusiveGateway')
 
 
-def get_workflows():
+def _get_workflows():
     from zengine.config import settings
     from zengine.engine import ZEngine, WFCurrent
     workflows = []
@@ -54,10 +58,10 @@ def get_workflows():
 
 
 
-def get_workflow_permissions(permission_list=None):
+def _get_workflow_permissions(permission_list=None):
     # [('code_name', 'name', 'description'),...]
     permissions = permission_list or []
-    for wf in get_workflows():
+    for wf in _get_workflows():
         wf_name = wf.spec.name
         permissions.append((wf_name, wf_name, ""))
         for name, task_spec in wf.spec.task_specs.items():
@@ -71,7 +75,7 @@ def get_workflow_permissions(permission_list=None):
     return permissions
 
 
-def get_model_permissions(permission_list=None):
+def _get_model_permissions(permission_list=None):
     from pyoko.model import model_registry
     from zengine.views.crud import CrudView
     generic_commands = CrudView().VIEW_METHODS.keys()
@@ -90,8 +94,14 @@ def get_model_permissions(permission_list=None):
 
 
 def get_all_permissions():
-    permissions = get_workflow_permissions()
-    get_model_permissions(permissions)
+    """
+    Default permission provider
+
+    Returns:
+        List of  permissions
+    """
+    permissions = _get_workflow_permissions()
+    _get_model_permissions(permissions)
     return permissions + CustomPermission.get_permissions()
 
 CustomPermission.add_multi(

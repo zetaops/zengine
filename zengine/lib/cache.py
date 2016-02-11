@@ -1,5 +1,6 @@
 # -*-  coding: utf-8 -*-
 """
+Base Cache object and some builtin subclasses of it.
 """
 
 # Copyright (C) 2015 ZetaOps Inc.
@@ -25,6 +26,39 @@ return keys
 _remove_keys = cache.register_script(REMOVE_SCRIPT)
 
 class Cache(object):
+    """
+    Base cache object to implement specific cache object for each use case.
+
+    Subclasses of this class can be consist of just a ```PREFIX``` attribute;
+
+    .. code-block:: python
+
+        class MyFooCache(Cache):
+            PREFIX = 'FOO'
+
+        # create cache object
+        mycache = MyFooCache(*args)
+
+        # set value
+        mycache.set(value)
+
+        # clear the whole PREFIX namespace
+        MyFooCache.flush()
+        # initial part(s) of keys can be used for finer control over keys.
+        MyFooCache.flush('EXTRA_PREFIX')
+
+    Or you can override the __init__ method to define strict positional
+    args with docstrings.
+
+    .. code-block:: python
+
+        class MyFooCache(Cache):
+            PREFIX = 'FOO'
+
+            def __init__(self, model_name, obj_key):
+                super(MyFooCache, self).__init__(model_name, obj_key)
+
+    """
     PREFIX = 'DFT'
     SERIALIZE = True
 
@@ -66,46 +100,108 @@ class Cache(object):
         # lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
         return val
 
-    def delete(self, *args):
+    def delete(self):
+        """
+        Deletes the object.
+
+        Returns:
+            Cache backend response.
+        """
         return cache.delete(self.key)
 
     def incr(self, delta=1):
+        """
+        Increment the value of item.
+
+        Args:
+            delta: Incrementation amount.
+
+        Returns:
+            Cache backend response.
+        """
         return cache.incr(self.key, delta)
 
     def decr(self, delta=1):
+        """
+        Reduce the value of item.
+
+        Args:
+            delta: Reduction amount.
+
+        Returns:
+            Cache backend response.
+        """
         return cache.decr(self.key, delta)
 
     def add(self, val):
-        # add to list
+        """
+        Add given value to item (list)
+
+        Args:
+            val: A JSON serializable object.
+
+        Returns:
+            Cache backend response.
+        """
         return cache.lpush(self.key, json.dumps(val) if self.serialize else val)
 
     def get_all(self):
-        # get all list items
+        """
+        Get all list items.
+
+        Returns:
+            Cache backend response.
+        """
         result = cache.lrange(self.key, 0, -1)
         return (json.loads(item.decode('utf-8')) for item in result if
                 item) if self.serialize else result
 
     def remove_all(self):
-        # get all list items
+        """
+        Remove items of the list.
+
+        Returns:
+            Cache backend response.
+        """
         return cache.ltrim(self.key, 0, -1)
 
     def remove_item(self, val):
-        # get all list items
+        """
+        Removes given from the list.
+
+        Args:
+            val: Item
+
+        Returns:
+            Cache backend response.
+        """
         return cache.lrem(self.key, json.dumps(val))
 
     @classmethod
     def flush(cls, *args):
         """
-        removes all keys in this current namespace
+        Removes all keys in this current namespace
         If called from class itself, clears all keys starting with cls.PREFIX
         if called with args, clears keys starting with given cls.PREFIX + args
-        :return: list of removed keys
+
+        Args:
+            *args: Arbitrary number of arguments.
+
+        Returns:
+            List of removed keys.
         """
         return _remove_keys([], [(cls._make_key(args) if args else cls.PREFIX) + '*'])
 
 
 
 class CatalogCache(Cache):
+    """
+    Cache object for the CatalogData.
+
+    Args:
+        lang_code: Language code
+        key: Item key
+    """
     PREFIX = 'CTDT'
 
     def __init__(self, lang_code, key):
@@ -113,6 +209,12 @@ class CatalogCache(Cache):
 
 
 class WFCache(Cache):
+    """
+    Cache object for workflow instances.
+
+    Args:
+        wf_token: Token of the workflow instance.
+    """
     PREFIX = 'WF'
 
     def __init__(self, wf_token):

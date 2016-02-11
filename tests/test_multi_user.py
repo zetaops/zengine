@@ -9,8 +9,10 @@
 from time import sleep
 import falcon
 import pytest
+
+from pyoko.model import super_context
 from zengine.lib.test_utils import BaseTestCase, user_pass
-from zengine.models import User
+from zengine.models import User, Role
 from zengine.signals import lane_user_change
 
 
@@ -31,6 +33,7 @@ class TestCase(BaseTestCase):
                                                            "superuser": True},
                                                           username='wrong_user')
         if new:
+            Role(super_context, user=user).save()
             sleep(2)
         return user
 
@@ -38,7 +41,7 @@ class TestCase(BaseTestCase):
         def mock(sender, *args, **kwargs):
             self.current = kwargs['current']
             self.old_lane = kwargs['old_lane']
-            self.owner = kwargs['possible_owners'][0]
+            self.owner = list(kwargs['possible_owners'])[0]
 
         lane_user_change.connect(mock)
         wf_name = '/multi_user/'

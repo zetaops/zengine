@@ -19,6 +19,9 @@ from zengine.log import log
 
 
 class CamundaBMPNParser(BpmnParser):
+    """
+    Parser object to override PROCESS_PARSER_CLASS
+    """
     def __init__(self):
         super(CamundaBMPNParser, self).__init__()
         self.PROCESS_PARSER_CLASS = CamundaProcessParser
@@ -26,22 +29,27 @@ class CamundaBMPNParser(BpmnParser):
 
 # noinspection PyBroadException
 class CamundaProcessParser(ProcessParser):
-
+    """
+    Custom process parser with various extra features.
+    """
     def __init__(self, *args, **kwargs):
         super(CamundaProcessParser, self).__init__(*args, **kwargs)
         self.spec.wf_name = self.get_name()
-        self.spec.wf_description = self.get_description()
-        self.spec.wf_properties = self.get_wf_properties()
+        self.spec.wf_description = self._get_description()
+        self.spec.wf_properties = self._get_wf_properties()
 
     def parse_node(self, node):
         """
-        overrides ProcessParser.parse_node
-        parses and attaches the inputOutput tags that created by Camunda Modeller
-        :param node: xml task node
-        :return: TaskSpec
+        Overrides ProcessParser.parse_node
+        Parses and attaches the inputOutput tags that created by Camunda Modeller
+
+        Args:
+            node: xml task node
+        Returns:
+             TaskSpec
         """
         spec = super(CamundaProcessParser, self).parse_node(node)
-        spec.data = self.parse_input_data(node)
+        spec.data = self._parse_input_data(node)
         spec.data['lane_data'] = self._get_lane_properties(node)
         spec.defines = spec.data
         service_class = node.get(full_attr('assignee'))
@@ -49,7 +57,12 @@ class CamundaProcessParser(ProcessParser):
             self.parsed_nodes[node.get('id')].service_class = node.get(full_attr('assignee'))
         return spec
 
-    def get_description(self):
+    def _get_description(self):
+        """
+        Tries to get WF description from 'collabration' or 'process' or 'pariticipant'
+        Returns:
+
+        """
         ns = {'ns': '{%s}' % BPMN_MODEL_NS}
         desc = (
             self.doc_xpath('.//{ns}collaboration/{ns}documentation'.format(**ns)) or
@@ -59,7 +72,7 @@ class CamundaProcessParser(ProcessParser):
         if desc:
             return desc[0].findtext('.')
 
-    def get_wf_properties(self):
+    def _get_wf_properties(self):
         ns = {'ns': '{%s}' % BPMN_MODEL_NS, 'as': '{%s}' % ATTRIBUTE_NS}
         wf_data = {}
         for path in ('.//{ns}collaboration/*/*/{as}property','.//{ns}process/*/*/{as}property'):
@@ -68,6 +81,12 @@ class CamundaProcessParser(ProcessParser):
         return wf_data
 
     def get_name(self):
+        """
+        Tries to get WF name from 'process' or 'collobration' or 'pariticipant'
+
+        Returns:
+            str. WF name.
+        """
         ns = {'ns': '{%s}' % BPMN_MODEL_NS}
         for path in ('.//{ns}process', './/{ns}collaboration', './/{ns}collaboration/{ns}participant/'):
             tag = self.doc_xpath(path.format(**ns))
@@ -77,7 +96,15 @@ class CamundaProcessParser(ProcessParser):
                     return name
         return self.get_id()
 
-    def parse_input_data(self, node):
+    def _parse_input_data(self, node):
+        """
+        Parses inputOutput part camunda modeller extensions.
+        Args:
+            node: SpiffWorkflow Node object.
+
+        Returns:
+            Data dict.
+        """
         data = DotDict()
         try:
             for nod in self._get_input_nodes(node):
@@ -98,7 +125,13 @@ class CamundaProcessParser(ProcessParser):
 
     def _get_lane_properties(self, node):
         """
-        parses the following XML and returns {'perms': 'foo,bar'}
+        Parses the given XML node
+
+        Args:
+            node (xml): XML node.
+
+        .. code-block:: xml
+
              <bpmn2:lane id="Lane_8" name="Lane 8">
                 <bpmn2:extensionElements>
                     <camunda:properties>
@@ -106,6 +139,9 @@ class CamundaProcessParser(ProcessParser):
                     </camunda:properties>
                 </bpmn2:extensionElements>
             </bpmn2:lane>
+
+        Returns:
+            {'perms': 'foo,bar'}
         """
         lane_name = self.get_lane(node.get('id'))
         lane_data = {}

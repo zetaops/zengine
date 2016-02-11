@@ -7,17 +7,29 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
-from zengine.views.crud import ModelListCache
+from zengine.views.crud import SelectBoxCache
 
 
 class UpdatePermissions(Command):
+    """
+    Gets permissions from
+    :attr:`~zengine.settings.PERMISSION_PROVIDER`
+    then creates
+    :attr:`~zengine.settings.PERMISSION_MODEL`
+    objects if required.
+
+    Args:
+        dry: Dry run. Do nothing, just list.
+    """
     CMD_NAME = 'update_permissions'
     HELP = 'Syncs permissions with DB'
     PARAMS = [
         {'name': 'dry', 'action':'store_true', 'help': 'Dry run, just list new found permissions'},
     ]
-
     def run(self):
+        """
+        Creates new permissions.
+        """
         from pyoko.lib.utils import get_object_from_path
         from zengine.config import settings
         model = get_object_from_path(settings.PERMISSION_MODEL)
@@ -48,7 +60,7 @@ class UpdatePermissions(Command):
 
         if new_perms:
             if not self.manager.args.dry:
-                ModelListCache.flush(model.__name__)
+                SelectBoxCache.flush(model.__name__)
             report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
             report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
         if self.manager.args.dry:
@@ -58,6 +70,12 @@ class UpdatePermissions(Command):
 
 
 class CreateUser(Command):
+    """
+    Creates a new user.
+
+    Because this doesn't handle permission and role management,
+    this is only useful when new user is a superuser.
+    """
     CMD_NAME = 'create_user'
     HELP = 'Creates a new user'
     PARAMS = [
@@ -67,6 +85,9 @@ class CreateUser(Command):
     ]
 
     def run(self):
+        """
+        Creates user, encrypts password.
+        """
         from zengine.models import User
         user = User(username=self.manager.args.username, superuser=self.manager.args.super)
         user.set_password(self.manager.args.password)
@@ -75,6 +96,13 @@ class CreateUser(Command):
 
 
 class RunServer(Command):
+    """
+    Runs development server.
+
+    Args:
+        addr: Listen address. Defaults to 127.0.0.1
+        port: Listen port. Defaults to 9001
+    """
     CMD_NAME = 'runserver'
     HELP = 'Run the development server'
     PARAMS = [
@@ -83,6 +111,9 @@ class RunServer(Command):
     ]
 
     def run(self):
+        """
+        Starts a simple_server for the zengine application
+        """
         from wsgiref import simple_server
         from zengine.server import app
         httpd = simple_server.make_server(self.manager.args.addr, int(self.manager.args.port), app)

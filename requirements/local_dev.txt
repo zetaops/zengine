@@ -1,0 +1,15 @@
+# This file is same as "default.txt" + "develop.txt" excluding "pyoko" and "spiffworkflow"
+# They are parts of our project, so creating symbolic links for them is more convenient for us.
+
+beaker
+git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions
+falcon
+redis
+passlib
+lazy_object_proxy
+enum34
+werkzeug
+pytest
+celery
+werkzeug
+pytest
