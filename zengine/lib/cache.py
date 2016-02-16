@@ -219,3 +219,10 @@ class WFCache(Cache):
 
     def __init__(self, wf_token):
         super(WFCache, self).__init__(wf_token)
+
+class ClearCache(Cache):
+    """
+    Empty cache object to flush all cache entries
+    """
+    PREFIX = ''
+

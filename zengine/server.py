@@ -19,7 +19,11 @@ import traceback
 from falcon.http_error import HTTPError
 import falcon
 from beaker.middleware import SessionMiddleware
+from riak.client import binary_json_decoder
+
 from pyoko.lib.utils import get_object_from_path
+from pyoko.modelmeta import model_registry
+from zengine.lib.cache import ClearCache
 from zengine.log import log
 
 from zengine.config import settings
@@ -147,3 +151,86 @@ class Ping(object):
 
 
 falcon_app.add_route('/ping', Ping)
+
+class DBStats(object):
+    """
+    various stats
+    """
+
+    @staticmethod
+    def on_get(req, resp):
+        import sys
+        """
+        GET method handler
+        Args:
+            req: Request object.
+            resp: Response object.
+        """
+        read_existing = set(sys.PYOKO_LOGS['read']) - set(sys.PYOKO_LOGS['new'])
+        resp.body = "DB Access Stats: {}".format(str(sys.PYOKO_STAT_COUNTER),
+                              str(read_existing))
+        sys.PYOKO_LOGS = {
+            "save": 0,
+            "update": 0,
+            "read": 0,
+            "count": 0,
+            "search": 0,
+        }
+
+
+
+
+class ReadKeys(object):
+    """
+    Export read keys
+    """
+
+    @staticmethod
+    def on_get(req, resp):
+        import sys
+        """
+        GET method handler
+        Args:
+            req: Request object.
+            resp: Response object.
+        """
+        out = []
+        for mdl_name in sys.PYOKO_LOGS.copy():
+            try:
+                mdl = model_registry.get_model(mdl_name)
+            except KeyError:
+                continue
+            bucket_name = mdl.objects.bucket.name
+            mdl.objects.bucket.set_decoder('application/json', lambda a: a)
+            for k in set(sys.PYOKO_LOGS[mdl_name]):
+                if k not in sys.PYOKO_LOGS['new']:
+                    out.append("{}/|{}/|{}".format(
+                        bucket_name, k, mdl.objects.data().get(k).data))
+                    # print(str(mdl.objects.get(k).name))
+            sys.PYOKO_LOGS[mdl_name] = []
+            mdl.objects.bucket.set_decoder('application/json', binary_json_decoder)
+        sys.PYOKO_LOGS['new'] = []
+        resp.body = "\n".join(out)
+
+
+
+class ResetCache(object):
+    """
+    Clears all cache entries
+    """
+
+    @staticmethod
+    def on_get(req, resp):
+        """
+        GET method handler
+        Args:
+            req: Request object.
+            resp: Response object.
+        """
+
+        resp.body = "Following cache entries are removed!\n\n"+"\n".join(ClearCache().flush())
+
+if settings.DEBUG:
+    falcon_app.add_route('/read_keys', ReadKeys)
+    falcon_app.add_route('/db_stats', DBStats)
+    falcon_app.add_route('/reset_cache', ResetCache)
