@@ -10,4 +10,5 @@ enum34
 werkzeug
 pytest
 celery
-
+tornado
+pika
