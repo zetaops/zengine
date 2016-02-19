@@ -108,17 +108,37 @@ class RunServer(Command):
     PARAMS = [
         {'name': 'addr', 'default': '127.0.0.1', 'help': 'Listening address. Defaults to 127.0.0.1'},
         {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
+        {'name': 'server_type', 'default': 'falcon', 'help': 'Server type. Default: "falcon"'
+                                                        'Possible values: falcon,tornado'},
     ]
 
     def run(self):
         """
-        Starts a simple_server for the zengine application
+        Starts a development server for the zengine application
         """
-        from wsgiref import simple_server
-        from zengine.server import app
-        httpd = simple_server.make_server(self.manager.args.addr, int(self.manager.args.port), app)
         print("Development server started on http://%s:%s. \n\nPress Ctrl+C to stop\n" % (
             self.manager.args.addr,
             self.manager.args.port)
               )
+        if self.manager.args.server_type == 'falcon':
+            self.run_with_falcon()
+        elif self.manager.args.server_type == 'tornado':
+            self.run_with_tornado()
+
+    def run_with_tornado(self):
+        """
+        runs the tornado/websockets based test server
+        """
+        from zengine.tornado_server import app
+        from tornado import ioloop
+        app.listen(self.manager.args.port, self.manager.args.addr)
+        ioloop.IOLoop.instance().start()
+
+    def run_with_falcon(self):
+        """
+        runs the falcon/http based test server
+        """
+        from wsgiref import simple_server
+        from zengine.server import app
+        httpd = simple_server.make_server(self.manager.args.addr, int(self.manager.args.port), app)
         httpd.serve_forever()
