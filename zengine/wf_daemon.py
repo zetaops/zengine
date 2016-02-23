@@ -4,10 +4,10 @@ import time
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 channel = connection.channel()
-channel2 = connection.channel()
+consumer_con = connection.channel()
 
 channel.queue_declare(queue='hello')
-channel2.queue_declare(queue='ehlo')
+consumer_con.queue_declare(queue='in.*')
 
 
 # print(" [x] Sent 'Hello World!'")
