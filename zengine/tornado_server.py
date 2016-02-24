@@ -28,7 +28,7 @@ from zengine.engine import ZEngine, Current
 # receivers should be imported at right time, right place
 # they will not registered if not placed in a central location
 # but they can cause "cannot import settings" errors if imported too early
-from zengine.pica_client import PikaClient
+from zengine.pika_client import PikaClient
 from zengine.receivers import *
 from uuid import uuid4
 
@@ -88,6 +88,7 @@ class LoginHandler(web.RequestHandler):
     @web.asynchronous
     def post(self):
         self.set_cookie(COOKIE_NAME, self._create_hash())
+        self.finish()
 
     def _create_hash(self):
         return uuid4().hex
@@ -99,11 +100,10 @@ class LoginHandler(web.RequestHandler):
 app = web.Application([
     # (r'/', IndexHandler),
     (r'/ws', SocketHandler),
-    (r'/login/([^/]+)', LoginHandler),
+    (r'/login', LoginHandler),
 ])
 
-if __name__ == '__main__':
-
+def runserver():
     zioloop = ioloop.IOLoop.instance()
 
     # setup pika client
@@ -113,4 +113,6 @@ if __name__ == '__main__':
     app.listen(9001)
     zioloop.start()
 
+if __name__ == '__main__':
+    runserver()
 

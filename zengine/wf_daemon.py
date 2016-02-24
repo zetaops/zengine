@@ -1,33 +1,40 @@
 #!/usr/bin/env python
+"""
+workflow worker daemon
+"""
 import pika
-import time
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-channel = connection.channel()
-consumer_con = connection.channel()
+output_channel = connection.channel()
+input_channel = connection.channel()
 
-channel.queue_declare(queue='hello')
-consumer_con.queue_declare(queue='in.*')
+# output_channel.queue_declare(queue='hello')
+input_channel.exchange_declare(exchange='tornado_input', type='direct')
+result = input_channel.queue_declare(exclusive=True)
+queue_name = result.method.queue
+input_channel.queue_bind(exchange='tornado_input', queue=queue_name)
 
-
-# print(" [x] Sent 'Hello World!'")
-# connection.close()
 
 def callback(ch, method, properties, body):
-    print(body)
-    time.sleep(1)
-    channel.basic_publish(exchange='',
-                          routing_key='hello',
-                          body='Hello World!')
+    """
+    this is a pika.basic_consumer callback
+    handles client inputs, runs appropriate workflows
 
+    Args:
+        ch: amqp channel
+        method: amqp method
+        properties:
+        body: message body
+    """
+    sessid = method.routing_key[3:]
+    print("SESSID: %s" % sessid)
+    output_channel.basic_publish(exchange='',
+                                 routing_key=sessid,
+                                 body='Hello %s, you said %s' % (sessid, body))
 
-channel.basic_publish(exchange='',
-                      routing_key='hello',
-                      body='Hello World!')
+input_channel.basic_consume(callback,
+                            queue='#',
+                            no_ack=True)
 
-channel2.basic_consume(callback,
-                      queue='ehlo',
-                      no_ack=True)
-
-channel2.start_consuming()
+input_channel.start_consuming()
 
