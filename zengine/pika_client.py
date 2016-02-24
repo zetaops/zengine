@@ -58,17 +58,15 @@ class PikaClient(object):
         self.in_channel = self.connection.channel(self.on_open)
 
     def on_open(self, channel):
-        self.in_channel.exchange_declare(exchange='tornado_input', type='direct')
+        self.in_channel.exchange_declare(exchange='tornado_input', type='topic')
+        channel.queue_declare(callback=None, queue="in_queue")
+        channel.queue_bind(callback=None, exchange='tornado_input', queue="in_queue", routing_key="#")
         # self.out_channel = self.connection.channel()
 
     def register_websocket(self, sess_id, ws):
         self.websockets[sess_id] = ws
         channel = self.create_out_channel(sess_id)
-        channel.queue_declare(queue=sess_id, auto_delete=True)
-        channel.basic_consume(self.on_message,
-                              queue=sess_id,
-                              # no_ack=True
-                              )
+
 
     def unregister_websocket(self, sess_id):
         del self.websockets[sess_id]
@@ -76,12 +74,19 @@ class PikaClient(object):
 
 
     def create_out_channel(self, sess_id):
-        channel = self.connection.channel()
-        self.out_channels[sess_id] = channel
-        return channel
+        def binder(channel):
+            self.out_channels[sess_id] = channel
+            channel.queue_declare(callback=None, queue=sess_id, auto_delete=True)
+            channel.basic_consume(self.on_message,
+                                  queue=sess_id,
+                                  # no_ack=True
+                                  )
+        channel = self.connection.channel(binder)
+
 
     def send_message(self, sess_id, message):
         # channel = self.in_channels[sess_id]
+
         self.in_channel.basic_publish(exchange='tornado_input',
                               routing_key='in.%s' % sess_id,
                               body=message)
@@ -89,8 +94,8 @@ class PikaClient(object):
     def on_message(self, channel, method, header, body):
         sess_id = method.routing_key
         if sess_id in self.websockets:
-            self.websockets[sess_id].write(body)
-            channel.basic.ack(delivery_tag=header['delivery_tag'])
+            self.websockets[sess_id].write_message(body)
+            channel.basic_ack(delivery_tag=method.delivery_tag)
         else:
             channel.basic_reject(delivery_tag=header['delivery_tag'])
 

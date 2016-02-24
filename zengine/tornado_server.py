@@ -64,13 +64,19 @@ class SocketHandler(websocket.WebSocketHandler):
         return True
 
     def _get_sess_id(self):
-        return self.get_cookie(COOKIE_NAME)
+        sess_id = self.get_cookie(COOKIE_NAME)
+        print("Got session cookie: %s" % sess_id)
+        return sess_id
 
     def open(self):
-        sess_id = self.get_cookie(COOKIE_NAME)
-        self.application.pc.register_websocket(self._get_sess_id(), self)
+        sess_id = self._get_sess_id()
+        if sess_id:
+            self.application.pc.register_websocket(self._get_sess_id(), self)
+        else:
+            print("no session, no joy!")
 
     def on_message(self, message):
+        print("Gor WS Message: %s" % message)
         self.application.pc.send_message(self._get_sess_id(), message)
 
     def on_close(self):
@@ -83,12 +89,18 @@ class LoginHandler(web.RequestHandler):
 
     @web.asynchronous
     def get(self, *args):
+        self.write(open('/Users/evren/Works/pyoko/var/test.html').read())
         self.finish()
 
     @web.asynchronous
     def post(self):
-        self.set_cookie(COOKIE_NAME, self._create_hash())
+        self.set_header('Access-Control-Allow-Origin', '*')
+        sess_id = self._create_hash()
+        self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
+        print("Set session cookie: %s" % sess_id)
+        self.write("HOHOHOOOO")
         self.finish()
+
 
     def _create_hash(self):
         return uuid4().hex
