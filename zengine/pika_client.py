@@ -10,6 +10,7 @@ import json
 import logging
 
 import pika
+import time
 from pika.adapters import TornadoConnection
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
@@ -18,10 +19,13 @@ pika.log = logging.getLogger(__name__)
 
 
 class PikaClient(object):
+    INPUT_QUEUE_NAME = 'in_queue'
     def __init__(self, io_loop):
         pika.log.info('PikaClient: __init__')
         self.io_loop = io_loop
-
+        self.received_message_counter = 0
+        self.sent_message_counter = 0
+        self.start_time = -1
         self.connected = False
         self.connecting = False
         self.connection = None
@@ -59,9 +63,13 @@ class PikaClient(object):
 
     def on_open(self, channel):
         self.in_channel.exchange_declare(exchange='tornado_input', type='topic')
-        channel.queue_declare(callback=None, queue="in_queue")
-        channel.queue_bind(callback=None, exchange='tornado_input', queue="in_queue", routing_key="#")
-        # self.out_channel = self.connection.channel()
+        channel.queue_declare(callback=self.on_queue_declare, queue=self.INPUT_QUEUE_NAME)
+
+    def on_queue_declare(self, queue):
+        self.in_channel.queue_bind(callback=None,
+                           exchange='tornado_input',
+                           queue=self.INPUT_QUEUE_NAME,
+                           routing_key="#")
 
     def register_websocket(self, sess_id, ws):
         self.websockets[sess_id] = ws
@@ -70,33 +78,41 @@ class PikaClient(object):
 
     def unregister_websocket(self, sess_id):
         del self.websockets[sess_id]
-        # self.in_channels["in_%s" % sess_id].close()
+        if sess_id in self.out_channels:
+            self.out_channels[sess_id].close()
+        print("Time: %s, Total In: %s Out: %s" % (int(time.time() - self.start_time),
+                                                  self.received_message_counter,
+                                                  self.sent_message_counter) )
 
 
     def create_out_channel(self, sess_id):
-        def binder(channel):
+        def on_output_channel_creation(channel):
+            def on_output_queue_decleration(queue):
+                channel.basic_consume(self.on_message, queue=sess_id)
             self.out_channels[sess_id] = channel
-            channel.queue_declare(callback=None, queue=sess_id, auto_delete=True)
-            channel.basic_consume(self.on_message,
+            channel.queue_declare(callback=on_output_queue_decleration,
                                   queue=sess_id,
-                                  # no_ack=True
-                                  )
-        channel = self.connection.channel(binder)
+                                  auto_delete=True,
+                                  exclusive=True)
+
+        self.connection.channel(on_output_channel_creation)
 
 
     def send_message(self, sess_id, message):
-        # channel = self.in_channels[sess_id]
-
+        if not self.sent_message_counter:
+            self.start_time = time.time()
+        self.received_message_counter += 1
         self.in_channel.basic_publish(exchange='tornado_input',
                               routing_key='in.%s' % sess_id,
                               body=message)
 
     def on_message(self, channel, method, header, body):
+        self.sent_message_counter += 1
         sess_id = method.routing_key
         if sess_id in self.websockets:
             self.websockets[sess_id].write_message(body)
             channel.basic_ack(delivery_tag=method.delivery_tag)
         else:
-            channel.basic_reject(delivery_tag=header['delivery_tag'])
+            channel.basic_reject(delivery_tag=method.delivery_tag)
 
 
