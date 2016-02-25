@@ -83,6 +83,7 @@ class SocketHandler(websocket.WebSocketHandler):
         """
         remove connection from pool on connection close.
         """
+        print("Websocket closed")
         self.application.pc.unregister_websocket(self._get_sess_id())
 
 class LoginHandler(web.RequestHandler):

@@ -3,6 +3,7 @@
 workflow worker daemon
 """
 import pika
+from models import Permission
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
 output_channel = connection.channel()
@@ -27,6 +28,7 @@ def callback(ch, method, properties, body):
     """
     sessid = method.routing_key[3:]
     print("SESSID: %s | %s" % (sessid, body))
+    Permission(code=str(body)).save()
     output_channel.basic_publish(exchange='',
                                  routing_key=sessid,
                                  body='Hello %s, you said %s' % (sessid, body))
