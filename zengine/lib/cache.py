@@ -25,6 +25,7 @@ return keys
 
 _remove_keys = cache.register_script(REMOVE_SCRIPT)
 
+
 class Cache(object):
     """
     Base cache object to implement specific cache object for each use case.
@@ -61,8 +62,6 @@ class Cache(object):
     """
     PREFIX = 'DFT'
     SERIALIZE = True
-
-
 
     def __init__(self, *args, **kwargs):
         self.serialize = kwargs.get('serialize', self.SERIALIZE)
@@ -193,7 +192,6 @@ class Cache(object):
         return _remove_keys([], [(cls._make_key(args) if args else cls.PREFIX) + '*'])
 
 
-
 class CatalogCache(Cache):
     """
     Cache object for the CatalogData.
@@ -220,9 +218,49 @@ class WFCache(Cache):
     def __init__(self, wf_token):
         super(WFCache, self).__init__(wf_token)
 
+
 class ClearCache(Cache):
     """
     Empty cache object to flush all cache entries
     """
     PREFIX = ''
 
+
+class Session(object):
+    """
+    Cache object for user sessions.
+    Args:
+        sessid: user session id.
+    """
+    PREFIX = 'SES'
+
+    def __getitem__(self, key):
+        key = self._make_key(key)
+        return cache.get(key)
+
+    def __delitem__(self, key):
+        key = self._make_key(key)
+        cache.delete(key)
+
+    def __setitem__(self, key, value):
+        key = self._make_key(key)
+        cache.set(key, value)
+
+    def __contains__(self, item):
+        return bool(self.__getitem__(item))
+
+    def __init__(self, sessid=''):
+        self.key = ""
+        self.key = self._make_key(sessid)
+
+
+    def _make_key(self, args):
+        return "%s%s" % (self.key or self.PREFIX, ":%s" % args if args else "")
+
+
+    def flush(self):
+        """
+        Removes all contents attached to this session object.
+         If sessid is empty, all sessions will be cleaned up.
+        """
+        return _remove_keys([], [self.key + '*'])

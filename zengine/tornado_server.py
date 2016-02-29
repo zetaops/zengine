@@ -43,7 +43,7 @@ class SocketHandler(websocket.WebSocketHandler):
 
     def on_message(self, message):
         # print("Got WS Message: %s" % message)
-        self.application.pc.send_message(self._get_sess_id(), message)
+        self.application.pc.redirect_incoming_message(self._get_sess_id(), message)
 
     def on_close(self):
         """

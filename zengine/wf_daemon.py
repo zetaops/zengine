@@ -20,7 +20,7 @@ class Worker(object):
         self.connect()
         signal.signal(signal.SIGTERM, self.exit)
 
-    def exit(self, signal, frame):
+    def exit(self, signal=None, frame=None):
         self.input_channel.close()
         self.output_channel.close()
         self.connection.close()
@@ -44,7 +44,7 @@ class Worker(object):
         try:
             self.input_channel.start_consuming()
         except (KeyboardInterrupt, SystemExit):
-            print("Exiting")
+            print(" Exiting")
             self.exit()
 
 
@@ -61,8 +61,7 @@ class Worker(object):
             body: message body
         """
         sessid = method.routing_key[3:]
-        # print("SESSID: %s | %s" % (sessid, body))
-        Permission(code=str(body)).save()
+        # Permission(code=str(body)).save()
         if self.connection.is_closed:
             print("Connection is closed, re-opening...")
             self.connect()
@@ -79,7 +78,6 @@ def manage_processes():
 
     global child_pids
     child_pids = []
-    print("%s records exist" % Permission.objects.count())
     no_subprocess = [arg.split('manage=')[-1] for arg in sys.argv if 'manage' in arg][0]
     print("starting %s workers" % no_subprocess)
     for i in range(int(no_subprocess)):

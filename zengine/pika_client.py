@@ -59,13 +59,13 @@ class PikaClient(object):
         pika.log.info('PikaClient: connected to RabbitMQ')
         self.connected = True
         self.connection = connection
-        self.in_channel = self.connection.channel(self.on_open)
+        self.in_channel = self.connection.channel(self.on_conn_open)
 
-    def on_open(self, channel):
+    def on_conn_open(self, channel):
         self.in_channel.exchange_declare(exchange='tornado_input', type='topic')
-        channel.queue_declare(callback=self.on_queue_declare, queue=self.INPUT_QUEUE_NAME)
+        channel.queue_declare(callback=self.on_input_queue_declare, queue=self.INPUT_QUEUE_NAME)
 
-    def on_queue_declare(self, queue):
+    def on_input_queue_declare(self, queue):
         self.in_channel.queue_bind(callback=None,
                            exchange='tornado_input',
                            queue=self.INPUT_QUEUE_NAME,
@@ -98,10 +98,12 @@ class PikaClient(object):
         self.connection.channel(on_output_channel_creation)
 
 
-    def send_message(self, sess_id, message):
+    def redirect_incoming_message(self, sess_id, message):
         if not self.sent_message_counter:
             self.start_time = time.time()
         self.received_message_counter += 1
+        if not self.received_message_counter % 1000:
+            print(self.received_message_counter)
         self.in_channel.basic_publish(exchange='tornado_input',
                               routing_key='in.%s' % sess_id,
                               body=message)
