@@ -228,15 +228,31 @@ class ClearCache(Cache):
 
 class Session(object):
     """
-    Cache object for user sessions.
+    Redis based dict like session object to store user session data
+
+    Examples:
+
+        .. code-block:: python
+
+            sess = Session(session_key)
+            sess['user_data'] = {"foo":"bar"}
+            sess
+
     Args:
         sessid: user session id.
     """
     PREFIX = 'SES'
 
+    def __init__(self, sessid=''):
+        self.key = ""
+        self.key = self._make_key(sessid)
+
+    def _j_load(self, val):
+        return json.loads(val.decode())
+
     def __getitem__(self, key):
         key = self._make_key(key)
-        return cache.get(key)
+        return self._j_load(cache.get(key))
 
     def __delitem__(self, key):
         key = self._make_key(key)
@@ -244,21 +260,27 @@ class Session(object):
 
     def __setitem__(self, key, value):
         key = self._make_key(key)
-        cache.set(key, value)
+        cache.set(key, json.dumps(value))
 
     def __contains__(self, item):
         return bool(self.__getitem__(item))
 
-    def __init__(self, sessid=''):
-        self.key = ""
-        self.key = self._make_key(sessid)
-
-
-    def _make_key(self, args):
+    def _make_key(self, args=None):
         return "%s%s" % (self.key or self.PREFIX, ":%s" % args if args else "")
 
+    def _keys(self):
+        return cache.keys(self._make_key() + "*")
 
-    def flush(self):
+    def keys(self):
+        return [k[len(self.key) + 1:] for k in self._keys()]
+
+    def values(self):
+        return (self._j_load(cache.get(k)) for k in self._keys())
+
+    def items(self):
+        return ((k[len(self.key) + 1:], self._j_load(cache.get(k))) for k in self._keys())
+
+    def destroy(self):
         """
         Removes all contents attached to this session object.
          If sessid is empty, all sessions will be cleaned up.

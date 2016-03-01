@@ -54,11 +54,7 @@ class SocketHandler(websocket.WebSocketHandler):
 
 class LoginHandler(web.RequestHandler):
 
-    @web.asynchronous
-    def get(self, *args):
-        with open('/Users/evren/Works/pyoko/var/test.html') as fh:
-            self.write(fh.read())
-            self.finish()
+
 
 
     @web.asynchronous
@@ -67,15 +63,10 @@ class LoginHandler(web.RequestHandler):
         sess_id = self._create_hash()
         self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
         print("Set session cookie: %s" % sess_id)
-        self.write("HOHOHOOOO")
         self.finish()
-
 
     def _create_hash(self):
         return uuid4().hex
-
-    def _get_send_socket(self, client_hash):
-        return CLIENT_SOCKETS[client_hash]
 
 
 app = web.Application([
