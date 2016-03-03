@@ -19,12 +19,18 @@ import sys
 wf_engine = ZEngine()
 
 class Worker(object):
+    """
+    Workflow runner worker object
+    """
     INPUT_QUEUE_NAME = 'in_queue'
     def __init__(self):
         self.connect()
         signal.signal(signal.SIGTERM, self.exit)
 
     def exit(self, signal=None, frame=None):
+        """
+        Properly close the AMQP connections
+        """
         self.input_channel.close()
         self.output_channel.close()
         self.connection.close()
@@ -33,6 +39,9 @@ class Worker(object):
 
 
     def connect(self):
+        """
+        make amqp connection and create channels and queue binding
+        """
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         self.output_channel = self.connection.channel()
         self.input_channel = self.connection.channel()
@@ -42,6 +51,9 @@ class Worker(object):
         self.input_channel.queue_bind(exchange='tornado_input', queue=self.INPUT_QUEUE_NAME)
 
     def run(self):
+        """
+        actual consuming of incoming works starts here
+        """
         self.input_channel.basic_consume(self.handle_message,
                                     queue=self.INPUT_QUEUE_NAME,
                                     no_ack=True)
@@ -83,7 +95,9 @@ class Worker(object):
 
 
 def manage_processes():
-
+    """
+    subprocess handler
+    """
     import atexit, os, subprocess, signal
 
     # global child_pids
@@ -98,6 +112,9 @@ def manage_processes():
         print("Started worker with pid %s" % proc.pid)
 
     def kill_child():
+        """
+        kill subprocess on exis of manager (this) process
+        """
         for pid in child_pids:
             if pid is not None:
                 os.kill(pid, signal.SIGTERM)

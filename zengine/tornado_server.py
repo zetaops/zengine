@@ -116,20 +116,12 @@ def tornado_view_connector(view_path):
         def get(self):
             """
             GET method http handler
-
-            Args:
-                req: Request object.
-                resp: Response object
             """
             self.post()
 
         def post(self):
             """
                 POST method http handler
-
-                Args:
-                    req: Request object.
-                    resp: Response object
             """
             try:
                 sess_id = self.get_cookie(COOKIE_NAME)
@@ -164,6 +156,9 @@ for url, view_path in settings.VIEW_URLS:
 
 
 def runserver():
+    """
+    Run Tornado server
+    """
     zioloop = ioloop.IOLoop.instance()
 
     # setup pika client
