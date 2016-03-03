@@ -2,17 +2,21 @@
 """
 workflow worker daemon
 """
+import json
+
 import signal
 from time import sleep
 
 import pika
 from pika.exceptions import ConnectionClosed
 
+from zengine.engine import ZEngine
+from zengine.lib.cache import Session
 from zengine.models import Permission
 
 import sys
 
-
+wf_engine = ZEngine()
 
 class Worker(object):
     INPUT_QUEUE_NAME = 'in_queue'
@@ -60,15 +64,21 @@ class Worker(object):
             properties:
             body: message body
         """
-        sessid = method.routing_key[3:]
-        # Permission(code=str(body)).save()
+        sessid = method.routing_key
+        session = Session(sessid)
+        input = json.loads(body)
+
+        wf_engine.start_engine(session=session, input=input, workflow_name=input['wf'])
+        wf_engine.run()
         if self.connection.is_closed:
             print("Connection is closed, re-opening...")
             self.connect()
+        output = wf_engine.current.output
+        if 'callbackID' in input:
+            output['callbackID'] = input['callbackID']
         self.output_channel.basic_publish(exchange='',
                                          routing_key=sessid,
-                                         # body='Hello %s, you said %s' % (sessid, body))
-                                         body=body)
+                                         body=json.dumps(output))
         # except ConnectionClosed:
 
 
@@ -76,7 +86,7 @@ def manage_processes():
 
     import atexit, os, subprocess, signal
 
-    global child_pids
+    # global child_pids
     child_pids = []
     no_subprocess = [arg.split('manage=')[-1] for arg in sys.argv if 'manage' in arg][0]
     print("starting %s workers" % no_subprocess)

@@ -12,20 +12,16 @@ import logging
 import pika
 import time
 from pika.adapters import TornadoConnection
+from zengine.log import log
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-pika.log = logging.getLogger(__name__)
-
-
-class PikaClient(object):
+class QueueManager(object):
+    """
+    Async RabbitMQ & Tornado websocket connector
+    """
     INPUT_QUEUE_NAME = 'in_queue'
     def __init__(self, io_loop):
-        pika.log.info('PikaClient: __init__')
+        log.info('PikaClient: __init__')
         self.io_loop = io_loop
-        self.received_message_counter = 0
-        self.sent_message_counter = 0
-        self.start_time = -1
         self.connected = False
         self.connecting = False
         self.connection = None
@@ -36,11 +32,14 @@ class PikaClient(object):
         self.connect()
 
     def connect(self):
+        """
+        Creates connection to RabbitMQ server
+        """
         if self.connecting:
-            pika.log.info('PikaClient: Already connecting to RabbitMQ')
+            log.info('PikaClient: Already connecting to RabbitMQ')
             return
 
-        pika.log.info('PikaClient: Connecting to RabbitMQ')
+        log.info('PikaClient: Connecting to RabbitMQ')
         self.connecting = True
 
         cred = pika.PlainCredentials('guest', 'guest')
@@ -53,25 +52,51 @@ class PikaClient(object):
 
         self.connection = TornadoConnection(param,
                                             on_open_callback=self.on_connected)
-        # self.connection.add_on_close_callback(self.on_closed)
 
     def on_connected(self, connection):
+        """
+        AMQP connection callback.
+        Creates input channel.
+
+        Args:
+            connection: AMQP connection
+        """
         pika.log.info('PikaClient: connected to RabbitMQ')
         self.connected = True
         self.connection = connection
         self.in_channel = self.connection.channel(self.on_conn_open)
 
     def on_conn_open(self, channel):
+        """
+        Input channel creation callback
+        Queue declaration done here
+
+        Args:
+            channel: input channel
+        """
         self.in_channel.exchange_declare(exchange='tornado_input', type='topic')
         channel.queue_declare(callback=self.on_input_queue_declare, queue=self.INPUT_QUEUE_NAME)
 
     def on_input_queue_declare(self, queue):
+        """
+        Input queue declaration callback.
+        Input Queue/Exchange binding done here
+
+        Args:
+            queue: input queue
+        """
         self.in_channel.queue_bind(callback=None,
                            exchange='tornado_input',
                            queue=self.INPUT_QUEUE_NAME,
                            routing_key="#")
 
     def register_websocket(self, sess_id, ws):
+        """
+
+        Args:
+            sess_id:
+            ws:
+        """
         self.websockets[sess_id] = ws
         channel = self.create_out_channel(sess_id)
 
@@ -99,17 +124,11 @@ class PikaClient(object):
 
 
     def redirect_incoming_message(self, sess_id, message):
-        if not self.sent_message_counter:
-            self.start_time = time.time()
-        self.received_message_counter += 1
-        if not self.received_message_counter % 1000:
-            print(self.received_message_counter)
         self.in_channel.basic_publish(exchange='tornado_input',
-                              routing_key='in.%s' % sess_id,
+                              routing_key=sess_id,
                               body=message)
 
     def on_message(self, channel, method, header, body):
-        self.sent_message_counter += 1
         sess_id = method.routing_key
         if sess_id in self.websockets:
             self.websockets[sess_id].write_message(body)

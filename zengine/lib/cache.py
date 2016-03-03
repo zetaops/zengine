@@ -251,8 +251,11 @@ class Session(object):
         return json.loads(val.decode())
 
     def __getitem__(self, key):
-        key = self._make_key(key)
-        return self._j_load(cache.get(key))
+        val = self.get(key)
+        if val:
+            return val
+        else:
+            raise KeyError
 
     def __delitem__(self, key):
         key = self._make_key(key)
@@ -270,6 +273,11 @@ class Session(object):
 
     def _keys(self):
         return cache.keys(self._make_key() + "*")
+
+    def get(self, key, default=None):
+        key = self._make_key(key)
+        val = cache.get(key)
+        return self._j_load(val) if val else default
 
     def keys(self):
         return [k[len(self.key) + 1:] for k in self._keys()]

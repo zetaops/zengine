@@ -85,22 +85,23 @@ class Current(object):
     def __init__(self, **kwargs):
 
         self.task_data = {'cmd': None}
-        self.request = kwargs.pop('request', {})
-        self.response = kwargs.pop('response', {})
+        self.session = {}
+        self.input = {}   # when we want to use engine functions independently,
+        self.output = {}  # we need to create a fake current object
         try:
-            self.session = self.request.env['session']
-            self.input = self.request.context['data']
-            self.output = self.request.context['result']
-            self.user_id = self.session.get('user_id')
-            self.role_id = self.session.get('role_id')
-        except AttributeError:
-            # when we want to use engine functions independently,
-            # we need to create a fake current object
-            self.session = {}
-            self.input = {}
-            self.output = {}
-            self.user_id = None
-            self.role_id = None
+            self.session = kwargs['session']
+            self.input = kwargs['input']
+        except KeyError:
+            self.request = kwargs.pop('request', {})
+            self.response = kwargs.pop('response', {})
+            if 'env' in self.request:
+                self.session = self.request.env['session']
+                self.input = self.request.context['data']
+                self.output = self.request.context['result']
+
+
+        self.user_id = self.session.get('user_id')
+        self.role_id = self.session.get('role_id')
 
         self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
         self.log = log
