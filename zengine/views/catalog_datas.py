@@ -24,7 +24,7 @@ class CatalogSelectForm(forms.JsonForm):
         title = 'Choose Catalog Data'
         help_text = "Type and choose existing catalog data to edit. Or if you want to add one type the name of the catalog data you want to add."
 
-    # typeahead type added for forms todo: add to documentation
+    # typeahead type added for forms
     catalog = fields.Integer("Catalogs", type='typeahead')
     edit = fields.Button("Edit", cmd="get_catalog")
 
@@ -94,7 +94,6 @@ class CatalogDataView(CrudView):
         self.output["meta"]["allow_selection"] = False
 
         # set meta translate_widget to True to use translate view for ui
-        # todo: add to documentation / longterm: add to zengine-ui
         self.output["meta"]["translate_widget"] = True
 
         # schema key for get back what key will be saved, used in save_catalog form
@@ -117,7 +116,6 @@ class CatalogDataView(CrudView):
                 newobj.store()
 
                 # notify user by passing notify in output object
-                # todo: add ui-api document the feature notify
                 self.output["notify"] = "catalog: %s successfully updated." % self.input["object_key"]
             except:
                 raise HTTPBadRequest("Form object could not be saved")
