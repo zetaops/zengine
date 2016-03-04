@@ -130,7 +130,7 @@ class RunServer(Command):
         runs the tornado/websockets based test server
         """
         from zengine.tornado_server import runserver
-        runserver()
+        runserver(self.manager.args.addr, int(self.manager.args.port))
 
     def run_with_falcon(self):
         """

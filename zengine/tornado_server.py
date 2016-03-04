@@ -9,7 +9,7 @@ tornado websocket proxy for WF worker daemons
 import json
 import traceback
 
-from tornado.escape import json_decode
+from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 
 from pyoko.lib.utils import get_object_from_path
@@ -76,21 +76,42 @@ class LoginHandler(web.RequestHandler):
     """
     login handler class
     """
+
+
+    @web.asynchronous
+    def get(self):
+        self.post()
+
     @web.asynchronous
     def post(self):
         """
         login handler
         """
-        wf_engine = ZEngine()
-        self.set_header('Access-Control-Allow-Origin', '*')
-        sess_id = uuid4().hex
-        session = Session(sess_id)
-        self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
-        input_data = json_decode(self.request.body)
-        wf_engine.start_engine(session=session, input=input_data, workflow_name='login')
-        wf_engine.run()
-        print("Set session cookie: %s" % sess_id)
-        self.write(wf_engine.current.output)
+        try:
+            wf_engine = ZEngine()
+            self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
+            self.set_header('Access-Control-Allow-Credentials', 'true')
+            self.set_header('Content-Type', 'application/json')
+            sess_id = uuid4().hex
+            session = Session(sess_id)
+            self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
+            input_data = json_decode(self.request.body) if self.request.body else {}
+            wf_engine.start_engine(session=session, input=input_data, workflow_name='login')
+            wf_engine.run()
+            # print("Set session cookie: %s" % sess_id)
+            output = json.dumps(wf_engine.current.output.copy())
+            # print(output)
+            self.write(output)
+            # self.write("[{}]")
+        except:
+            if settings.DEBUG:
+                self.set_status(500)
+                self.write(json.dumps({'error': traceback.format_exc()}))
+            else:
+                log.exception("500ERROR")
+                raise HTTPError(500, settings.ERROR_MESSAGE_500)
+        self.finish()
+        self.flush()
 
 
 def tornado_view_connector(view_path):
@@ -126,20 +147,33 @@ def tornado_view_connector(view_path):
             try:
                 sess_id = self.get_cookie(COOKIE_NAME)
                 session = Session(sess_id)
-                input_data = json_decode(self.request.body)
+                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
+                self.set_header('Access-Control-Allow-Credentials', 'true')
+                self.set_header('Content-Type', 'application/json')
+                input_data = json_decode(self.request.body) if self.request.body else {}
                 current = Current(session=session, input=input_data)
                 if not (current.is_auth or view_path in settings.ANONYMOUS_WORKFLOWS):
-                    raise HTTPError(401)
+                    self.send_error(401)
+                    return
                 view(current)
-            except HTTPError:
-                raise
+                output = json.dumps(current.output.copy())
+                print(output)
+                self.write(output)
+                self.finish()
+                self.flush()
+            # except HTTPError:
+            #     raise HTTPError(401)
             except:
                 if settings.DEBUG:
                     self.set_status(500)
                     self.write(json.dumps({'error': traceback.format_exc()}))
+                    self.finish()
+                    self.flush()
                 else:
                     log.exception("500ERROR")
                     raise HTTPError(500, settings.ERROR_MESSAGE_500)
+
+
 
     return Caller
 
@@ -152,10 +186,10 @@ URL_CONFS = [
 for url, view_path in settings.VIEW_URLS:
     URL_CONFS.append((url, tornado_view_connector(view_path)))
 
-    app = web.Application(URL_CONFS)
+    app = web.Application(URL_CONFS, debug=settings.DEBUG)
 
 
-def runserver():
+def runserver(host="0.0.0.0", port=9001):
     """
     Run Tornado server
     """
@@ -165,7 +199,7 @@ def runserver():
     pc = QueueManager(zioloop)
     app.pc = pc
     pc.connect()
-    app.listen(9001)
+    app.listen(port, host)
     zioloop.start()
 
 

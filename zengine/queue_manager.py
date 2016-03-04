@@ -61,7 +61,7 @@ class QueueManager(object):
         Args:
             connection: AMQP connection
         """
-        pika.log.info('PikaClient: connected to RabbitMQ')
+        log.info('PikaClient: connected to RabbitMQ')
         self.connected = True
         self.connection = connection
         self.in_channel = self.connection.channel(self.on_conn_open)
