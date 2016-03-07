@@ -3,12 +3,14 @@
 workflow worker daemon
 """
 import json
+import traceback
 
 import signal
 from time import sleep
 
 import pika
 from pika.exceptions import ConnectionClosed
+from tornado.escape import json_decode
 
 from zengine.engine import ZEngine
 from zengine.lib.cache import Session
@@ -78,14 +80,18 @@ class Worker(object):
         """
         sessid = method.routing_key
         session = Session(sessid)
-        input = json.loads(body)
-
-        wf_engine.start_engine(session=session, input=input, workflow_name=input['wf'])
-        wf_engine.run()
-        if self.connection.is_closed:
-            print("Connection is closed, re-opening...")
-            self.connect()
-        output = wf_engine.current.output
+        input = json_decode(body)
+        try:
+            wf_engine.start_engine(session=session, input=input, workflow_name=input['wf'])
+            wf_engine.run()
+            if self.connection.is_closed:
+                print("Connection is closed, re-opening...")
+                self.connect()
+            output = wf_engine.current.output
+        except:
+            err = traceback.format_exc()
+            output = {'error': err, "code": 500}
+            print(traceback.format_exc())
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
         self.output_channel.basic_publish(exchange='',
@@ -94,7 +100,7 @@ class Worker(object):
         # except ConnectionClosed:
 
 
-def manage_processes():
+def run_workers(no_subprocess):
     """
     subprocess handler
     """
@@ -102,10 +108,10 @@ def manage_processes():
 
     # global child_pids
     child_pids = []
-    no_subprocess = [arg.split('manage=')[-1] for arg in sys.argv if 'manage' in arg][0]
+
     print("starting %s workers" % no_subprocess)
     for i in range(int(no_subprocess)):
-        proc = subprocess.Popen(["python", "wf_daemon.py"],
+        proc = subprocess.Popen([sys.executable, __file__],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         child_pids.append(proc.pid)
@@ -113,7 +119,7 @@ def manage_processes():
 
     def kill_child():
         """
-        kill subprocess on exis of manager (this) process
+        kill subprocess on exit of manager (this) process
         """
         for pid in child_pids:
             if pid is not None:
@@ -134,7 +140,8 @@ def manage_processes():
 
 if __name__ == '__main__':
     if 'manage' in str(sys.argv):
-        manage_processes()
+        no_subprocess = [arg.split('manage=')[-1] for arg in sys.argv if 'manage' in arg][0]
+        run_workers(no_subprocess)
     else:
         worker = Worker()
         worker.run()

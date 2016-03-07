@@ -8,6 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
+from zengine.wf_daemon import run_workers, Worker
 
 
 class UpdatePermissions(Command):
@@ -24,8 +25,9 @@ class UpdatePermissions(Command):
     CMD_NAME = 'update_permissions'
     HELP = 'Syncs permissions with DB'
     PARAMS = [
-        {'name': 'dry', 'action':'store_true', 'help': 'Dry run, just list new found permissions'},
+        {'name': 'dry', 'action': 'store_true', 'help': 'Dry run, just list new found permissions'},
     ]
+
     def run(self):
         """
         Creates new permissions.
@@ -68,7 +70,6 @@ class UpdatePermissions(Command):
         print(report + "\n")
 
 
-
 class CreateUser(Command):
     """
     Creates a new user.
@@ -106,10 +107,11 @@ class RunServer(Command):
     CMD_NAME = 'runserver'
     HELP = 'Run the development server'
     PARAMS = [
-        {'name': 'addr', 'default': '127.0.0.1', 'help': 'Listening address. Defaults to 127.0.0.1'},
+        {'name': 'addr', 'default': '127.0.0.1',
+         'help': 'Listening address. Defaults to 127.0.0.1'},
         {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
         {'name': 'server_type', 'default': 'falcon', 'help': 'Server type. Default: "falcon"'
-                                                        'Possible values: falcon,tornado'},
+                                                             'Possible values: falcon,tornado'},
     ]
 
     def run(self):
@@ -140,3 +142,31 @@ class RunServer(Command):
         from zengine.server import app
         httpd = simple_server.make_server(self.manager.args.addr, int(self.manager.args.port), app)
         httpd.serve_forever()
+
+
+class RunWorker(Command):
+    """
+    Runs worker daemon.
+
+    Args:
+        addr: Listen address. Defaults to 127.0.0.1
+        port: Listen port. Defaults to 9001
+    """
+    CMD_NAME = 'runworker'
+    HELP = 'Run the workflow worker'
+    PARAMS = [
+        # {'name': 'addr', 'default': '127.0.0.1', 'help': 'Listening address. Defaults to 127.0.0.1'},
+        # {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
+        {'name': 'workers', 'default': '1', 'help': 'Number of worker process'},
+    ]
+
+    def run(self):
+        """
+        Starts a development server for the zengine application
+        """
+        worker_count = int(self.manager.args.workers or 1)
+        if worker_count > 1:
+            run_workers(worker_count)
+        else:
+            worker = Worker()
+            worker.run()
