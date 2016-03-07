@@ -81,8 +81,9 @@ class Worker(object):
         sessid = method.routing_key
         session = Session(sessid)
         input = json_decode(body)
+        data = input['data']
         try:
-            wf_engine.start_engine(session=session, input=input, workflow_name=input['wf'])
+            wf_engine.start_engine(session=session, input=data, workflow_name=data['wf'])
             wf_engine.run()
             if self.connection.is_closed:
                 print("Connection is closed, re-opening...")
