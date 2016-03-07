@@ -288,7 +288,7 @@ class Session(object):
     def items(self):
         return ((k[len(self.key) + 1:], self._j_load(cache.get(k))) for k in self._keys())
 
-    def destroy(self):
+    def delete(self):
         """
         Removes all contents attached to this session object.
          If sessid is empty, all sessions will be cleaned up.
