@@ -105,9 +105,9 @@ class QueueManager(object):
         del self.websockets[sess_id]
         if sess_id in self.out_channels:
             self.out_channels[sess_id].close()
-        print("Time: %s, Total In: %s Out: %s" % (int(time.time() - self.start_time),
-                                                  self.received_message_counter,
-                                                  self.sent_message_counter) )
+        # print("Time: %s, Total In: %s Out: %s" % (int(time.time() - self.start_time),
+        #                                           self.received_message_counter,
+        #                                           self.sent_message_counter) )
 
 
     def create_out_channel(self, sess_id):
@@ -129,6 +129,7 @@ class QueueManager(object):
                               body=message)
 
     def on_message(self, channel, method, header, body):
+        print("OUTMSG: %s" % body)
         sess_id = method.routing_key
         if sess_id in self.websockets:
             self.websockets[sess_id].write_message(body)

@@ -62,6 +62,7 @@ class SocketHandler(websocket.WebSocketHandler):
         """
         called on new websocket message,
         """
+        print("WS MESSAGE: %s" % message)
         self.application.pc.redirect_incoming_message(self._get_sess_id(), message)
 
     def on_close(self):
