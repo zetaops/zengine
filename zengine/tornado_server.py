@@ -185,7 +185,7 @@ URL_CONFS = [
 ]
 
 for url, view_path in settings.VIEW_URLS:
-    URL_CONFS.append((url, tornado_view_connector(view_path)))
+    URL_CONFS.append(("/" + url, tornado_view_connector(view_path)))
 
     app = web.Application(URL_CONFS, debug=settings.DEBUG)
 

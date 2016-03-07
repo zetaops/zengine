@@ -12,7 +12,9 @@ import pika
 from pika.exceptions import ConnectionClosed
 from tornado.escape import json_decode
 
-from zengine.engine import ZEngine
+from pyoko.conf import settings
+from pyoko.lib.utils import get_object_from_path
+from zengine.engine import ZEngine, Current
 from zengine.lib.cache import Session
 from zengine.models import Permission
 
@@ -28,6 +30,7 @@ class Worker(object):
     def __init__(self):
         self.connect()
         signal.signal(signal.SIGTERM, self.exit)
+        self.NON_WF_VIEWS = dict(settings.VIEW_URLS)
 
     def exit(self, signal=None, frame=None):
         """
@@ -65,7 +68,22 @@ class Worker(object):
             print(" Exiting")
             self.exit()
 
+    def _handle_view(self, session, data):
+        current = Current(session=session, input=data)
+        if not (current.is_auth or self.NON_WF_VIEWS[data['view']] in settings.ANONYMOUS_WORKFLOWS):
+            self.send_error(401)
+            return
+        view = get_object_from_path(self.NON_WF_VIEWS[data['view']])
+        view(current)
+        return current.output
 
+    def _handle_workflow(self, session, data):
+        wf_engine.start_engine(session=session, input=data, workflow_name=data['wf'])
+        wf_engine.run()
+        if self.connection.is_closed:
+            print("Connection is closed, re-opening...")
+            self.connect()
+        return wf_engine.current.output
 
     def handle_message(self, ch, method, properties, body):
         """
@@ -78,17 +96,15 @@ class Worker(object):
             properties:
             body: message body
         """
-        sessid = method.routing_key
-        session = Session(sessid)
-        input = json_decode(body)
-        data = input['data']
         try:
-            wf_engine.start_engine(session=session, input=data, workflow_name=data['wf'])
-            wf_engine.run()
-            if self.connection.is_closed:
-                print("Connection is closed, re-opening...")
-                self.connect()
-            output = wf_engine.current.output
+            sessid = method.routing_key
+            session = Session(sessid)
+            input = json_decode(body)
+            data = input['data']
+            if 'wf' in data:
+                output = self._handle_workflow(session, data)
+            else:
+                output = self._handle_view(session, data)
         except:
             err = traceback.format_exc()
             output = {'error': err, "code": 500}
