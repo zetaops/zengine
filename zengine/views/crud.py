@@ -687,7 +687,7 @@ class CrudView(BaseView):
         current_page = int(self.current.input.get('page', 1))
         per_page = self.Meta.objects_per_page
         total_objects = query.count()
-        total_pages = total_objects / per_page or 1
+        total_pages = int(total_objects / per_page or 1)
         # add orphans to last page
         current_per_page = per_page + (
             total_objects % per_page if current_page == total_pages else 0)
@@ -695,6 +695,7 @@ class CrudView(BaseView):
                                          total_pages=total_pages,
                                          total_objects=total_objects,
                                          per_page=current_per_page)
+        print(total_pages)
         query = query.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
         return query
 
