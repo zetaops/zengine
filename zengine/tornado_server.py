@@ -102,15 +102,20 @@ class LoginHandler(web.RequestHandler):
             # print("Set session cookie: %s" % sess_id)
             output = json.dumps(wf_engine.current.output.copy())
             # print(output)
-            self.write(output)
+            # self.write(output)
             # self.write("[{}]")
+        except HTTPError as e:
+            output = {'error': e.message, "code": e.code}
+            self.set_status(int(e.code))
         except:
             if settings.DEBUG:
                 self.set_status(500)
-                self.write(json.dumps({'error': traceback.format_exc()}))
+                output = json.dumps({'error': traceback.format_exc()})
+                log.exception("500 ERROR")
             else:
-                log.exception("500ERROR")
-                raise HTTPError(500, settings.ERROR_MESSAGE_500)
+                log.exception("500 ERROR")
+                output = {'error': settings.ERROR_MESSAGE_500, "code": 500}
+        self.write(output)
         self.finish()
         self.flush()
 
@@ -154,25 +159,23 @@ def tornado_view_connector(view_path):
                 input_data = json_decode(self.request.body) if self.request.body else {}
                 current = Current(session=session, input=input_data)
                 if not (current.is_auth or view_path in settings.ANONYMOUS_WORKFLOWS):
-                    self.send_error(401)
-                    return
+                    raise HTTPError(401)
                 view(current)
                 output = json.dumps(current.output.copy())
-                print(output)
-                self.write(output)
-                self.finish()
-                self.flush()
-            # except HTTPError:
-            #     raise HTTPError(401)
+            except HTTPError as e:
+                output = {'error': e.message, "code": e.code}
+                self.set_status(int(e.code))
             except:
                 if settings.DEBUG:
                     self.set_status(500)
-                    self.write(json.dumps({'error': traceback.format_exc()}))
-                    self.finish()
-                    self.flush()
+                    output = json.dumps({'error': traceback.format_exc()})
+                    log.exception("500 ERROR")
                 else:
-                    log.exception("500ERROR")
-                    raise HTTPError(500, settings.ERROR_MESSAGE_500)
+                    log.exception("500 ERROR")
+                    output = {'error': settings.ERROR_MESSAGE_500, "code": 500}
+            self.write(output)
+            self.finish()
+            self.flush()
 
 
 

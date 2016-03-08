@@ -16,7 +16,7 @@ from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
 from zengine.engine import ZEngine, Current
 from zengine.lib.cache import Session
-from zengine.models import Permission
+from zengine.lib.exceptions import HTTPError
 
 import sys
 
@@ -105,6 +105,8 @@ class Worker(object):
                 output = self._handle_workflow(session, data)
             else:
                 output = self._handle_view(session, data)
+        except HTTPError as e:
+            output = {'error': e.message, "code": e.code}
         except:
             err = traceback.format_exc()
             output = {'error': err, "code": 500}

@@ -23,8 +23,6 @@ from SpiffWorkflow import Task
 from SpiffWorkflow.specs import WorkflowSpec
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
-from falcon import Request, Response
-import falcon
 import lazy_object_proxy
 from zengine.notifications import Notify
 
@@ -34,7 +32,7 @@ from pyoko.model import super_context, model_registry
 from zengine.config import settings
 from zengine.lib.cache import WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
-from zengine.lib.exceptions import ZengineError
+from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 from zengine.auth.permissions import NO_PERM_TASKS_TYPES
 # from zengine.views.crud import CrudView
@@ -76,8 +74,6 @@ class Current(object):
     """
     This object holds the whole state of the app for passing to view methods (views/tasks)
 
-    :type response: Response | None
-    :type request: Request | None
     :type spec: WorkflowSpec | None
     :type session: Session | None
     """
@@ -673,7 +669,7 @@ class ZEngine(object):
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
             self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
-            raise falcon.HTTPUnauthorized("Login required", "")
+            raise HTTPError(401, "Login required")
 
     def check_for_lane_permission(self):
         """
@@ -694,8 +690,8 @@ class ZEngine(object):
             log.debug("HAS LANE PERMS: %s" % self.current.lane_permissions)
             for perm in self.current.lane_permissions:
                 if not self.current.has_permission(perm):
-                    raise falcon.HTTPForbidden("Permission denied",
-                                               "You don't have required lane permission: %s" % perm)
+                    raise HTTPError(403, "You don't have required lane permission: %s" % perm)
+
         if self.current.lane_relations:
             context = self.get_pool_context()
             log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
@@ -707,9 +703,8 @@ class ZEngine(object):
                 raise
             if not cond_result:
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
-                raise falcon.HTTPForbidden(
-                    "Permission denied",
-                    "You aren't qualified for this lane: %s" % self.current.lane_relations)
+                raise HTTPError(403, "You aren't qualified for this lane: %s" %
+                                      self.current.lane_relations)
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
@@ -718,7 +713,7 @@ class ZEngine(object):
         for current workflow step.
 
         Raises:
-            falcon.HTTPForbidden: if user doesn't have required permissions.
+            HTTPError: if user doesn't have required permissions.
         """
         if self.current.task:
             permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
@@ -730,8 +725,7 @@ class ZEngine(object):
             return
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
-            raise falcon.HTTPForbidden("Permission denied",
-                                       "You don't have required permission: %s" % permission)
+            raise HTTPError(403, "You don't have required permission: %s" % permission)
 
     def handle_wf_finalization(self):
         """
