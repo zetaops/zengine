@@ -60,7 +60,7 @@ class Login(SimpleView):
             self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['login_successful'] = False
         if not self.current.task_data['login_successful']:
-            self.current.response.status = falcon.HTTP_403
+            self.current.output['status_code'] = 403
 
     def show_view(self):
         """

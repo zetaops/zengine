@@ -25,6 +25,7 @@ return keys
 
 _remove_keys = cache.register_script(REMOVE_SCRIPT)
 
+
 class Cache(object):
     """
     Base cache object to implement specific cache object for each use case.
@@ -61,8 +62,6 @@ class Cache(object):
     """
     PREFIX = 'DFT'
     SERIALIZE = True
-
-
 
     def __init__(self, *args, **kwargs):
         self.serialize = kwargs.get('serialize', self.SERIALIZE)
@@ -193,7 +192,6 @@ class Cache(object):
         return _remove_keys([], [(cls._make_key(args) if args else cls.PREFIX) + '*'])
 
 
-
 class CatalogCache(Cache):
     """
     Cache object for the CatalogData.
@@ -220,9 +218,79 @@ class WFCache(Cache):
     def __init__(self, wf_token):
         super(WFCache, self).__init__(wf_token)
 
+
 class ClearCache(Cache):
     """
     Empty cache object to flush all cache entries
     """
     PREFIX = ''
 
+
+class Session(object):
+    """
+    Redis based dict like session object to store user session data
+
+    Examples:
+
+        .. code-block:: python
+
+            sess = Session(session_key)
+            sess['user_data'] = {"foo":"bar"}
+            sess
+
+    Args:
+        sessid: user session id.
+    """
+    PREFIX = 'SES'
+
+    def __init__(self, sessid=''):
+        self.key = ""
+        self.key = self._make_key(sessid)
+
+    def _j_load(self, val):
+        return json.loads(val.decode())
+
+    def __getitem__(self, key):
+        val = self.get(key)
+        if val:
+            return val
+        else:
+            raise KeyError
+
+    def __delitem__(self, key):
+        key = self._make_key(key)
+        cache.delete(key)
+
+    def __setitem__(self, key, value):
+        key = self._make_key(key)
+        cache.set(key, json.dumps(value))
+
+    def __contains__(self, item):
+        return bool(self.__getitem__(item))
+
+    def _make_key(self, args=None):
+        return "%s%s" % (self.key or self.PREFIX, ":%s" % args if args else "")
+
+    def _keys(self):
+        return cache.keys(self._make_key() + "*")
+
+    def get(self, key, default=None):
+        key = self._make_key(key)
+        val = cache.get(key)
+        return self._j_load(val) if val else default
+
+    def keys(self):
+        return [k[len(self.key) + 1:] for k in self._keys()]
+
+    def values(self):
+        return (self._j_load(cache.get(k)) for k in self._keys())
+
+    def items(self):
+        return ((k[len(self.key) + 1:], self._j_load(cache.get(k))) for k in self._keys())
+
+    def delete(self):
+        """
+        Removes all contents attached to this session object.
+         If sessid is empty, all sessions will be cleaned up.
+        """
+        return _remove_keys([], [self.key + '*'])

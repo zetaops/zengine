@@ -29,8 +29,8 @@ class BaseView(object):
         """
         self.current = current
         self.input = current.input
-        self.req = current.request
-        self.resp = current.response
+        # self.req = current.request
+        # self.resp = current.response
         self.output = current.output
         self.cmd = current.task_data['cmd']
 
