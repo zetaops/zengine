@@ -11,8 +11,42 @@ import logging
 
 import pika
 import time
-from pika.adapters import TornadoConnection
+from pika.adapters import TornadoConnection, BaseConnection
+from pika.exceptions import ChannelClosed
+from tornado.escape import json_decode
+
 from zengine.log import log
+
+class BlockingConnectionForHTTP(object):
+    REPLY_TIMEOUT = 3
+
+    def __init__(self):
+        self.connection = pika.BlockingConnection()
+
+    def get_connection(self):
+        if not self.connection.is_open:
+            self.connection = pika.BlockingConnection()
+        return self.connection
+
+    def wait_for_message(self, sess_id, request_id):
+
+        channel = self.get_connection().channel()
+        channel.queue_declare(queue=sess_id,
+                              auto_delete=True)
+        for i in range(self.REPLY_TIMEOUT):
+            method_frame, header_frame, body = channel.basic_get(sess_id)
+            if method_frame:
+                reply = json_decode(body)
+                if 'callbackID' in reply and reply['callbackID'] == request_id:
+                    channel.basic_ack(method_frame.delivery_tag)
+                    log.info('Returned view message for %s: %s' % (sess_id, body))
+                    return body
+                log.info("XXXXXXXXX: %s" % reply)
+            time.sleep(1)
+        log.info('No message returned for %s' % sess_id)
+        return json.dumps({'code': 503, 'error': 'Retry'})
+
+
 
 class QueueManager(object):
     """
@@ -104,10 +138,10 @@ class QueueManager(object):
     def unregister_websocket(self, sess_id):
         del self.websockets[sess_id]
         if sess_id in self.out_channels:
-            self.out_channels[sess_id].close()
-        # print("Time: %s, Total In: %s Out: %s" % (int(time.time() - self.start_time),
-        #                                           self.received_message_counter,
-        #                                           self.sent_message_counter) )
+            try:
+                self.out_channels[sess_id].close()
+            except ChannelClosed:
+                log.exception("Pika client (out) channel already closed")
 
 
     def create_out_channel(self, sess_id):
@@ -118,7 +152,8 @@ class QueueManager(object):
             channel.queue_declare(callback=on_output_queue_decleration,
                                   queue=sess_id,
                                   auto_delete=True,
-                                  exclusive=True)
+                                  # exclusive=True
+                                  )
 
         self.connection.channel(on_output_channel_creation)
 
@@ -129,12 +164,11 @@ class QueueManager(object):
                               body=message)
 
     def on_message(self, channel, method, header, body):
-        print("OUTMSG: %s" % body)
         sess_id = method.routing_key
         if sess_id in self.websockets:
             self.websockets[sess_id].write_message(body)
             channel.basic_ack(delivery_tag=method.delivery_tag)
-        else:
-            channel.basic_reject(delivery_tag=method.delivery_tag)
+        # else:
+        #     channel.basic_reject(delivery_tag=method.delivery_tag)
 
 
