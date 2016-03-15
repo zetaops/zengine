@@ -92,6 +92,12 @@ RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
 #: Redis address and port.
 REDIS_SERVER = os.environ.get('REDIS_SERVER', '127.0.0.1:6379')
 
+#: Redis password (password).
+REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD', None)
+
+#: Riak port. By default 8098 for http, 8087 for pbc.
+RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
+
 
 #: Allowed origins for serving client from a different host.
 ALLOWED_ORIGINS = [
