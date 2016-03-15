@@ -7,6 +7,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
+import os
+
 import pika
 import time
 from pika.adapters import TornadoConnection, BaseConnection
@@ -21,12 +23,23 @@ except:
                     filename='tornado.log',
                     filemode='a')
 
+MQ_HOST = os.getenv('MQ_HOST','localhost')
+MQ_PORT = int(os.getenv('MQ_HOST','5672'))
+MQ_USER = os.getenv('MQ_USER', 'guest')
+MQ_PASS = os.getenv('MQ_PASS', 'guest')
+
+MQ_PARAMS = pika.ConnectionParameters(
+    host=MQ_HOST,
+    port=MQ_PORT,
+    virtual_host='/',
+    credentials=pika.PlainCredentials(MQ_USER, MQ_PASS)
+)
 
 class BlockingConnectionForHTTP(object):
     REPLY_TIMEOUT = 5
 
     def __init__(self):
-        self.connection = pika.BlockingConnection()
+        self.connection = pika.BlockingConnection(MQ_PARAMS)
 
     def create_channel(self):
         try:
@@ -83,15 +96,9 @@ class QueueManager(object):
         log.info('PikaClient: Connecting to RabbitMQ')
         self.connecting = True
 
-        cred = pika.PlainCredentials('guest', 'guest')
-        param = pika.ConnectionParameters(
-            host='localhost',
-            port=5672,
-            virtual_host='/',
-            credentials=cred
-        )
 
-        self.connection = TornadoConnection(param,
+
+        self.connection = TornadoConnection(MQ_PARAMS,
                                             on_open_callback=self.on_connected)
 
     def on_connected(self, connection):
