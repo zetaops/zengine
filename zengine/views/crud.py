@@ -695,7 +695,6 @@ class CrudView(BaseView):
                                          total_pages=total_pages,
                                          total_objects=total_objects,
                                          per_page=current_per_page)
-        print(total_pages)
         query = query.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
         return query
 

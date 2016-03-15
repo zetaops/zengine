@@ -13,15 +13,10 @@ import traceback
 from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 
-import logging as log
-from .queue_manager import QueueManager, BlockingConnectionForHTTP
+
+from .queue_manager import QueueManager, BlockingConnectionForHTTP, log
 from uuid import uuid4
 from tornado import websocket, web, ioloop
-
-log.basicConfig(level=log.DEBUG,
-                format='%(asctime)s %(levelname)s %(message)s',
-                filename='tornado.log',
-                filemode='a')
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)

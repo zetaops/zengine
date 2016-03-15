@@ -7,15 +7,20 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
-import logging
-
 import pika
 import time
 from pika.adapters import TornadoConnection, BaseConnection
 from pika.exceptions import ChannelClosed, ConnectionClosed
 from tornado.escape import json_decode
+try:
+    from zengine.log import log
+except ImportError:
+    import logging as log
+    log.basicConfig(level=log.DEBUG,
+                    format='%(asctime)s %(levelname)s %(message)s',
+                    filename='tornado.log',
+                    filemode='a')
 
-from zengine.log import log
 
 class BlockingConnectionForHTTP(object):
     REPLY_TIMEOUT = 5
@@ -147,17 +152,17 @@ class QueueManager(object):
 
 
     def create_out_channel(self, sess_id):
-        def on_output_channel_creation(channel):
-            def on_output_queue_decleration(queue):
+        def _on_output_channel_creation(channel):
+            def _on_output_queue_decleration(queue):
                 channel.basic_consume(self.on_message, queue=sess_id)
             self.out_channels[sess_id] = channel
-            channel.queue_declare(callback=on_output_queue_decleration,
+            channel.queue_declare(callback=_on_output_queue_decleration,
                                   queue=sess_id,
                                   auto_delete=True,
                                   # exclusive=True
                                   )
 
-        self.connection.channel(on_output_channel_creation)
+        self.connection.channel(_on_output_channel_creation)
 
 
     def redirect_incoming_message(self, sess_id, message):
