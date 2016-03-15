@@ -71,8 +71,7 @@ class Worker(object):
     def _handle_view(self, session, data):
         current = Current(session=session, input=data)
         if not (current.is_auth or self.NON_WF_VIEWS[data['view']] in settings.ANONYMOUS_WORKFLOWS):
-            return {'error': "", "code": 401}
-            return
+            return {'error': "Login required", "code": 401}
         view = get_object_from_path(self.NON_WF_VIEWS[data['view']])
         view(current)
         return current.output
@@ -98,7 +97,7 @@ class Worker(object):
         """
         try:
             sessid = method.routing_key
-            session = Session(sessid)
+
             input = json_decode(body)
             data = input['data']
 
@@ -109,6 +108,10 @@ class Worker(object):
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']
+                session = Session(sessid[5:]) # clip "HTTP_" prefix from sessid
+            else:
+                session = Session(sessid)
+
 
             if 'wf' in data:
                 output = self._handle_workflow(session, data)

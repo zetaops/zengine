@@ -12,25 +12,27 @@ import logging
 import pika
 import time
 from pika.adapters import TornadoConnection, BaseConnection
-from pika.exceptions import ChannelClosed
+from pika.exceptions import ChannelClosed, ConnectionClosed
 from tornado.escape import json_decode
 
 from zengine.log import log
 
 class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 3
+    REPLY_TIMEOUT = 5
 
     def __init__(self):
         self.connection = pika.BlockingConnection()
 
-    def get_connection(self):
-        if not self.connection.is_open:
+    def create_channel(self):
+        try:
+            return self.connection.channel()
+        except ConnectionClosed:
             self.connection = pika.BlockingConnection()
-        return self.connection
+            return self.connection.channel()
 
     def wait_for_message(self, sess_id, request_id):
 
-        channel = self.get_connection().channel()
+        channel = self.create_channel()
         channel.queue_declare(queue=sess_id,
                               auto_delete=True)
         for i in range(self.REPLY_TIMEOUT):
