@@ -7,16 +7,16 @@ tornado websocket proxy for WF worker daemons
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
-import os
+import os, sys
 import traceback
-
+from uuid import uuid4
+from tornado import websocket, web, ioloop
 from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 
+sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
+from queue_manager import QueueManager, BlockingConnectionForHTTP, log
 
-from .queue_manager import QueueManager, BlockingConnectionForHTTP, log
-from uuid import uuid4
-from tornado import websocket, web, ioloop
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
@@ -125,10 +125,12 @@ URL_CONFS = [
 app = web.Application(URL_CONFS, debug=DEBUG)
 
 
-def runserver(host="0.0.0.0", port=9001):
+def runserver(host=None, port=None):
     """
     Run Tornado server
     """
+    host = host or os.getenv('HTTP_HOST', '0.0.0.0')
+    port = port or os.getenv('HTTP_PORT', '9001')
     zioloop = ioloop.IOLoop.instance()
 
     # setup pika client:

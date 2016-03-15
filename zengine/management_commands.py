@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
-from zengine.wf_daemon import run_workers, Worker
+
 
 
 class UpdatePermissions(Command):
@@ -131,7 +131,7 @@ class RunServer(Command):
         """
         runs the tornado/websockets based test server
         """
-        from zengine.tornado_server import runserver
+        from zengine.tornado_server.server import runserver
         runserver(self.manager.args.addr, int(self.manager.args.port))
 
     def run_with_falcon(self):
@@ -164,6 +164,7 @@ class RunWorker(Command):
         """
         Starts a development server for the zengine application
         """
+        from zengine.wf_daemon import run_workers, Worker
         worker_count = int(self.manager.args.workers or 1)
         if worker_count > 1:
             run_workers(worker_count)

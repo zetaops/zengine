@@ -14,7 +14,7 @@ from pika.exceptions import ChannelClosed, ConnectionClosed
 from tornado.escape import json_decode
 try:
     from zengine.log import log
-except ImportError:
+except:
     import logging as log
     log.basicConfig(level=log.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s',
