@@ -96,11 +96,8 @@ class HttpHandler(web.RequestHandler):
             input_data = json_decode(self.request.body) if self.request.body else {}
             input_data['path'] = view_name
             input_data = {'data': input_data}
-            input_data['callbackID'] = uuid4().hex
             log.info("new request: %s" % input_data)
-
-            self.application.pc.redirect_incoming_message(h_sess_id, json_encode(input_data))
-            response = blocking_connection.wait_for_message(h_sess_id, input_data['callbackID'])
+            response = blocking_connection.send_message(h_sess_id, input_data)
             output = response
             self.set_status(int(json_decode(output).get('code', 200)))
         except HTTPError as e:

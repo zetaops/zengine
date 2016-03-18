@@ -6,7 +6,7 @@ import json
 import traceback
 
 import signal
-from time import sleep
+from time import sleep, time
 
 import pika
 from pika.exceptions import ConnectionClosed
@@ -22,11 +22,13 @@ import sys
 
 wf_engine = ZEngine()
 
+
 class Worker(object):
     """
     Workflow runner worker object
     """
     INPUT_QUEUE_NAME = 'in_queue'
+
     def __init__(self):
         self.connect()
         signal.signal(signal.SIGTERM, self.exit)
@@ -40,8 +42,6 @@ class Worker(object):
         self.output_channel.close()
         self.connection.close()
         sys.exit(0)
-
-
 
     def connect(self):
         """
@@ -60,8 +60,8 @@ class Worker(object):
         actual consuming of incoming works starts here
         """
         self.input_channel.basic_consume(self.handle_message,
-                                    queue=self.INPUT_QUEUE_NAME,
-                                    no_ack=True)
+                                         queue=self.INPUT_QUEUE_NAME,
+                                         no_ack=True)
         try:
             self.input_channel.start_consuming()
         except (KeyboardInterrupt, SystemExit):
@@ -108,10 +108,9 @@ class Worker(object):
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']
-                session = Session(sessid[5:]) # clip "HTTP_" prefix from sessid
+                session = Session(sessid[5:])  # clip "HTTP_" prefix from sessid
             else:
                 session = Session(sessid)
-
 
             if 'wf' in data:
                 output = self._handle_workflow(session, data)
@@ -125,10 +124,14 @@ class Worker(object):
             log.info(traceback.format_exc())
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
-        log.info("OUTPUT for %s: %s" % (sessid,output))
+        log.info("OUTPUT for %s: %s" % (sessid, output))
+        output['reply_timestamp'] = time()
+        self.send_output(output, sessid)
+
+    def send_output(self, output, sessid):
         self.output_channel.basic_publish(exchange='',
-                                         routing_key=sessid,
-                                         body=json.dumps(output))
+                                          routing_key=sessid,
+                                          body=json.dumps(output))
         # except ConnectionClosed:
 
 
@@ -157,8 +160,6 @@ def run_workers(no_subprocess):
             if pid is not None:
                 os.kill(pid, signal.SIGTERM)
 
-
-
     atexit.register(kill_child)
     signal.signal(signal.SIGTERM, kill_child)
     while 1:
@@ -169,8 +170,6 @@ def run_workers(no_subprocess):
             sys.exit(0)
 
 
-
-
 if __name__ == '__main__':
     if 'manage' in str(sys.argv):
         no_subprocess = [arg.split('manage=')[-1] for arg in sys.argv if 'manage' in arg][0]
@@ -178,4 +177,3 @@ if __name__ == '__main__':
     else:
         worker = Worker()
         worker.run()
-
