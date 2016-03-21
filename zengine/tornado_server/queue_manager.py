@@ -50,7 +50,7 @@ class BlockingConnectionForHTTP(object):
     def create_channel(self):
         try:
             return self.connection.channel()
-        except ConnectionClosed:
+        except (ConnectionClosed, AttributeError):
             self.connection = pika.BlockingConnection(MQ_PARAMS)
             return self.connection.channel()
 
@@ -89,7 +89,7 @@ class BlockingConnectionForHTTP(object):
         input_data['timestamp'] = time.time()
         try:
             self._send_message(sess_id, input_data)
-        except (ConnectionClosed, ChannelClosed):
+        except (ConnectionClosed, ChannelClosed, AttributeError):
             self.input_channel = self.create_channel()
             self._send_message(sess_id, input_data)
 
@@ -176,7 +176,10 @@ class QueueManager(object):
         channel = self.create_out_channel(sess_id)
 
     def unregister_websocket(self, sess_id):
-        del self.websockets[sess_id]
+        try:
+            del self.websockets[sess_id]
+        except KeyError:
+            log.exception("Non-existent websocket")
         if sess_id in self.out_channels:
             try:
                 self.out_channels[sess_id].close()
