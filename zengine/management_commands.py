@@ -110,8 +110,8 @@ class RunServer(Command):
         {'name': 'addr', 'default': '127.0.0.1',
          'help': 'Listening address. Defaults to 127.0.0.1'},
         {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
-        {'name': 'server_type', 'default': 'falcon', 'help': 'Server type. Default: "falcon"'
-                                                             'Possible values: falcon,tornado'},
+        {'name': 'server_type', 'default': 'tornado', 'help': 'Server type. Default: "tornado"'
+                                                             'Possible values: falcon, tornado'},
     ]
 
     def run(self):
