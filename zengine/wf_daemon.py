@@ -69,7 +69,7 @@ class Worker(object):
 
     def _handle_view(self, session, data):
         current = Current(session=session, input=data)
-        if not (current.is_auth or settings.VIEW_URLS[data['view']] in settings.ANONYMOUS_WORKFLOWS):
+        if not (current.is_auth or data['view'] in settings.ANONYMOUS_WORKFLOWS):
             return {'error': "Login required", "code": 401}
         view = get_object_from_path(settings.VIEW_URLS[data['view']])
         view(current)

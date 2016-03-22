@@ -8,6 +8,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from riak.client import binary_json_decoder
+from six import text_type
 
 from zengine.lib.cache import ClearCache
 
@@ -103,7 +104,6 @@ class ResetCache(object):
     Clears all cache entries
     """
 
-    @staticmethod
     def __init__(self, current):
         """
         GET method handler
@@ -112,6 +112,6 @@ class ResetCache(object):
             resp: Response object.
         """
         current.output = {
-            'response': "Following cache entries are removed!\n\n" + "\n".join(ClearCache().flush()),
+            'response': "Following cache entries are removed!\n\n" + text_type("\n").join(ClearCache().flush()),
             'http_headers': (('Content-Type', 'text/plain'),),
         }

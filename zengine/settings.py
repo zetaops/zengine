@@ -65,7 +65,7 @@ DEFAULT_CACHE_EXPIRE_TIME = 99999999
 
 
 #: Workflows that dosen't require logged in user.
-ANONYMOUS_WORKFLOWS = ['login', 'login.']
+ANONYMOUS_WORKFLOWS = ['login', 'reset_cache', 'login.']
 
 
 #: Currently only affects logging level
