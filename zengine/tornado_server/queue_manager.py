@@ -41,7 +41,7 @@ MQ_PARAMS = pika.ConnectionParameters(
 
 
 class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 5  # sec
+    REPLY_TIMEOUT = 10  # sec
 
     def __init__(self):
         self.connection = pika.BlockingConnection(MQ_PARAMS)
@@ -50,7 +50,7 @@ class BlockingConnectionForHTTP(object):
     def create_channel(self):
         try:
             return self.connection.channel()
-        except (ConnectionClosed, AttributeError):
+        except (ConnectionClosed, AttributeError, KeyError):
             self.connection = pika.BlockingConnection(MQ_PARAMS)
             return self.connection.channel()
 

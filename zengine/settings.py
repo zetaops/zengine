@@ -123,13 +123,21 @@ SESSION_OPTIONS = {
     'session.path': '/',
 }
 
-
 #: View URL list for non-workflow views.
 #:
 #: ('falcon URI template', 'python path to view method/class'),
-VIEW_URLS = [
-    ('/menu', 'zengine.views.menu.Menu'),
-]
+VIEW_URLS = {
+    'menu': 'zengine.views.menu.Menu',
+    'ping': 'zengine.views.dev_utils.Ping',
+}
+
+if DEBUG:
+    VIEW_URLS.update({
+        'session_fixture': 'zengine.views.dev_utils.SessionFixture',
+        'db_stats': 'zengine.views.dev_utils.DBStats',
+        'reset_cache': 'zengine.views.dev_utils.ResetCache'
+    })
+
 
 
 #: Relation focused CRUD menus with category support.

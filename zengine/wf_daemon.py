@@ -32,7 +32,6 @@ class Worker(object):
     def __init__(self):
         self.connect()
         signal.signal(signal.SIGTERM, self.exit)
-        self.NON_WF_VIEWS = dict(settings.VIEW_URLS)
 
     def exit(self, signal=None, frame=None):
         """
@@ -70,9 +69,9 @@ class Worker(object):
 
     def _handle_view(self, session, data):
         current = Current(session=session, input=data)
-        if not (current.is_auth or self.NON_WF_VIEWS[data['view']] in settings.ANONYMOUS_WORKFLOWS):
+        if not (current.is_auth or settings.VIEW_URLS[data['view']] in settings.ANONYMOUS_WORKFLOWS):
             return {'error': "Login required", "code": 401}
-        view = get_object_from_path(self.NON_WF_VIEWS[data['view']])
+        view = get_object_from_path(settings.VIEW_URLS[data['view']])
         view(current)
         return current.output
 
@@ -104,7 +103,7 @@ class Worker(object):
             # since this comes as "path" we dont know if it's view or workflow yet
             # just a workaround till we modify ui to
             if 'path' in data:
-                if data['path'] in self.NON_WF_VIEWS:
+                if data['path'] in settings.VIEW_URLS:
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']

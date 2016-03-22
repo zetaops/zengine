@@ -84,8 +84,9 @@ class HttpHandler(web.RequestHandler):
         login handler
         """
         try:
-            self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
-            self.set_header('Access-Control-Allow-Credentials', 'true')
+            if 'Origin' in self.request.headers:
+                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
+                self.set_header('Access-Control-Allow-Credentials', 'true')
             self.set_header('Content-Type', 'application/json')
             if not self.get_cookie(COOKIE_NAME):
                 sess_id = uuid4().hex
@@ -96,10 +97,19 @@ class HttpHandler(web.RequestHandler):
             input_data = json_decode(self.request.body) if self.request.body else {}
             input_data['path'] = view_name
             input_data = {'data': input_data}
-            log.info("new request: %s" % input_data)
-            response = blocking_connection.send_message(h_sess_id, input_data)
-            output = response
-            self.set_status(int(json_decode(output).get('code', 200)))
+
+            log.info("New Request: %s" % input_data)
+
+            output = blocking_connection.send_message(h_sess_id, input_data)
+            out_obj = json_decode(output)
+            # allow overriding of headers
+            if 'http_headers' in out_obj:
+                for k, v in out_obj['http_headers']:
+                    self.set_header(k, v)
+            if 'response' in out_obj:
+                output = out_obj['response']
+
+            self.set_status(int(out_obj.get('code', 200)))
         except HTTPError as e:
             output = {'error': e.message, "code": e.code}
             self.set_status(int(e.code))
