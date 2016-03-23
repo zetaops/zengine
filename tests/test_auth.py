@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import falcon
 import pytest
-from zengine.lib.test_utils import BaseTestCase, RWrapper
+from zengine.lib.test_utils import BaseTestCase, ResponseWrapper
 
 
 class TestCase(BaseTestCase):

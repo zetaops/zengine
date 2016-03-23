@@ -116,8 +116,14 @@ class Worker(object):
             else:
                 output = self._handle_view(session, data)
         except HTTPError as e:
+            import sys
+            if hasattr(sys, '_called_from_test'):
+                raise
             output = {'error': e.message, "code": e.code}
         except:
+            import sys
+            if hasattr(sys, '_called_from_test'):
+                raise
             err = traceback.format_exc()
             output = {'error': err, "code": 500}
             log.info(traceback.format_exc())

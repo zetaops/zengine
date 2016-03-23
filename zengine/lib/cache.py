@@ -266,7 +266,11 @@ class Session(object):
         cache.set(key, json.dumps(value))
 
     def __contains__(self, item):
-        return bool(self.__getitem__(item))
+        try:
+            self.__getitem__(item)
+            return True
+        except KeyError:
+            return False
 
     def _make_key(self, args=None):
         return "%s%s" % (self.key or self.PREFIX, ":%s" % args if args else "")
