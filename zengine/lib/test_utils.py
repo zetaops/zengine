@@ -2,6 +2,7 @@
 from uuid import uuid4
 from time import sleep
 import json
+import os
 from pyoko.manage import FlushDB, LoadData
 from pyoko.lib.utils import pprnt
 from pprint import pprint
@@ -114,7 +115,7 @@ user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
 username = 'test_user'
 import sys
 
-sys.TEST_MODELS_RESET = False
+sys.LOADED_FIXTURES = []
 
 
 class BaseTestCase:
@@ -134,9 +135,15 @@ class BaseTestCase:
                 self.fixture()
                 sleep(2)
             else:
-                import os
                 fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
-                if os.path.exists(fixture_guess):
+                print("= = = = = = = = = = = = =")
+                print("GUESS %s " % fixture_guess)
+                print("= = = = = = = = = = = = =")
+                if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
+                    print("= = = = = = = = = = = = =")
+                    print("= = = = LOAD FIXTURE  = =")
+                    print("= = = = = = = = = = = = =")
+                    sys.LOADED_FIXTURES.append(fixture_guess)
                     FlushDB(model='all').run()
                     LoadData(path=fixture_guess).run()
                     sleep(2)
