@@ -94,7 +94,7 @@ class TestClient(Worker):
         if 'token' not in data and self.token:
             data['token'] = self.token
 
-        data['wf'] = self.path.replace('/', '')
+        data['path'] = self.path.replace('/', '')
 
         data = {'data': data}
         data = json.dumps(data)
@@ -136,13 +136,7 @@ class BaseTestCase:
                 sleep(2)
             else:
                 fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
-                print("= = = = = = = = = = = = =")
-                print("GUESS %s " % fixture_guess)
-                print("= = = = = = = = = = = = =")
                 if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
-                    print("= = = = = = = = = = = = =")
-                    print("= = = = LOAD FIXTURE  = =")
-                    print("= = = = = = = = = = = = =")
                     sys.LOADED_FIXTURES.append(fixture_guess)
                     FlushDB(model='all').run()
                     LoadData(path=fixture_guess).run()
