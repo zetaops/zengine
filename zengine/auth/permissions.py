@@ -99,6 +99,8 @@ def _get_model_permissions(permission_list=None):
         model_name = model.__name__
         permissions.append((model_name, model_name, ""))
         if model_name not in enabled_models:
+            # no matter if it's available as CRUD or not,
+            # we may need a ListBox for any model
             permissions.append(("%s.select_list" % model_name, "Listbox for %s" % model_name, ""))
             continue
 

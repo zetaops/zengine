@@ -721,7 +721,7 @@ class ZEngine(object):
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
         if (self.current.task_type not in PERM_REQ_TASK_TYPES or
-                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))):
+                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))): # FIXME:needs hardening
             return
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
