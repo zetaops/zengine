@@ -15,7 +15,7 @@ from falcon import HTTPNotFound
 from pyoko.conf import settings
 from pyoko.model import Model, model_registry
 from zengine import signals
-from zengine.auth.permissions import NO_PERM_TASKS_TYPES
+from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.dispatch.dispatcher import receiver
 from zengine import forms
 from zengine.forms import fields
@@ -396,7 +396,7 @@ class CrudView(BaseView):
         """
         permission = "%s.%s" % (self.object.__class__.__name__, self.cmd)
         log.debug("CHECK CRUD PERM: %s" % permission)
-        if (self.current.task_type in NO_PERM_TASKS_TYPES or
+        if (self.current.task_type not in PERM_REQ_TASK_TYPES or
                     permission in settings.ANONYMOUS_WORKFLOWS):
             return
         if not self.current.has_permission(permission):

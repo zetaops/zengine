@@ -8,6 +8,8 @@
 # (GPLv3).  See LICENSE.txt for details.
 import glob
 import os
+from SpiffWorkflow.bpmn.specs.UserTask import UserTask
+from SpiffWorkflow.bpmn.specs.ServiceTask import ServiceTask
 
 
 class CustomPermission(object):
@@ -41,7 +43,7 @@ class CustomPermission(object):
         return list(cls.registry.values())
 
 # skip permmission checking for this taks types
-NO_PERM_TASKS_TYPES = ('StartTask', 'StartEvent', 'EndEvent', 'EndTask', 'ExclusiveGateway')
+PERM_REQ_TASK_TYPES = ('UserTask', 'ServiceTask')
 
 
 def _get_workflows():
@@ -65,7 +67,7 @@ def _get_workflow_permissions(permission_list=None):
         wf_name = wf.spec.name
         permissions.append((wf_name, wf_name, ""))
         for name, task_spec in wf.spec.task_specs.items():
-            if task_spec.__class__.__name__ in NO_PERM_TASKS_TYPES:
+            if not isinstance(task_spec, (UserTask, ServiceTask)):
                 continue
             permissions.append(("%s.%s" % (wf_name, name),
                                 "%s %s of %s" % (name,
@@ -74,15 +76,35 @@ def _get_workflow_permissions(permission_list=None):
                                 ""))
     return permissions
 
+def _get_object_menu_models():
+    """
+    we need to create basic permissions
+    for only CRUD enabled models
+    """
+    from pyoko.conf import settings
+    enabled_models = []
+    for entry in settings.OBJECT_MENU.values():
+        for mdl in entry:
+            if 'wf' not in mdl:
+                enabled_models.append(mdl['name'])
+    return enabled_models
 
 def _get_model_permissions(permission_list=None):
     from pyoko.model import model_registry
     from zengine.views.crud import CrudView
     generic_commands = CrudView().VIEW_METHODS.keys()
     permissions = permission_list or []
+    enabled_models = _get_object_menu_models()
     for model in model_registry.get_base_models():
         model_name = model.__name__
         permissions.append((model_name, model_name, ""))
+        if model_name not in enabled_models:
+            # no matter if it's available as CRUD or not,
+            # we may need a ListBox for any model
+            permissions.append(("%s.select_list" % model_name, "Listbox for %s" % model_name, ""))
+            continue
+
+
         for cmd in generic_commands:
             if cmd in ['do']:
                 continue

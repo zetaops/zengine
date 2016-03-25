@@ -6,6 +6,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 
@@ -48,11 +49,19 @@ class UpdatePermissions(Command):
                     new = True
                     perm = model(code=code, name=name)
             else:
-                perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
-                if new:
-                    new_perms.append(perm)
-                else:
+                try:
+                    perm = model.objects.get(code)
                     existing_perms.append(perm)
+                except ObjectDoesNotExist:
+                    perm = model(description=desc, code=code, name=name)
+                    perm.key = code
+                    perm.save()
+                    new_perms.append(perm)
+                # perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
+                # if new:
+                #     new_perms.append(perm)
+                # else:
+                #     existing_perms.append(perm)
 
         report = "\n\n%s permission(s) were found in DB. " % len(existing_perms)
         if new_perms:

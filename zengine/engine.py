@@ -24,6 +24,8 @@ from SpiffWorkflow.specs import WorkflowSpec
 from SpiffWorkflow.bpmn.storage.Packager import Packager
 from beaker.session import Session
 import lazy_object_proxy
+
+from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.notifications import Notify
 
 from zengine import signals
@@ -34,8 +36,6 @@ from zengine.lib.cache import WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
-from zengine.auth.permissions import NO_PERM_TASKS_TYPES
-# from zengine.views.crud import CrudView
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
@@ -197,15 +197,15 @@ class WFCurrent(Current):
 
         if 'token' in self.input:
             self.token = self.input['token']
-            log.info("TOKEN iNCOMiNG: %s " % self.token)
+            # log.info("TOKEN iNCOMiNG: %s " % self.token)
             self.new_token = False
         else:
             self.token = uuid4().hex
             self.new_token = True
-            log.info("TOKEN NEW: %s " % self.token)
+            # log.info("TOKEN NEW: %s " % self.token)
 
         self.wfcache = WFCache(self.token)
-        log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
+        # log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
         self.set_client_cmds()
 
     def _set_lane_data(self):
@@ -720,8 +720,8 @@ class ZEngine(object):
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
-        if (self.current.task_type in NO_PERM_TASKS_TYPES or
-                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))):
+        if (self.current.task_type not in PERM_REQ_TASK_TYPES or
+                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))): # FIXME:needs hardening
             return
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
