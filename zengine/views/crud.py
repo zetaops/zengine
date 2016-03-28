@@ -333,7 +333,7 @@ class CrudView(BaseView):
                     'wf': 'crud',
                 })
             # overriding widget type of Permissions ListNode
-            if field == 'Permissions':
+            if field == 'Permissions' or field == 'RestrictedPermissions':
                 prop['widget'] = 'filter_interface'
 
         for method in self.FORM_MODIFIERS:
