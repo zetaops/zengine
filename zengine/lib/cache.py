@@ -206,6 +206,20 @@ class CatalogCache(Cache):
         super(CatalogCache, self).__init__(lang_code, key)
 
 
+class UserSessionID(Cache):
+    """
+    Cache object for the User -> Active Session ID.
+
+    Args:
+        user_id: User key
+    """
+    PREFIX = 'USID'
+    SERIALIZE = False
+
+    def __init__(self, user_id):
+        super(UserSessionID, self).__init__(user_id)
+
+
 class WFCache(Cache):
     """
     Cache object for workflow instances.
@@ -245,6 +259,7 @@ class Session(object):
 
     def __init__(self, sessid=''):
         self.key = ""
+        self.sess_id = sessid
         self.key = self._make_key(sessid)
 
     def _j_load(self, val):

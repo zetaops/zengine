@@ -9,6 +9,7 @@ import falcon
 
 from pyoko import fields
 from zengine.forms.json_form import JsonForm
+from zengine.lib.cache import UserSessionID
 from zengine.views.base import SimpleView
 
 
@@ -56,6 +57,8 @@ class Login(SimpleView):
                 self.current.input['username'],
                 self.current.input['password'])
             self.current.task_data['login_successful'] = auth_result
+            if auth_result:
+                UserSessionID(self.current.user_id).set(self.current.session.sess_id)
         except:
             self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['login_successful'] = False
