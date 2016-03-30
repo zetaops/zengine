@@ -20,6 +20,8 @@ from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 import sys
 
+from zengine.tornado_server.queue_manager import MQ_PARAMS
+
 wf_engine = ZEngine()
 
 
@@ -46,7 +48,7 @@ class Worker(object):
         """
         make amqp connection and create channels and queue binding
         """
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.connection = pika.BlockingConnection(MQ_PARAMS)
         self.output_channel = self.connection.channel()
         self.input_channel = self.connection.channel()
 
