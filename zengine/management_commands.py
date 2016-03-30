@@ -6,6 +6,8 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import six
+
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
@@ -40,6 +42,7 @@ class UpdatePermissions(Command):
         existing_perms = []
         new_perms = []
         for code, name, desc in perm_provider():
+            code = six.text_type(code)
             if self.manager.args.dry:
                 exists = model.objects.filter(code=code, name=name)
                 if exists:
