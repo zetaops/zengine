@@ -111,14 +111,14 @@ class HttpHandler(web.RequestHandler):
 
             self.set_status(int(out_obj.get('code', 200)))
         except HTTPError as e:
-            output = {'error': e.message, "code": e.code}
+            output = {'cmd':'error', 'error': e.message, "code": e.code}
             self.set_status(int(e.code))
         except:
             if DEBUG:
                 self.set_status(500)
                 output = json.dumps({'error': traceback.format_exc()})
             else:
-                output = {'error': "Internal Error", "code": 500}
+                output = {'cmd':'error', 'error': "Internal Error", "code": 500}
         self.write(output)
         self.finish()
         self.flush()

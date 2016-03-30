@@ -122,7 +122,7 @@ class Worker(object):
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
-            output = {'error': e.message, "code": e.code}
+            output = {'cmd':'error', 'error': e.message, "code": e.code}
         except:
             import sys
             if hasattr(sys, '_called_from_test'):
