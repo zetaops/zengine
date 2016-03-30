@@ -106,8 +106,8 @@ class Current(object):
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
         self.role = lazy_object_proxy.Proxy(lambda: self.auth.get_role())
-
-        self.msg_cache = Notify(self.user_id)
+        if self.user_id:
+            self.msg_cache = Notify(self.user_id)
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
 
