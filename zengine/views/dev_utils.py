@@ -8,6 +8,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from riak.client import binary_json_decoder
+from riak.util import bytes_to_str
 from six import text_type
 
 from zengine.lib.cache import ClearCache
@@ -84,7 +85,7 @@ class SessionFixture(object):
             except KeyError:
                 continue
             bucket_name = mdl.objects.bucket.name
-            mdl.objects.bucket.set_decoder('application/json', lambda a: a)
+            mdl.objects.bucket.set_decoder('application/json', lambda a: bytes_to_str(a))
             for k in set(sys.PYOKO_LOGS[mdl_name]):
                 if k not in sys.PYOKO_LOGS['new']:
                     out.append("{}/|{}/|{}".format(
@@ -95,7 +96,8 @@ class SessionFixture(object):
         sys.PYOKO_LOGS['new'] = []
         current.output = {
             'response': "\n".join(out),
-            'http_headers': (('Content-Type', 'text/plain'),),
+            'http_headers': (('Content-Type', 'text/plain; charset=utf-8'),
+                             ),
         }
 
 
