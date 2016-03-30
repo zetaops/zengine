@@ -36,12 +36,15 @@ class Notify(Cache):
 
     def set_message(self, title, msg, typ, url=None):
         message_id = uuid4().hex
-        message = {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': message_id}
+        message = {'title': title, 'body': msg, 'type': typ,
+                   'url': url, 'id': message_id}
 
         try:
+            client_message = {'cmd': 'notification',
+                              'notifications': [message, ]}
             self.channel.basic_publish(exchange='',
                                        routing_key=self.sess_id,
-                                       body=json.dumps(message))
+                                       body=json.dumps(client_message))
         except AMQPError:
             self.add(message)
 

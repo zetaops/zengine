@@ -96,6 +96,7 @@ class Worker(object):
             properties:
             body: message body
         """
+        input = {}
         try:
             sessid = method.routing_key
 
