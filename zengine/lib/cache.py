@@ -262,8 +262,9 @@ class KeepAlive(Cache):
         self.set(time.time())
 
     def is_alive(self):
-        return self.update_or_expire_session()
-
+        if not hasattr(self, 'key'):
+            return
+        return time.time() - float(self.get(0.0)) < self.SESSION_EXPIRE_TIME
 
 
 class WFCache(Cache):

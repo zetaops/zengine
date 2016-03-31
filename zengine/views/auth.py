@@ -30,6 +30,7 @@ def logout(current):
     Args:
         current: :attr:`~zengine.engine.WFCurrent` object.
     """
+    KeepAlive(current.user_id).delete()
     current.session.delete()
 
 
