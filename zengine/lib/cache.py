@@ -235,7 +235,7 @@ class KeepAlive(Cache):
     SESSION_EXPIRE_TIME = 100  # sec
 
     def __init__(self, user_id=None, sess_id=None):
-        self.user_id = user_id or Session(sess_id)['user_id']
+        self.user_id = user_id or Session(sess_id).get('user_id')
         self.sess_id = sess_id
         super(KeepAlive, self).__init__(user_id)
 
@@ -244,10 +244,11 @@ class KeepAlive(Cache):
         Deletes session if keepalive request expired
         otherwise updates the keepalive timestamp value
         """
-        timestamp = int(self.get())
+        timestamp = int(self.get(0))
         now = time.time()
-        if now - timestamp > self.SESSION_EXPIRE_TIME:
-            Session(self.sess_id or UserSessionID(self.user_id).get()).delete()
+        sess_id = self.sess_id or UserSessionID(self.user_id).get()
+        if sess_id and now - timestamp > self.SESSION_EXPIRE_TIME:
+            Session(sess_id).delete()
             return False
         else:
             self.set(now)

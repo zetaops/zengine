@@ -113,10 +113,7 @@ class Worker(object):
                 session = Session(sessid[5:])  # clip "HTTP_" prefix from sessid
             else:
                 session = Session(sessid)
-                try:
-                    KeepAlive(sess_id=sessid).update_or_expire_session()
-                except TypeError:
-                    log.exception("No user found in session")
+                KeepAlive(sess_id=sessid).update_or_expire_session()
 
 
             if 'wf' in data:
