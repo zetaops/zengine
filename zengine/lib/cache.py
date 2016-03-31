@@ -9,6 +9,8 @@ Base Cache object and some builtin subclasses of it.
 # (GPLv3).  See LICENSE.txt for details.
 import json
 
+import time
+
 from zengine.config import settings
 from redis import Redis
 
@@ -218,6 +220,42 @@ class UserSessionID(Cache):
 
     def __init__(self, user_id):
         super(UserSessionID, self).__init__(user_id)
+
+
+class KeepAlive(Cache):
+    """
+    Websocket keepalive request timestamp store
+
+    Args:
+        user_id: User key
+        sess_id: Session id
+    """
+    PREFIX = 'KEEP'
+    SERIALIZE = False
+    SESSION_EXPIRE_TIME = 100  # sec
+
+    def __init__(self, user_id=None, sess_id=None):
+        self.user_id = user_id or Session(sess_id)['user_id']
+        self.sess_id = sess_id
+        super(KeepAlive, self).__init__(user_id)
+
+    def update_or_expire_session(self):
+        """
+        Deletes session if keepalive request expired
+        otherwise updates the keepalive timestamp value
+        """
+        timestamp = int(self.get())
+        now = time.time()
+        if now - timestamp > self.SESSION_EXPIRE_TIME:
+            Session(self.sess_id or UserSessionID(self.user_id).get()).delete()
+            return False
+        else:
+            self.set(now)
+            return True
+
+    def is_alive(self):
+        return self.update_or_expire_session()
+
 
 
 class WFCache(Cache):

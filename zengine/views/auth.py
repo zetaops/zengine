@@ -10,6 +10,7 @@ import falcon
 from pyoko import fields
 from zengine.forms.json_form import JsonForm
 from zengine.lib.cache import UserSessionID
+from zengine.notifications import Notify
 from zengine.views.base import SimpleView
 
 
@@ -48,6 +49,9 @@ class Login(SimpleView):
     Displays login form at ``show`` stage,
     does the authentication at ``do`` stage.
     """
+
+
+
     def do_view(self):
         """
         Authenticate user with given credentials.
@@ -58,7 +62,12 @@ class Login(SimpleView):
                 self.current.input['password'])
             self.current.task_data['login_successful'] = auth_result
             if auth_result:
-                UserSessionID(self.current.user_id).set(self.current.session.sess_id)
+                    user_sess = UserSessionID(self.current.user_id)
+                    old_sess_id = user_sess.get()
+                    user_sess.set(self.current.session.sess_id)
+                    notify = Notify(self.current.user_id)
+                    notify.cache_to_queue()
+                    notify.old_to_new_queue(old_sess_id)
         except:
             self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['login_successful'] = False

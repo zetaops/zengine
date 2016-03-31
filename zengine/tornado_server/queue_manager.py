@@ -194,7 +194,7 @@ class QueueManager(object):
             self.out_channels[sess_id] = channel
             channel.queue_declare(callback=_on_output_queue_decleration,
                                   queue=sess_id,
-                                  auto_delete=True,
+                                  # auto_delete=True,
                                   # exclusive=True
                                   )
 

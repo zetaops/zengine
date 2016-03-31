@@ -15,7 +15,7 @@ from tornado.escape import json_decode
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
 from zengine.engine import ZEngine, Current
-from zengine.lib.cache import Session
+from zengine.lib.cache import Session, KeepAlive
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 import sys
@@ -113,6 +113,11 @@ class Worker(object):
                 session = Session(sessid[5:])  # clip "HTTP_" prefix from sessid
             else:
                 session = Session(sessid)
+                try:
+                    KeepAlive(sess_id=sessid).update_or_expire_session()
+                except TypeError:
+                    log.exception("No user found in session")
+
 
             if 'wf' in data:
                 output = self._handle_workflow(session, data)
