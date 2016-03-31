@@ -7,6 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
+from thread import start_new_thread
 from uuid import uuid4
 
 import pika
@@ -57,9 +58,18 @@ class Notify(Cache):
         are stored in cache, when user become online,
         stored messages redirected to user's queue.
         """
+        offline_messages = list(self.get_all())
+        print("OFFF: %s" % offline_messages)
+        start_new_thread(self._delayed_send, (offline_messages,))
+
+
+    def _delayed_send(self, offline_messages):
+        time.sleep(3)
         client_message = {'cmd': 'notification',
-                          'notifications': list(self.get_all())}
+                          'notifications': offline_messages}
         self.send_to_queue(client_message)
+        for n in offline_messages:
+            self.remove_item(n)
 
     def old_to_new_queue(self, old_sess_id):
         """

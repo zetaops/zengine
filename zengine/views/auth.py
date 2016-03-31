@@ -30,7 +30,9 @@ def logout(current):
     Args:
         current: :attr:`~zengine.engine.WFCurrent` object.
     """
-    KeepAlive(current.user_id).delete()
+    user_id = current.session.get('user_id')
+    if user_id:
+        KeepAlive(user_id).delete()
     current.session.delete()
 
 
@@ -75,7 +77,7 @@ class Login(SimpleView):
             except:
                 self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['login_successful'] = False
-            if self.current.output['cmd'] != 'upgrade':
+            if self.current.output.get('cmd') != 'upgrade':
                 self.current.output['status_code'] = 403
             else:
                 KeepAlive(self.current.user_id).reset()

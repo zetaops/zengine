@@ -164,7 +164,7 @@ class Cache(object):
         Returns:
             Cache backend response.
         """
-        return cache.ltrim(self.key, 0, -1)
+        return cache.ltrim(self.key, -1, 0)
 
     def remove_item(self, val):
         """
