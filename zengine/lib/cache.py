@@ -219,7 +219,8 @@ class UserSessionID(Cache):
     SERIALIZE = False
 
     def __init__(self, user_id):
-        super(UserSessionID, self).__init__(user_id)
+        if user_id:
+            super(UserSessionID, self).__init__(user_id)
 
 
 class KeepAlive(Cache):
@@ -237,7 +238,8 @@ class KeepAlive(Cache):
     def __init__(self, user_id=None, sess_id=None):
         self.user_id = user_id or Session(sess_id).get('user_id')
         self.sess_id = sess_id
-        super(KeepAlive, self).__init__(user_id)
+        if self.user_id:
+            super(KeepAlive, self).__init__(self.user_id)
 
     def update_or_expire_session(self):
         """
