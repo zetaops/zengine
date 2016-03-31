@@ -246,8 +246,10 @@ class KeepAlive(Cache):
         Deletes session if keepalive request expired
         otherwise updates the keepalive timestamp value
         """
-        timestamp = int(self.get(0))
+        if not hasattr(self, 'key'):
+            return
         now = time.time()
+        timestamp = float(self.get() or 0) or now
         sess_id = self.sess_id or UserSessionID(self.user_id).get()
         if sess_id and now - timestamp > self.SESSION_EXPIRE_TIME:
             Session(sess_id).delete()
@@ -255,6 +257,9 @@ class KeepAlive(Cache):
         else:
             self.set(now)
             return True
+
+    def reset(self):
+        self.set(time.time())
 
     def is_alive(self):
         return self.update_or_expire_session()

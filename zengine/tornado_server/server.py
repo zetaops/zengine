@@ -88,20 +88,25 @@ class HttpHandler(web.RequestHandler):
                 self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
                 self.set_header('Access-Control-Allow-Credentials', 'true')
             self.set_header('Content-Type', 'application/json')
-            if not self.get_cookie(COOKIE_NAME):
+            input_data = json_decode(self.request.body) if self.request.body else {}
+            input_data['path'] = view_name
+
+
+            if not self.get_cookie(COOKIE_NAME) or view_name == 'login' and 'username' in input_data:
                 sess_id = uuid4().hex
                 self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
             else:
                 sess_id = self.get_cookie(COOKIE_NAME)
             h_sess_id = "HTTP_%s" % sess_id
-            input_data = json_decode(self.request.body) if self.request.body else {}
-            input_data['path'] = view_name
-            input_data = {'data': input_data}
 
+            input_data = {'data': input_data}
             log.info("New Request: %s" % input_data)
 
             output = blocking_connection.send_message(h_sess_id, input_data)
             out_obj = json_decode(output)
+            # if out_obj.get('cmd') == 'upgrade':
+            #     sess_id = uuid4().hex
+            #     self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
             # allow overriding of headers
             if 'http_headers' in out_obj:
                 for k, v in out_obj['http_headers']:

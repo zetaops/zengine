@@ -9,7 +9,7 @@ import falcon
 
 from pyoko import fields
 from zengine.forms.json_form import JsonForm
-from zengine.lib.cache import UserSessionID
+from zengine.lib.cache import UserSessionID, KeepAlive
 from zengine.notifications import Notify
 from zengine.views.base import SimpleView
 
@@ -50,35 +50,40 @@ class Login(SimpleView):
     does the authentication at ``do`` stage.
     """
 
-
-
     def do_view(self):
         """
         Authenticate user with given credentials.
         """
-        try:
-            auth_result = self.current.auth.authenticate(
-                self.current.input['username'],
-                self.current.input['password'])
-            self.current.task_data['login_successful'] = auth_result
-            if auth_result:
+        if self.current.is_auth:
+            self.current.output['cmd'] = 'upgrade'
+        else:
+            try:
+                auth_result = self.current.auth.authenticate(
+                    self.current.input['username'],
+                    self.current.input['password'])
+                self.current.task_data['login_successful'] = auth_result
+                if auth_result:
                     user_sess = UserSessionID(self.current.user_id)
                     old_sess_id = user_sess.get()
                     user_sess.set(self.current.session.sess_id)
                     notify = Notify(self.current.user_id)
                     notify.cache_to_queue()
-                    notify.old_to_new_queue(old_sess_id)
-        except:
-            self.current.log.exception("Wrong username or another error occurred")
+                    if old_sess_id:
+                        notify.old_to_new_queue(old_sess_id)
+                    self.current.output['cmd'] = 'upgrade'
+            except:
+                self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['login_successful'] = False
-        if not self.current.task_data['login_successful']:
-            self.current.output['status_code'] = 403
+            if self.current.output['cmd'] != 'upgrade':
+                self.current.output['status_code'] = 403
+            else:
+                KeepAlive(self.current.user_id).reset()
 
     def show_view(self):
         """
         Show :attr:`LoginForm` form.
         """
-        self.current.output['forms'] = LoginForm(current=self.current).serialize()
-
-
-
+        if self.current.is_auth:
+            self.current.output['cmd'] = 'upgrade'
+        else:
+            self.current.output['forms'] = LoginForm(current=self.current).serialize()
