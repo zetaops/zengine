@@ -1,18 +1,19 @@
 ZEngine Web Service Framework
 =============================
 
-Zengine is a BPMN workflow based web service framework with advanced
-permissions and extensible CRUD features.
+Zengine BPMN workflow based framework with Tornado, Rabbit AMQP, advanced permissions, extensible scaffolding features and more.
 
 Built on top of following major components;
 
 - SpiffWorkflow_: Powerful workflow engine with BPMN 2.0 support.
-- Falcon_: Falcon is a ridiculously fast, minimalist Python web framework for building cloud APIs and app backends.
+- Tornado_: Tornado is a Python web framework and asynchronous networking library.
 - Pyoko_: Django esque ORM for Riak KV store.
+- RabbitMQ_: Fast, ultrasharp AMQP server written with legendary Erlang lang.
 
 .. _SpiffWorkflow: https://github.com/knipknap/SpiffWorkflow
-.. _Falcon: http://falconframework.org/
+.. _Tornado: http://www.tornadoweb.org/en/stable/
 .. _Pyoko: https://github.com/zetaops/pyoko
+.. _RabbitMQ: https://www.rabbitmq.com/
 
 API Documentation
 -----------------
