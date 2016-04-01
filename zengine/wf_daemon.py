@@ -71,6 +71,9 @@ class Worker(object):
 
     def _handle_view(self, session, data):
         current = Current(session=session, input=data)
+        if data['view'] == 'ping':
+            KeepAlive(sess_id=session.sess_id).update_or_expire_session()
+            return {'msg': 'pong'}
         if not (current.is_auth or data['view'] in settings.ANONYMOUS_WORKFLOWS):
             return {'error': "Login required", "code": 401}
         view = get_object_from_path(settings.VIEW_URLS[data['view']])
@@ -115,7 +118,6 @@ class Worker(object):
                 session = Session(sessid)
                 KeepAlive(sess_id=sessid).update_or_expire_session()
 
-
             if 'wf' in data:
                 output = self._handle_workflow(session, data)
             else:
@@ -124,7 +126,7 @@ class Worker(object):
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
-            output = {'cmd':'error', 'error': e.message, "code": e.code}
+            output = {'cmd': 'error', 'error': e.message, "code": e.code}
         except:
             import sys
             if hasattr(sys, '_called_from_test'):

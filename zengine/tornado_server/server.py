@@ -17,10 +17,10 @@ from tornado.httpclient import HTTPError
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
 from queue_manager import QueueManager, BlockingConnectionForHTTP, log
 
-
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
 blocking_connection = BlockingConnectionForHTTP()
+
 
 class SocketHandler(websocket.WebSocketHandler):
     """
@@ -73,7 +73,6 @@ class HttpHandler(web.RequestHandler):
     login handler class
     """
 
-
     @web.asynchronous
     def get(self, view_name):
         self.post(view_name)
@@ -91,8 +90,8 @@ class HttpHandler(web.RequestHandler):
             input_data = json_decode(self.request.body) if self.request.body else {}
             input_data['path'] = view_name
 
-
-            if not self.get_cookie(COOKIE_NAME) or view_name == 'login' and 'username' in input_data:
+            if not self.get_cookie(
+                    COOKIE_NAME) or view_name == 'login' and 'username' in input_data:
                 sess_id = uuid4().hex
                 self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
             else:
@@ -116,14 +115,14 @@ class HttpHandler(web.RequestHandler):
 
             self.set_status(int(out_obj.get('code', 200)))
         except HTTPError as e:
-            output = {'cmd':'error', 'error': e.message, "code": e.code}
+            output = {'cmd': 'error', 'error': e.message, "code": e.code}
             self.set_status(int(e.code))
         except:
             if DEBUG:
                 self.set_status(500)
                 output = json.dumps({'error': traceback.format_exc()})
             else:
-                output = {'cmd':'error', 'error': "Internal Error", "code": 500}
+                output = {'cmd': 'error', 'error': "Internal Error", "code": 500}
         self.write(output)
         self.finish()
         self.flush()

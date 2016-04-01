@@ -36,6 +36,7 @@ MQ_PARAMS = pika.ConnectionParameters(
     host=MQ_HOST,
     port=MQ_PORT,
     virtual_host='/',
+    heartbeat_interval=30,
     credentials=pika.PlainCredentials(MQ_USER, MQ_PASS)
 )
 

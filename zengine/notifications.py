@@ -7,7 +7,10 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
-from thread import start_new_thread
+try:
+    from thread import start_new_thread
+except ImportError:
+    from _thread import start_new_thread
 from uuid import uuid4
 
 import pika
