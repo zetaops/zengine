@@ -233,7 +233,7 @@ class KeepAlive(Cache):
     """
     PREFIX = 'KEEP'
     SERIALIZE = False
-    SESSION_EXPIRE_TIME = 100  # sec
+    SESSION_EXPIRE_TIME = 300  # sec
 
     def __init__(self, user_id=None, sess_id=None):
         self.user_id = user_id or Session(sess_id).get('user_id')

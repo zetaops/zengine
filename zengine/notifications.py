@@ -23,7 +23,6 @@ class Notify(Cache):
     Cache based simple notification object.
     """
     PREFIX = 'NTFY'
-    EXPIRE_TIME = 120
 
     TaskInfo = 1
     TaskError = 11
