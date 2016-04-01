@@ -7,9 +7,9 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from pyoko import field
-from pyoko import Model, ListNode
+from pyoko import Model, field, ListNode
 from passlib.hash import pbkdf2_sha512
+
 
 
 class Permission(Model):
