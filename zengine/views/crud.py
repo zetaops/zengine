@@ -459,7 +459,7 @@ class CrudView(BaseView):
                 if self.object.deleted:
                     raise HTTPNotFound()
             except:
-                raise HTTPNotFound()
+                raise
         elif 'added_obj' in self.current.task_data:
             self.object = self.model_class(self.current).objects.get(
                     self.current.task_data['added_obj'])
@@ -884,6 +884,7 @@ class CrudView(BaseView):
         """
         self.set_form_data_to_object()
         self.save_object()
+        self.current.task_data['object_id'] = self.object.key
 
     @view_method
     def delete(self):

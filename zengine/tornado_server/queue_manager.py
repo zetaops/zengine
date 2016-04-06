@@ -18,26 +18,34 @@ from pika.exceptions import ChannelClosed, ConnectionClosed
 from tornado.escape import json_decode, json_encode
 
 try:
-    from zengine.log import log
+    from .get_logger import get_logger
 except:
-    import logging as log
+    from get_logger import get_logger
 
-    log.basicConfig(level=log.DEBUG,
-                    format='%(asctime)s %(levelname)s %(message)s',
-                    filename='tornado.log',
-                    filemode='a')
+settings = type('settings', (object,), {
+    'LOG_HANDLER': os.environ.get('LOG_HANDLER', 'file'),
+    'LOG_FILE': os.environ.get('TORNADO_LOG_FILE', './tornado.log'),
+    'LOG_LEVEL': os.environ.get('LOG_LEVEL', 'DEBUG'),
+    'MQ_HOST': os.environ.get('MQ_HOST', 'localhost'),
+    'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),
+    'MQ_USER': os.environ.get('MQ_USER', 'guest'),
+    'MQ_PASS': os.environ.get('MQ_PASS', 'guest'),
+})
+log = get_logger(settings)
 
-MQ_HOST = os.getenv('MQ_HOST', 'localhost')
-MQ_PORT = int(os.getenv('MQ_HOST', '5672'))
-MQ_USER = os.getenv('MQ_USER', 'guest')
-MQ_PASS = os.getenv('MQ_PASS', 'guest')
-
-MQ_PARAMS = pika.ConnectionParameters(
-    host=MQ_HOST,
-    port=MQ_PORT,
+BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
+    host=settings.MQ_HOST,
+    port=settings.MQ_PORT,
     virtual_host='/',
     heartbeat_interval=0,
-    credentials=pika.PlainCredentials(MQ_USER, MQ_PASS)
+    credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
+)
+
+NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
+    host=settings.MQ_HOST,
+    port=settings.MQ_PORT,
+    virtual_host='/',
+    credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
 )
 
 
@@ -45,14 +53,14 @@ class BlockingConnectionForHTTP(object):
     REPLY_TIMEOUT = 10  # sec
 
     def __init__(self):
-        self.connection = pika.BlockingConnection(MQ_PARAMS)
+        self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         self.input_channel = self.connection.channel()
 
     def create_channel(self):
         try:
             return self.connection.channel()
         except (ConnectionClosed, AttributeError, KeyError):
-            self.connection = pika.BlockingConnection(MQ_PARAMS)
+            self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
             return self.connection.channel()
 
     def _send_message(self, sess_id, input_data):
@@ -94,7 +102,8 @@ class BlockingConnectionForHTTP(object):
             self.input_channel = self.create_channel()
             self._send_message(sess_id, input_data)
 
-        return self._wait_for_reply(sess_id, input_data) or json.dumps({'code': 503, 'error': 'Retry'})
+        return self._wait_for_reply(sess_id, input_data) or json.dumps(
+            {'code': 503, 'error': 'Retry'})
 
 
 class QueueManager(object):
@@ -126,7 +135,7 @@ class QueueManager(object):
         log.info('PikaClient: Connecting to RabbitMQ')
         self.connecting = True
 
-        self.connection = TornadoConnection(MQ_PARAMS,
+        self.connection = TornadoConnection(NON_BLOCKING_MQ_PARAMS,
                                             on_open_callback=self.on_connected)
 
     def on_connected(self, connection):
@@ -210,6 +219,7 @@ class QueueManager(object):
         sess_id = method.routing_key
         if sess_id in self.websockets:
             self.websockets[sess_id].write_message(body)
+            log.debug("WS RPLY for %s: %s" % (sess_id, body))
             channel.basic_ack(delivery_tag=method.delivery_tag)
             # else:
             #     channel.basic_reject(delivery_tag=method.delivery_tag)

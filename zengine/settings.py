@@ -45,19 +45,24 @@ USER_MODEL = 'zengine.models.User'
 ROLE_MODEL = 'zengine.models.Role'
 
 
+MQ_HOST = os.getenv('MQ_HOST', 'localhost')
+MQ_PORT = int(os.getenv('MQ_HOST', '5672'))
+MQ_USER = os.getenv('MQ_USER', 'guest')
+MQ_PASS = os.getenv('MQ_PASS', 'guest')
+
 #: Logging Settings
 #:
 #: Left blank to use StreamHandler aka stderr
 #:
 #: Set to 'file' for logging 'LOG_FILE'
-LOG_HANDLER = os.environ.get('LOG_HANDLER')
+LOG_HANDLER = os.environ.get('LOG_HANDLER', 'file')
 
 #: Logging Level. Can be one INFO or DEBUG.
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG')
 
 
 #: Log file path.
-LOG_FILE = os.environ.get('LOG_FILE', '/tmp/zengine.log')
+LOG_FILE = os.environ.get('LOG_FILE', './zengine.log')
 
 
 #: Default cache expire time in seconds

@@ -20,7 +20,15 @@ from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 import sys
 
-from zengine.tornado_server.queue_manager import MQ_PARAMS
+
+MQ_PARAMS = pika.ConnectionParameters(
+    host=settings.MQ_HOST,
+    port=settings.MQ_PORT,
+    virtual_host='/',
+    heartbeat_interval=0,
+    credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
+)
+
 
 wf_engine = ZEngine()
 

@@ -7,6 +7,9 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
+
+from pyoko.conf import settings
+
 try:
     from thread import start_new_thread
 except ImportError:
@@ -18,7 +21,15 @@ import time
 from pika.exceptions import AMQPError, ConnectionClosed, ChannelClosed
 
 from zengine.lib.cache import Cache, UserSessionID, KeepAlive
-from zengine.tornado_server.queue_manager import MQ_PARAMS
+
+BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
+    host=settings.MQ_HOST,
+    port=settings.MQ_PORT,
+    virtual_host='/',
+    heartbeat_interval=0,
+    credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
+)
+
 
 
 class Notify(Cache):
@@ -36,17 +47,17 @@ class Notify(Cache):
     def __init__(self, user_id):
         super(Notify, self).__init__(str(user_id))
         self.user_id = user_id
-        self.connection = pika.BlockingConnection(MQ_PARAMS)
+        self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         self.channel = self.connection.channel()
         self.sess_id = None
 
     def get_channel(self):
         if self.channel.is_closed or self.channel.is_closing:
             try:
-                self.channel = pika.BlockingConnection(MQ_PARAMS)
+                self.channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
             except (ConnectionClosed, AttributeError, KeyError):
-                self.connection = pika.BlockingConnection(MQ_PARAMS)
-                self.channel = pika.BlockingConnection(MQ_PARAMS)
+                self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+                self.channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         return self.channel
 
     def get_sess_id(self):
