@@ -7,11 +7,12 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import logging
+import os
 
 
 def get_logger(settings):
     # create logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(os.path.basename(settings.LOG_FILE).split('.')[0])
     logger.setLevel(getattr(logging, settings.LOG_LEVEL))
     logger.propagate = False
     # create console handler and set level to debug

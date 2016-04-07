@@ -14,20 +14,13 @@ from tornado.escape import json_decode
 
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
+from zengine.client_queue import ClientQueue, BLOCKING_MQ_PARAMS
 from zengine.engine import ZEngine, Current
 from zengine.lib.cache import Session, KeepAlive
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 import sys
 
-
-MQ_PARAMS = pika.ConnectionParameters(
-    host=settings.MQ_HOST,
-    port=settings.MQ_PORT,
-    virtual_host='/',
-    heartbeat_interval=0,
-    credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
-)
 
 
 wf_engine = ZEngine()
@@ -48,7 +41,7 @@ class Worker(object):
         Properly close the AMQP connections
         """
         self.input_channel.close()
-        self.output_channel.close()
+        self.client_queue.close()
         self.connection.close()
         sys.exit(0)
 
@@ -56,8 +49,8 @@ class Worker(object):
         """
         make amqp connection and create channels and queue binding
         """
-        self.connection = pika.BlockingConnection(MQ_PARAMS)
-        self.output_channel = self.connection.channel()
+        self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+        self.client_queue = ClientQueue()
         self.input_channel = self.connection.channel()
 
         self.input_channel.exchange_declare(exchange='tornado_input', type='topic')
@@ -78,12 +71,16 @@ class Worker(object):
             self.exit()
 
     def _handle_view(self, session, data):
+        login_required_msg = {'error': "Login required", "code": 401}
         current = Current(session=session, input=data)
         if data['view'] == 'ping':
-            KeepAlive(sess_id=session.sess_id).update_or_expire_session()
-            return {'msg': 'pong'}
+            still_alive = KeepAlive(sess_id=session.sess_id).update_or_expire_session()
+            msg = {'msg': 'pong'}
+            if not still_alive:
+                msg.update(login_required_msg)
+            return msg
         if not (current.is_auth or data['view'] in settings.ANONYMOUS_WORKFLOWS):
-            return {'error': "Login required", "code": 401}
+            return login_required_msg
         view = get_object_from_path(settings.VIEW_URLS[data['view']])
         view(current)
         return current.output
@@ -124,7 +121,7 @@ class Worker(object):
                 session = Session(sessid[5:])  # clip "HTTP_" prefix from sessid
             else:
                 session = Session(sessid)
-                KeepAlive(sess_id=sessid).update_or_expire_session()
+
 
             if 'wf' in data:
                 output = self._handle_workflow(session, data)
@@ -149,9 +146,11 @@ class Worker(object):
         self.send_output(output, sessid)
 
     def send_output(self, output, sessid):
-        self.output_channel.basic_publish(exchange='',
-                                          routing_key=sessid,
-                                          body=json.dumps(output))
+        self.client_queue.sess_id = sessid
+        self.client_queue.send_to_queue(output)
+        # self.output_channel.basic_publish(exchange='',
+        #                                   routing_key=sessid,
+        #                                   body=json.dumps(output))
         # except ConnectionClosed:
 
 

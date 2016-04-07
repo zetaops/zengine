@@ -26,10 +26,11 @@ from beaker.session import Session
 import lazy_object_proxy
 
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
+from zengine.client_queue import ClientQueue
 from zengine.notifications import Notify
 
 from zengine import signals
-from pyoko.lib.utils import get_object_from_path
+from pyoko.lib.utils import get_object_from_path, lazy_property
 from pyoko.model import super_context, model_registry
 from zengine.config import settings
 from zengine.lib.cache import WFCache
@@ -106,10 +107,37 @@ class Current(object):
         self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
         self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
         self.role = lazy_object_proxy.Proxy(lambda: self.auth.get_role())
-        if self.user_id:
-            self.msg_cache = Notify(self.user_id)
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
+
+    @lazy_property
+    def msg_cache(self):
+        """
+        A lazy proxy for Notify object.
+
+        Returns: Notify
+        """
+        return Notify(self.user_id)
+
+    @lazy_property
+    def client_queue(self):
+        """
+        A lazy proxy for ClientQueue object.
+
+        Returns: ClientQueue
+        """
+        return ClientQueue(self.user_id, self.session.key)
+
+
+    def write_output(self, msg, json_msg=None):
+        """
+        Write to client without waiting to return of the view method
+
+        Args:
+            msg: Any JSON serializable object
+            json_msg: JSON string
+        """
+        return self.client_queue.send_to_queue(msg, json_msg)
 
     def set_message(self, title, msg, typ, url=None):
         """
@@ -127,7 +155,7 @@ class Current(object):
         """
         return self.msg_cache.set_message(title=title, msg=msg, typ=typ, url=url)
 
-    @property
+    @lazy_property
     def is_auth(self):
         """
         A property that indicates if current user is logged in or not.
@@ -136,7 +164,7 @@ class Current(object):
             Boolean.
         """
         if self.user_id is None:
-            self.user_id = self.session.get('user_id', '')
+            self.user_id = self.session.get('user_id')
         return bool(self.user_id)
 
     def has_permission(self, perm):
@@ -207,6 +235,24 @@ class WFCurrent(Current):
         self.wfcache = WFCache(self.token)
         # log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
         self.set_client_cmds()
+
+    def sendoff_current_user(self):
+        """
+        Tell current user that s/he finished it's job for now.
+        We'll notify if workflow arrives again to his/her WF Lane.
+        """
+        msgs = self.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
+        self.msg_box(title=msgs['title'], msg=msgs['body'])
+
+    def invite_other_parties(self, possible_owners):
+        """
+        Invites the next lane's (possible) owner(s) to participate
+        """
+        signals.lane_user_change.send(sender=self,
+                                      current=self,
+                                      old_lane=self.old_lane,
+                                      possible_owners=possible_owners
+                                      )
 
     def _set_lane_data(self):
         # TODO: Cache lane_data in process
@@ -536,28 +582,11 @@ class ZEngine(object):
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
-                    self.sendoff_current_user()
-                    self.invite_other_party()
+                    self.current.sendoff_current_user()
+                    self.current.invite_other_parties(self._get_possible_lane_owners())
             self.current.old_lane = self.current.lane_name
 
-    def sendoff_current_user(self):
-        """
-        Tell current user that s/he finished it's job for now.
-        We'll notify if workflow arrives again to his/her WF Lane.
-        """
-        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
-        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
 
-    def invite_other_party(self):
-        """
-        Invites the next lane's (possible) owner(s) to participate
-        """
-        possible_owners = eval(self.current.lane_owners, self.get_pool_context())
-        signals.lane_user_change.send(sender=self,
-                                      current=self.current,
-                                      old_lane=self.current.old_lane,
-                                      possible_owners=possible_owners
-                                      )
 
     def parse_workflow_messages(self):
         """
@@ -585,6 +614,8 @@ class ZEngine(object):
                                      msg=m.get('body'),
                                      typ=m.get('type', 'info'))
 
+    def _get_possible_lane_owners(self):
+        return eval(self.current.lane_owners, self.get_pool_context())
 
     def run_activity(self):
         """

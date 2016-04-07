@@ -91,6 +91,7 @@ class HttpHandler(web.RequestHandler):
             input_data = json_decode(self.request.body) if self.request.body else {}
             input_data['path'] = view_name
 
+
             if not self.get_cookie(
                     COOKIE_NAME) or view_name == 'login' and 'username' in input_data:
                 sess_id = uuid4().hex
@@ -98,9 +99,9 @@ class HttpHandler(web.RequestHandler):
             else:
                 sess_id = self.get_cookie(COOKIE_NAME)
             h_sess_id = "HTTP_%s" % sess_id
-
             input_data = {'data': input_data}
-            log.info("New Request: %s" % input_data)
+            log.info("New Request for %s: %s" % (sess_id, input_data))
+
 
             output = blocking_connection.send_message(h_sess_id, input_data)
             out_obj = json_decode(output)
@@ -116,9 +117,11 @@ class HttpHandler(web.RequestHandler):
 
             self.set_status(int(out_obj.get('code', 200)))
         except HTTPError as e:
+            log.exception("HTTPError for %s: %s" % (sess_id, input_data))
             output = {'cmd': 'error', 'error': e.message, "code": e.code}
             self.set_status(int(e.code))
         except:
+            log.exception("HTTPError for %s: %s" % (sess_id, input_data))
             if DEBUG:
                 self.set_status(500)
                 output = json.dumps({'error': traceback.format_exc()})
