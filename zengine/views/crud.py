@@ -732,6 +732,18 @@ class CrudView(BaseView):
         self.output['list_filters'] = flt
 
     @view_method
+    def object_search(self):
+        """
+        Simple object search.
+        """
+        q = (self.object.Meta.search_fields and self.Meta.allow_search and self.input.get('query'))
+        if q:
+            self.output['objects'] = [
+                (o.key, o.__unicode__())
+                for o in self.object.objects.search_on(*self.object.Meta.search_fields, contains=q)
+                ]
+
+    @view_method
     def list(self):
         """
         Creates object listings for the model.
