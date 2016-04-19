@@ -14,6 +14,7 @@ zengine package
     zengine.dispatch
     zengine.forms
     zengine.lib
+    zengine.tornado_server
     zengine.views
 
 
@@ -104,6 +105,14 @@ zengine.signals module
 ----------------------
 
 .. automodule:: zengine.signals
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+zengine.wf_daemon module
+------------------------
+
+.. automodule:: zengine.wf_daemon
     :members:
     :undoc-members:
     :show-inheritance:

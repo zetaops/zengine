@@ -23,10 +23,10 @@ zengine.views.base module
     :undoc-members:
     :show-inheritance:
 
-zengine.views.menu module
--------------------------
+zengine.views.catalog_datas module
+----------------------------------
 
-.. automodule:: zengine.views.menu
+.. automodule:: zengine.views.catalog_datas
     :members:
     :undoc-members:
     :show-inheritance:
@@ -38,4 +38,19 @@ zengine.views.crud module
     :members:
     :undoc-members:
     :show-inheritance:
-    :special-members: __init__
+
+zengine.views.dev_utils module
+------------------------------
+
+.. automodule:: zengine.views.dev_utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+zengine.views.menu module
+-------------------------
+
+.. automodule:: zengine.views.menu
+    :members:
+    :undoc-members:
+    :show-inheritance:
