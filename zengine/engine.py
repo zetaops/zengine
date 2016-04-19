@@ -349,6 +349,7 @@ class ZEngine(object):
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
         self.user_model = get_object_from_path(settings.USER_MODEL)
+        self.permission_model = get_object_from_path(settings.PERMISSION_MODEL)
         self.role_model = get_object_from_path(settings.ROLE_MODEL)
 
     def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
@@ -615,7 +616,14 @@ class ZEngine(object):
                                      typ=m.get('type', 'info'))
 
     def _get_possible_lane_owners(self):
-        return eval(self.current.lane_owners, self.get_pool_context())
+        if self.current.lane_owners:
+            return eval(self.current.lane_owners, self.get_pool_context())
+        else:
+            users = set()
+            for perm in self.current.lane_permissions:
+                users.update(self.permission_model.objects.get(perm).get_permitted_users())
+            return list(users)
+
 
     def run_activity(self):
         """
