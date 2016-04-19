@@ -69,11 +69,21 @@ def _get_workflow_permissions(permission_list=None):
         for name, task_spec in wf.spec.task_specs.items():
             if not isinstance(task_spec, (UserTask, ServiceTask)):
                 continue
+            _get_lane_permissions(permissions, task_spec)
             permissions.append(("%s.%s" % (wf_name, name),
                                 "%s %s of %s" % (name,
                                                  task_spec.__class__.__name__,
                                                  wf_name),
                                 ""))
+    return permissions
+
+def _get_lane_permissions(permissions, task_spec):
+    if (task_spec.data
+        and 'lane_data' in task_spec.data
+        and 'permissions' in task_spec.data['lane_data']):
+        perm_codes = task_spec.data['lane_data']['permissions'].replace(' ', '').split(',')
+        for code in perm_codes:
+            permissions.append((code, "%s of %s" % (code, task_spec.__class__.__name__), ""))
     return permissions
 
 def _get_object_menu_models():

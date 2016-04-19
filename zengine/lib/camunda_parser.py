@@ -73,9 +73,11 @@ class CamundaProcessParser(ProcessParser):
             return desc[0].findtext('.')
 
     def _get_wf_properties(self):
-        ns = {'ns': '{%s}' % BPMN_MODEL_NS, 'as': '{%s}' % ATTRIBUTE_NS}
+        ns = {'ns': '{%s}' % BPMN_MODEL_NS,
+              'as': '{%s}' % ATTRIBUTE_NS}
         wf_data = {}
-        for path in ('.//{ns}collaboration/*/*/{as}property','.//{ns}process/*/*/{as}property'):
+        for path in ('.//{ns}collaboration/*/*/{as}property',
+                     './/{ns}process/*/*/{as}property'):
             for a in self.doc_xpath(path.format(**ns)):
                 wf_data[a.attrib['name']] = a.attrib['value'].strip()
         return wf_data
@@ -88,7 +90,9 @@ class CamundaProcessParser(ProcessParser):
             str. WF name.
         """
         ns = {'ns': '{%s}' % BPMN_MODEL_NS}
-        for path in ('.//{ns}process', './/{ns}collaboration', './/{ns}collaboration/{ns}participant/'):
+        for path in ('.//{ns}process',
+                     './/{ns}collaboration',
+                     './/{ns}collaboration/{ns}participant/'):
             tag = self.doc_xpath(path.format(**ns))
             if tag:
                 name = tag[0].get('name')
