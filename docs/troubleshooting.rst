@@ -10,14 +10,15 @@ Troubleshooting for Common Problems
 
 Permission related
 -------------------
-- If you changed something and it doesn't take effect try:
+- If you changed something and it doesn't take effect, try running the following command to clear your cache:
 
   ``redis-cli flushall``
 
 
 Pyoko / DB Related
 -------------------
-- Make sure you don't inadvertently add any quotes around values in PyCharm's environmental variables:
+- Make sure you don't inadvertently add quotes around values in PyCharm's environmental variables:
+
     eg:
 
         ``DEFAULT_BUCKET_TYPE 'models'``
