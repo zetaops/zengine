@@ -265,6 +265,8 @@ class WFCurrent(Current):
                 self.lane_relations = lane_data['relations']
             if 'owners' in lane_data:
                 self.lane_owners = lane_data['owners']
+            self.lane_auto_sendoff = 'False' not in lane_data.get('auto_sendoff', '')
+            self.lane_auto_invite = 'False' not in lane_data.get('auto_invite', '')
 
     def get_wf_url(self):
         """
@@ -583,8 +585,10 @@ class ZEngine(object):
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
-                    self.current.sendoff_current_user()
-                    self.current.invite_other_parties(self._get_possible_lane_owners())
+                    if self.current.lane_auto_sendoff:
+                        self.current.sendoff_current_user()
+                    if self.current.lane_auto_invite:
+                        self.current.invite_other_parties(self._get_possible_lane_owners())
             self.current.old_lane = self.current.lane_name
 
 
