@@ -22,6 +22,12 @@ API Documentation
 
 .. _`API Documentation`: http://zengine.readthedocs.org/en/latest/api-documentation.html
 
+Troubleshooting
+-------------------
+
+`Troubleshooting for Common Problems`_
+
+.. _`Troubleshooting for Common Problems`: http://zengine.readthedocs.org/en/latest/troubleshooting.html
 
 Support
 -------
