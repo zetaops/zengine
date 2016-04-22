@@ -13,7 +13,7 @@ from __future__ import division
 import importlib
 import traceback
 from io import BytesIO
-import os
+import os, sys
 from uuid import uuid4
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
@@ -42,6 +42,7 @@ DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
     'body': settings.MESSAGES['lane_change_message_body'],
 }
+
 
 # crud_view = CrudView()
 
@@ -83,7 +84,7 @@ class Current(object):
 
         self.task_data = {'cmd': None}
         self.session = {}
-        self.input = {}   # when we want to use engine functions independently,
+        self.input = {}  # when we want to use engine functions independently,
         self.output = {}  # we need to create a fake current object
         try:
             self.session = kwargs['session']
@@ -95,7 +96,6 @@ class Current(object):
                 self.session = self.request.env['session']
                 self.input = self.request.context['data']
                 self.output = self.request.context['result']
-
 
         self.user_id = self.session.get('user_id')
         self.role_id = self.session.get('role_id')
@@ -127,7 +127,6 @@ class Current(object):
         Returns: ClientQueue
         """
         return ClientQueue(self.user_id, self.session.key)
-
 
     def write_output(self, msg, json_msg=None):
         """
@@ -343,6 +342,7 @@ class ZEngine(object):
         wf_engine.run()
 
     """
+
     def __init__(self):
         self.use_compact_serializer = True
         # self.current = None
@@ -374,7 +374,7 @@ class ZEngine(object):
                     del task_data[k]
             if 'cmd' in task_data:
                 del task_data['cmd']
-            wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
+            wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data,}
             if self.current.lane_name:
                 self.current.pool[self.current.lane_name] = self.current.role.key
             wf_cache['pool'] = self.current.pool
@@ -473,7 +473,6 @@ class ZEngine(object):
         log.error(err_msg)
         raise RuntimeError(err_msg)
 
-
     def get_worfklow_spec(self):
         """
         Generates and caches the workflow spec package from
@@ -512,16 +511,18 @@ class ZEngine(object):
         self.check_for_authentication()
         self.check_for_permission()
         self.workflow = self.load_or_create_workflow()
-        log.debug("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
-                  "\tWF: %s (Possible) TASK:%s\n"
-                  "\tCMD:%s\n"
-                  "\tSUBCMD:%s" % (
-                      self.workflow.name,
-                      self.workflow.get_tasks(Task.READY),
-                      self.current.input.get('cmd'), self.current.input.get('subcmd')))
+        log_msg = ("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
+                   "\tWF: %s (Possible) TASK:%s\n"
+                   "\tCMD:%s\n"
+                   "\tSUBCMD:%s" % (
+                       self.workflow.name,
+                       self.workflow.get_tasks(Task.READY),
+                       self.current.input.get('cmd'), self.current.input.get('subcmd')))
+        log.debug(log_msg)
+        sys._zops_wf_state_log = log_msg
         self.current.workflow = self.workflow
 
-    def log_wf_state(self):
+    def generate_wf_state_log(self):
         """
         Logs the state of workflow and content of task_data.
         """
@@ -537,8 +538,13 @@ class ZEngine(object):
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
         output += "\n\tPOOL: %s" % self.current.pool
+        output += "\n\tLANE: %s" % self.current.lane_name
         output += "\n\tTOKEN: %s" % self.current.token
-        log.debug(output + "\n= = = = = =\n")
+        sys._zops_wf_state_log = output
+        return output
+
+    def log_wf_state(self):
+        log.debug(self.generate_wf_state_log() + "\n= = = = = =\n")
 
     def run(self):
         """
@@ -566,16 +572,16 @@ class ZEngine(object):
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
-                self.catch_lane_change()
+                self.catch_lane_change(for_what='sendoff')
         self.current.output['token'] = self.current.token
 
         # look for incoming ready task(s)
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current._update_task(task)
-            self.catch_lane_change()
+            self.catch_lane_change(for_what='notify')
             self.handle_wf_finalization()
 
-    def catch_lane_change(self):
+    def catch_lane_change(self, for_what=None):
         """
         trigger a lane_user_change signal if we switched to a new lane
         and new lane's user is different from current one
@@ -585,13 +591,11 @@ class ZEngine(object):
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
-                    if self.current.lane_auto_sendoff:
+                    if self.current.lane_auto_sendoff and for_what == 'sendoff':
                         self.current.sendoff_current_user()
-                    if self.current.lane_auto_invite:
+                    if self.current.lane_auto_invite and for_what == 'notify':
                         self.current.invite_other_parties(self._get_possible_lane_owners())
             self.current.old_lane = self.current.lane_name
-
-
 
     def parse_workflow_messages(self):
         """
@@ -616,8 +620,8 @@ class ZEngine(object):
         if 'client_message' in self.current.spec.data:
             m = self.current.spec.data['client_message']
             self.current.msg_box(title=m.get('title'),
-                                     msg=m.get('body'),
-                                     typ=m.get('type', 'info'))
+                                 msg=m.get('body'),
+                                 typ=m.get('type', 'info'))
 
     def _get_possible_lane_owners(self):
         if self.current.lane_owners:
@@ -627,7 +631,6 @@ class ZEngine(object):
             for perm in self.current.lane_permissions:
                 users.update(self.permission_model.objects.get(perm).get_permitted_users())
             return list(users)
-
 
     def run_activity(self):
         """
@@ -664,8 +667,6 @@ class ZEngine(object):
             class_method = None
         return getattr(module, class_name), class_name, class_method
 
-
-
     def _load_activity(self, activity):
         """
         Iterates trough the all enabled `~zengine.settings.ACTIVITY_MODULES_IMPORT_PATHS` to find the given path.
@@ -696,7 +697,8 @@ class ZEngine(object):
                                   "\n========================================================>\n\n"
                                   "%s" % (full_path, traceback.format_exc()))
                     assert index_no != number_of_paths - 1, errmsg.format(activity=activity,
-                                                                          paths='\n >>> '.join(set(fpths)),
+                                                                          paths='\n >>> '.join(
+                                                                              set(fpths)),
                                                                           errors='\n\n'.join(errors)
                                                                           )
                 except:
@@ -742,12 +744,12 @@ class ZEngine(object):
                 cond_result = eval(self.current.lane_relations, context)
             except:
                 log.exception("CONDITION EVAL ERROR : %s || %s" % (
-                self.current.lane_relations, context))
+                    self.current.lane_relations, context))
                 raise
             if not cond_result:
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
                 raise HTTPError(403, "You aren't qualified for this lane: %s" %
-                                      self.current.lane_relations)
+                                self.current.lane_relations)
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
@@ -764,7 +766,8 @@ class ZEngine(object):
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
         if (self.current.task_type not in PERM_REQ_TASK_TYPES or
-                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))): # FIXME:needs hardening
+                permission.startswith(
+                    tuple(settings.ANONYMOUS_WORKFLOWS))):  # FIXME:needs hardening
             return
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):

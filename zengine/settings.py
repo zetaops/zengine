@@ -174,7 +174,7 @@ MESSAGES = {
     'lane_change_invite_body': 'Some workflow reached a state that needs your action, '
                                 'please follow the link bellow',
     'lane_change_message_title': 'Thank you!',
-    'lane_change_message_body': 'You have completed your part on this workflow.'
+    'lane_change_message_body': 'You have completed your part on this workflow. '
                                 'Interested parties are notified to join and take over the job.',
 
 }

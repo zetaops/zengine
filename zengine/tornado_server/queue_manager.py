@@ -24,7 +24,7 @@ except:
 
 settings = type('settings', (object,), {
     'LOG_HANDLER': os.environ.get('LOG_HANDLER', 'file'),
-    'LOG_FILE': os.environ.get('TORNADO_LOG_FILE', './tornado.log'),
+    'LOG_FILE': os.environ.get('TORNADO_LOG_FILE', '~/tornado.log'),
     'LOG_LEVEL': os.environ.get('LOG_LEVEL', 'DEBUG'),
     'MQ_HOST': os.environ.get('MQ_HOST', 'localhost'),
     'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),

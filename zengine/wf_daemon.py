@@ -20,8 +20,12 @@ from zengine.lib.cache import Session, KeepAlive
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 import sys
+# receivers should be imported at right time, right place
+# they will not registered if not placed in a central location
+# but they can cause "cannot import settings" errors if imported too early
+from zengine.receivers import *
 
-
+sys._zops_wf_state_log = ''
 
 wf_engine = ZEngine()
 
@@ -131,13 +135,13 @@ class Worker(object):
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
-            output = {'cmd': 'error', 'error': e.message, "code": e.code}
+            output = {'cmd': 'error', 'error': sys._zops_wf_state_log + e.message, "code": e.code}
         except:
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
             err = traceback.format_exc()
-            output = {'error': err, "code": 500}
+            output = {'error': sys._zops_wf_state_log + err, "code": 500}
             log.info(traceback.format_exc())
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
