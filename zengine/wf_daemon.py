@@ -4,6 +4,7 @@ workflow worker daemon
 """
 import json
 import traceback
+from pprint import pformat
 
 import signal
 from time import sleep, time
@@ -74,23 +75,31 @@ class Worker(object):
             log.info(" Exiting")
             self.exit()
 
+    def _prepare_error_msg(self, msg):
+        return \
+            msg + '\n\n' + \
+            "INPUT DATA: %s\n\n" %  pformat(self.current.input) + \
+            "OUTPUT DATA: %s\n\n" %  pformat(self.current.output) + \
+               sys._zops_wf_state_log
+
     def _handle_view(self, session, data):
         login_required_msg = {'error': "Login required", "code": 401}
-        current = Current(session=session, input=data)
+        self.current = Current(session=session, input=data)
         if data['view'] == 'ping':
             still_alive = KeepAlive(sess_id=session.sess_id).update_or_expire_session()
             msg = {'msg': 'pong'}
             if not still_alive:
                 msg.update(login_required_msg)
             return msg
-        if not (current.is_auth or data['view'] in settings.ANONYMOUS_WORKFLOWS):
+        if not (self.current.is_auth or data['view'] in settings.ANONYMOUS_WORKFLOWS):
             return login_required_msg
         view = get_object_from_path(settings.VIEW_URLS[data['view']])
-        view(current)
-        return current.output
+        view(self.current)
+        return self.current.output
 
     def _handle_workflow(self, session, data):
         wf_engine.start_engine(session=session, input=data, workflow_name=data['wf'])
+        self.current = wf_engine.current
         wf_engine.run()
         if self.connection.is_closed:
             log.info("Connection is closed, re-opening...")
@@ -135,14 +144,14 @@ class Worker(object):
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
-            output = {'cmd': 'error', 'error': sys._zops_wf_state_log + e.message, "code": e.code}
+            output = {'cmd': 'error', 'error': self._prepare_error_msg(e.message), "code": e.code}
         except:
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
             err = traceback.format_exc()
-            output = {'error': sys._zops_wf_state_log + err, "code": 500}
-            log.info(traceback.format_exc())
+            output = {'error': self._prepare_error_msg(err), "code": 500}
+            log.info(err)
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
         log.info("OUTPUT for %s: %s" % (sessid, output))

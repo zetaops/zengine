@@ -168,7 +168,7 @@ class Cache(object):
 
     def remove_item(self, val):
         """
-        Removes given from the list.
+        Removes given item from the list.
 
         Args:
             val: Item
