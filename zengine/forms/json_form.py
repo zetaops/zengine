@@ -197,6 +197,10 @@ class JsonForm(ModelForm):
 
         for itm in self._serialize():
             item_props = {'type': itm['type'], 'title': itm['title']}
+
+            if not itm.get('value') and 'kwargs' in itm and 'value' in itm['kwargs']:
+                itm['value'] = itm['kwargs'].pop('value')
+
             result["model"][itm['name']] = itm['value'] or itm['default']
 
             if itm['type'] == 'model':
