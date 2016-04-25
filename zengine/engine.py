@@ -319,7 +319,8 @@ class WFCurrent(Current):
             elif filters[0]['field'] == 'object_id':
                 self.task_data['object_id'] = filters[0]['values'][0]
         except:
-            self.task_data['object_id'] = self.input.get('object_id')
+            if 'object_id' in self.input:
+                self.task_data['object_id'] = self.input.get('object_id')
 
 
 class ZEngine(object):
