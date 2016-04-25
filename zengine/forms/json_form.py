@@ -61,6 +61,7 @@ class JsonForm(ModelForm):
         self.processed_nodes = []
         super(JsonForm, self).__init__(*args, **kwargs)
         self._prepare_nodes()
+        self.process_form()
 
     def get_links(self, **kw):
         """ Fake method to emulate pyoko model API. """
@@ -82,9 +83,11 @@ class JsonForm(ModelForm):
         """ Fake method to emulate pyoko model API. """
         return False
 
-    def _prepare_fields(self):
-        if self._ordered_fields:
-            return
+    def process_form(self):
+        # if self._ordered_fields:
+        #     return
+        self.non_data_fields = []
+        self._ordered_fields = []
         _items = list(self.__class__.__dict__.items()) + list(self.__dict__.items())
         for key, val in _items:
             if isinstance(val, BaseField):

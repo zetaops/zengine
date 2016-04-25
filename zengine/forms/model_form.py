@@ -129,7 +129,7 @@ class ModelForm(object):
         # FIXME: investigate and integrate necessary security precautions on received data
         # ie: received keys should  be defined in the form
         # compare with output of self._serialize()
-        self._prepare_fields()
+        self.process_form()
         new_instance = self._model
         new_instance.key = self._model.key
         for key, val in data.items():
@@ -218,7 +218,7 @@ class ModelForm(object):
                   'type': 'boolean',
                   'value': True}]
         """
-        self._prepare_fields()
+        self.process_form()
         self.readable = readable
         result = []
         if self._config['fields']:
@@ -384,7 +384,7 @@ class ModelForm(object):
         else:
             return self._choices_cache.get(id(choices), self.convert_choices(choices))
 
-    def _prepare_fields(self):
+    def process_form(self):
         pass
 
     def _node_data(self, nodes, parent_name):

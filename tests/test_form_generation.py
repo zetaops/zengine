@@ -46,29 +46,22 @@ serialized_login_form = [
 class TestCase:
     cleaned_up = False
 
-    # @classmethod
-    # def clean(cls, force=False):
-    #     if force or not cls.cleaned_up:
-            # for model in [Student, ]:
-            #     model.objects._clear_bucket()
-            # sleep(2)
-            # cls.cleaned_up = True
-
-    # def test_modelform_serialize_simple(self):
-    #     self.clean()
-    #     student = Student()
-    #     student.set_data(clean_data)
-    #     student.save()
-    #     serialized_model = sorted(ModelForm(student)._serialize(), key=lambda d: d['name'])
-    #     # print("============================")
-    #     # pprint(serialized_model)
-    #     assert serialized_model[0]['name'] == 'AuthInfo'
-    #     assert len(serialized_model[0]['schema']) == 3
-    #     assert serialized_model[0]['value']['password'] == '123'
 
     def test_plain_form(self):
         serialized_model = sorted(LoginForm()._serialize(), key=lambda d: d['name'])
         assert serialized_model[0]['name'] == 'password'
+
+    def test_prefilled_form(self):
+        lf = LoginForm()
+        lf.foo = fields.String()
+        lf.process_form()
+        lf.username = 'test_user'
+        lf.foo = 'bar'
+        serialized_data = lf._serialize()
+        serialized_model = sorted(serialized_data, key=lambda d: d['name'])
+        assert serialized_model[1]['name'] == 'password'
+        assert serialized_model[2]['value'] == 'test_user'
+        assert serialized_model[0]['value'] == 'bar'
 
     def test_plain_form_deserialize(self):
         login_data = {'username': 'Samuel', 'password': 'seeice'}

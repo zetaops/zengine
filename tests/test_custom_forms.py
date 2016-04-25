@@ -22,8 +22,7 @@ class TestForm1(forms.JsonForm):
 
 def test_form_with_lisnode():
     tf = TestForm1()
-    # this should not be needed but for now...
-    tf._prepare_fields()
+    tf.process_form()
     tf.code = 'kod'
     tf.main_hid = 'MAIN_HID'
     tf.Foos(foo='foo', hid="HID")
