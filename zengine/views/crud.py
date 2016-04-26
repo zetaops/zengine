@@ -71,7 +71,7 @@ class CrudMeta(type):
         else:
             CrudMeta.registry[mcs.__name__] = mcs
             if 'Meta' not in attrs:
-                attrs['Meta'] = type('Meta', (object,), CrudMeta._meta.__dict__)
+                attrs['Meta'] = type('Meta', (object,), dict(CrudMeta._meta.__dict__))
             else:
                 for k, v in CrudMeta._meta.__dict__.items():
                     if k not in attrs['Meta'].__dict__:
@@ -94,31 +94,6 @@ class CrudMeta(type):
                 if method_name.endswith('_view'):
                     perms.append("%s.%s" % (kls_name, method_name))
         return perms
-
-
-def form_modifier(func):
-    """
-    Decorator for marking a method to work as a modifier for the form output.
-
-    Args:
-        func (function): a filter method that takes form's
-         serialized output as the sole argument and changes
-         it in place as required.
-
-    Note:
-        This is a workaround till we decide and implement a
-        better method for fine grained form customizations.
-
-    .. code-block:: python
-
-        @form_modifier
-        def foo(self, serialized_form):
-            if 'x' in serialized_form['schema']['properties']:
-                serialized_form['inline_edit'] = ['y', 'z']
-    """
-    # TODO: Implement a better method for form modifications.
-    func.form_modifier = True
-    return func
 
 
 def obj_filter(func):
@@ -290,7 +265,6 @@ class CrudView(BaseView):
     def __init__(self, current=None):
         self.FILTER_METHODS = []
         self.QUERY_METHODS = []
-        self.FORM_MODIFIERS = []
         self.VIEW_METHODS = {}
         super(CrudView, self).__init__(current)
 
@@ -310,54 +284,6 @@ class CrudView(BaseView):
                 'allow_search': self.Meta.allow_search and bool(self.object.Meta.search_fields),
             }
 
-    def _apply_form_modifiers(self, serialized_form):
-        """
-        This method will be called by self.form_out() method
-        with serialized form data.
-
-        Args:
-            serialized_form (dict): JSON serializable representation
-             of form data.
-
-        Note:
-            This is a workaround till we decide and implement a
-            better method for fine grained form customizations.
-        """
-        for field, prop in serialized_form['schema']['properties'].items():
-            # this adds default directives for building
-            # add and list views of linked models
-            if prop['type'] == 'model':
-                prop.update({
-                    'add_cmd': 'add_edit_form',
-                    'list_cmd': 'select_list',
-                    'wf': 'crud',
-                })
-            # overriding widget type of Permissions ListNode
-            if field == 'Permissions' or field == 'RestrictedPermissions':
-                prop['widget'] = 'filter_interface'
-
-        for method in self.FORM_MODIFIERS:
-            method(self, serialized_form)
-
-    # noinspection PyUnresolvedReferences
-    def form_out(self, _form=None):
-        """
-        Renders form. Applies form modifiers, then writes
-        result to response payload. If supplied, given form
-        object instance will be used instead of view's
-        default ObjectForm.
-
-        Args:
-             _form (:py:attr:`~zengine.forms.json_form.JsonForm`):
-              Form object to override `self.object_form`
-        """
-        _form = _form or self.object_form
-        self.output['forms'] = _form.serialize()
-        self.output['forms']['grouping'] = _form.Meta.grouping
-        self.output['forms']['constraints'] = _form.Meta.constraints
-        self._apply_form_modifiers(self.output['forms'])
-        self.set_client_cmd('form')
-
     def _prepare_decorated_methods(self):
         """
         Collects decorated methods into their related lists.
@@ -369,8 +295,6 @@ class CrudView(BaseView):
         for name, func in items:
             if hasattr(func, 'view_method'):
                 self.VIEW_METHODS[name] = func
-            elif hasattr(func, 'form_modifier'):
-                self.FORM_MODIFIERS.append(func)
             elif hasattr(func, 'filter_method'):
                 self.FILTER_METHODS.append(func)
             elif hasattr(func, 'query_method'):
@@ -425,11 +349,15 @@ class CrudView(BaseView):
         Returns:
             :py:attr:`~pyoko.models.Model` class.
         """
-        model = self.Meta.model if self.Meta.model else self.current.input['model']
-        if isinstance(model, Model):
-            return model
-        else:
-            return model_registry.get_model(model)
+        try:
+            model = self.Meta.model if self.Meta.model else self.current.input['model']
+            if isinstance(model, Model):
+                return model
+            else:
+                return model_registry.get_model(model)
+        except:
+            log.debug('No "model" given for CrudView')
+            return None
 
     def create_initial_object(self):
         """
@@ -450,21 +378,24 @@ class CrudView(BaseView):
         then it will be retrieved from DB and assigned to ``self.object``.
         """
         self.model_class = self.get_model_class()
-        object_id = self.current.task_data.get('object_id')
-        if not object_id and 'form' in self.input:
-            object_id = self.input['form'].pop('object_key', None)
-        if object_id and object_id != self.current.task_data.get('deleted_obj'):
-            try:
-                self.object = self.model_class(self.current).objects.get(object_id)
-                if self.object.deleted:
-                    raise HTTPNotFound()
-            except:
-                raise
-        elif 'added_obj' in self.current.task_data:
-            self.object = self.model_class(self.current).objects.get(
-                    self.current.task_data['added_obj'])
+        if self.model_class:
+            object_id = self.current.task_data.get('object_id')
+            if not object_id and 'form' in self.input:
+                object_id = self.input['form'].pop('object_key', None)
+            if object_id and object_id != self.current.task_data.get('deleted_obj'):
+                try:
+                    self.object = self.model_class(self.current).objects.get(object_id)
+                    if self.object.deleted:
+                        raise HTTPNotFound()
+                except:
+                    raise
+            elif 'added_obj' in self.current.task_data:
+                self.object = self.model_class(self.current).objects.get(
+                        self.current.task_data['added_obj'])
+            else:
+                self.object = self.model_class(self.current)
         else:
-            self.object = self.model_class(self.current)
+            self.object = type('FakeModel', (Model,), {})()
 
     def get_selected_objects(self):
         """

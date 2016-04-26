@@ -16,6 +16,7 @@ class BaseView(object):
     """
 
     def __init__(self, current=None):
+        self.object_form = None
         self.client_cmd = set()
         if current:
             self.set_current(current)
@@ -39,6 +40,57 @@ class BaseView(object):
         else:
             self.next_cmd = None
 
+    def _patch_form(self, serialized_form):
+        """
+        This method will be called by self.form_out() method
+        with serialized form data.
+
+        Args:
+            serialized_form (dict): JSON serializable representation
+             of form data.
+
+        Note:
+            This is a workaround till we decide and implement a
+            better method for fine grained form customizations.
+        """
+        # since we dont have a method to modify properties of form that generated from models
+        # I'm using an ugly workaround for now
+        try:
+            serialized_form['schema']['properties']['Permissions']['widget'] = 'filter_interface'
+        except KeyError:
+            pass
+        try:
+            serialized_form['schema']['properties']['RestrictedPermissions'][
+                'widget'] = 'filter_interface'
+        except KeyError:
+            pass
+
+    def _add_meta_props(self, _form):
+        if hasattr(_form, 'META_TO_FORM_META'):
+            self.output['meta'] = self.output.get('meta', {})
+            for itm in _form.META_TO_FORM_META:
+                if itm in _form.Meta.__dict__:
+                    self.output['meta'][itm] = _form.Meta.__dict__[itm]
+
+    def form_out(self, _form=None):
+        """
+        Renders form. Applies form modifiers, then writes
+        result to response payload. If supplied, given form
+        object instance will be used instead of view's
+        default ObjectForm.
+
+        Args:
+             _form (:py:attr:`~zengine.forms.json_form.JsonForm`):
+              Form object to override `self.object_form`
+        """
+        _form = _form or self.object_form
+        self.output['forms'] = _form.serialize()
+        self._add_meta_props(_form)
+        self.output['forms']['grouping'] = _form.Meta.grouping
+        self.output['forms']['constraints'] = _form.Meta.constraints
+        self._patch_form(self.output['forms'])
+        self.set_client_cmd('form')
+
     def reload(self):
         """
         Generic view for reloading client
@@ -60,7 +112,6 @@ class BaseView(object):
         """
         self.client_cmd.update(args)
         self.output['client_cmd'] = list(self.client_cmd)
-
 
 
 class SimpleView(BaseView):

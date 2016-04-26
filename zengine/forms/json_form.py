@@ -48,6 +48,13 @@ class JsonForm(ModelForm):
 
     """
 
+    # properties that will be directly transferred to serialized forms root
+    META_TO_FORM_ROOT = ['inline_edit',]
+    META_TO_FORM_META = ['translate_widget',
+                         'allow_selection',
+                         'allow_add_listnode',
+                         'allow_actions']
+
     def __init__(self, *args, **kwargs):
         self.context = kwargs.get('current')
         # Fake method to emulate pyoko model API.
@@ -190,6 +197,9 @@ class JsonForm(ModelForm):
             ],
             "model": {}
         }
+        for itm in self.META_TO_FORM_ROOT:
+            if itm in self.Meta.__dict__:
+                result[itm] = self.Meta.__dict__[itm]
 
         if self._model.is_in_db():
             result["model"]['object_key'] = self._model.key
@@ -200,6 +210,9 @@ class JsonForm(ModelForm):
 
             if not itm.get('value') and 'kwargs' in itm and 'value' in itm['kwargs']:
                 itm['value'] = itm['kwargs'].pop('value')
+
+            if 'kwargs' in itm and 'widget' in itm['kwargs']:
+                item_props['widget'] = itm['kwargs'].pop('widget')
 
             result["model"][itm['name']] = itm['value'] or itm['default']
 
@@ -221,7 +234,16 @@ class JsonForm(ModelForm):
             if 'schema' in itm:
                 item_props['schema'] = itm['schema']
 
+            # this adds default directives for building
+            # add and list views of linked models
+            if item_props['type'] == 'model':
+                item_props.update({
+                    'add_cmd': 'add_edit_form',
+                    'list_cmd': 'select_list',
+                    'wf': 'crud',
+                })
             result["schema"]["properties"][itm['name']] = item_props
+
 
             if itm['required']:
                 result["schema"]["required"].append(itm['name'])

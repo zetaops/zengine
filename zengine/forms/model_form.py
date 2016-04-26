@@ -387,6 +387,17 @@ class ModelForm(object):
     def process_form(self):
         pass
 
+    def set_choices_of(self, field, choices):
+        """
+        Can be used to dynamically set/modify choices of fields.
+
+        Args:
+            field str: Name of field.
+            choices tuple: (('name', 'value'), ('name2', 'value2'),...)
+        """
+
+        self._fields[field].choices = choices
+
     def _node_data(self, nodes, parent_name):
         results = []
         for real_node in nodes:

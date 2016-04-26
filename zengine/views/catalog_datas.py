@@ -10,7 +10,7 @@ __author__ = 'evren kutar'
 
 from pyoko.db.connection import client
 from pyoko import Model, field, ListNode
-from zengine.views.crud import CrudView, form_modifier
+from zengine.views.crud import CrudView
 from zengine import forms
 from zengine.forms import fields
 from falcon import HTTPBadRequest
@@ -34,11 +34,19 @@ class CatalogEditForm(forms.JsonForm):
     Generates Form object with ListNode to add and edit catalog data
     ListNode used for inline edit items on ui.
     """
+
+    class Meta:
+        inline_edit = ['catalog_key', 'tr', 'en']
+        # we do NOT want checkboxes on right of the ui table view
+        allow_selection = False
+        # set meta translate_widget to True to use translate view for ui
+        translate_widget = True
+
     save = fields.Button("Save", cmd="save_catalog", flow="start")
     cancel = fields.Button("Cancel", cmd="cancel", flow="start")
 
     class CatalogDatas(ListNode):
-        catalog_key = fields.String("")
+        catalog_key = fields.String()
         tr = fields.String("Türkçe")
         en = fields.String("English")
 
@@ -50,15 +58,14 @@ class CatalogDataView(CrudView):
     """
     Workflow class of catalog add/edit screens
     """
-    class Meta:
-        model = 'User'
 
     def list_catalogs(self):
         """
         Lists existing catalogs respect to ui view template format
         """
-        self.fixtures = [{"value": i, "name": i} for i in fixture_bucket.get_keys()]
-        self.form_out(CatalogSelectForm(current=self.current))
+        _form = CatalogSelectForm(current=self.current)
+        _form.set_choices_of('catalog', [(i, i) for i in fixture_bucket.get_keys()])
+        self.form_out(_form)
 
     def get_catalog(self):
         """
@@ -90,11 +97,6 @@ class CatalogDataView(CrudView):
             catalog_edit_form.CatalogDatas(catalog_key="0", en='', tr='')
 
         self.form_out(catalog_edit_form)
-        # we do NOT want checkboxes on right of the ui table view
-        self.output["meta"]["allow_selection"] = False
-
-        # set meta translate_widget to True to use translate view for ui
-        self.output["meta"]["translate_widget"] = True
 
         # schema key for get back what key will be saved, used in save_catalog form
         self.output["object_key"] = self.input['form']['catalog']
@@ -116,19 +118,9 @@ class CatalogDataView(CrudView):
                 newobj.store()
 
                 # notify user by passing notify in output object
-                self.output["notify"] = "catalog: %s successfully updated." % self.input["object_key"]
+                self.output["notify"] = "catalog: %s successfully updated." % self.input[
+                    "object_key"]
             except:
                 raise HTTPBadRequest("Form object could not be saved")
         if self.input["cmd"] == 'cancel':
             self.output["notify"] = "catalog: %s canceled." % self.input["object_key"]
-
-    @form_modifier
-    def change_form_elements(self, serialized_form):
-        """
-        This function edits form elements as can be understood from the name of its decorator
-        :param serialized_form:
-        """
-        if 'catalog' in serialized_form['schema']['properties']:
-            serialized_form['schema']['properties']['catalog']['titleMap'] = self.fixtures
-        if 'CatalogDatas' in serialized_form['schema']['properties']:
-            serialized_form['inline_edit'] = ['catalog_key', 'tr', 'en']
