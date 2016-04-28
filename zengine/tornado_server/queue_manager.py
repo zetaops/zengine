@@ -210,7 +210,8 @@ class QueueManager(object):
 
         self.connection.channel(_on_output_channel_creation)
 
-    def redirect_incoming_message(self, sess_id, message):
+    def redirect_incoming_message(self, sess_id, message, request):
+        message = message[:-1] + ',"_zops_remote_ip":"%s"}' % request.remote_ip
         self.in_channel.basic_publish(exchange='tornado_input',
                                       routing_key=sess_id,
                                       body=message)

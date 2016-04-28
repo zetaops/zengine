@@ -96,7 +96,7 @@ class TestClient(Worker):
 
         data['path'] = self.path.replace('/', '')
 
-        data = {'data': data}
+        data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
         data = json.dumps(data)
         fake_method = type('FakeMethod', (object,), {'routing_key': self.sess_id})
         self.handle_message(None, fake_method, None, data)

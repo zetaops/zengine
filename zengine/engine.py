@@ -84,6 +84,7 @@ class Current(object):
 
         self.task_data = {'cmd': None}
         self.session = {}
+        self.headers = {}
         self.input = {}  # when we want to use engine functions independently,
         self.output = {}  # we need to create a fake current object
         try:
@@ -97,6 +98,7 @@ class Current(object):
                 self.input = self.request.context['data']
                 self.output = self.request.context['result']
 
+        self.remote_addr = None
         self.user_id = self.session.get('user_id')
         self.role_id = self.session.get('role_id')
 

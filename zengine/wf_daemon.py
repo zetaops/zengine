@@ -82,9 +82,10 @@ class Worker(object):
             "OUTPUT DATA: %s\n\n" %  pformat(self.current.output) + \
                sys._zops_wf_state_log
 
-    def _handle_view(self, session, data):
+    def _handle_view(self, session, data, headers):
         login_required_msg = {'error': "Login required", "code": 401}
         self.current = Current(session=session, input=data)
+        self.current.headers = headers
         if data['view'] == 'ping':
             still_alive = KeepAlive(sess_id=session.sess_id).update_or_expire_session()
             msg = {'msg': 'pong'}
@@ -97,8 +98,9 @@ class Worker(object):
         view(self.current)
         return self.current.output
 
-    def _handle_workflow(self, session, data):
+    def _handle_workflow(self, session, data, headers):
         wf_engine.start_engine(session=session, input=data, workflow_name=data['wf'])
+        wf_engine.current.headers = headers
         self.current = wf_engine.current
         wf_engine.run()
         if self.connection.is_closed:
@@ -135,11 +137,12 @@ class Worker(object):
             else:
                 session = Session(sessid)
 
+            headers = {'remote_ip': input['_zops_remote_ip']}
 
             if 'wf' in data:
-                output = self._handle_workflow(session, data)
+                output = self._handle_workflow(session, data, headers)
             else:
-                output = self._handle_view(session, data)
+                output = self._handle_view(session, data, headers)
         except HTTPError as e:
             import sys
             if hasattr(sys, '_called_from_test'):
