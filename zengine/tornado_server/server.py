@@ -99,7 +99,7 @@ class HttpHandler(web.RequestHandler):
             else:
                 sess_id = self.get_cookie(COOKIE_NAME)
             h_sess_id = "HTTP_%s" % sess_id
-            input_data = {'data': input_data}
+            input_data = {'data': input_data, '_zops_remote_ip': self.request.remote_ip}
             log.info("New Request for %s: %s" % (sess_id, input_data))
 
 
