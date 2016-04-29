@@ -18,7 +18,7 @@ from zengine.lib.cache import UserSessionID
 BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     host=settings.MQ_HOST,
     port=settings.MQ_PORT,
-    virtual_host='/',
+    virtual_host=settings.MQ_VHOST,
     heartbeat_interval=0,
     credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
 )

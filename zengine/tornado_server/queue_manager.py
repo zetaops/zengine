@@ -30,13 +30,14 @@ settings = type('settings', (object,), {
     'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),
     'MQ_USER': os.environ.get('MQ_USER', 'guest'),
     'MQ_PASS': os.environ.get('MQ_PASS', 'guest'),
+    'MQ_VHOST': os.environ.get('MQ_VHOST', '/'),
 })
 log = get_logger(settings)
 
 BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     host=settings.MQ_HOST,
     port=settings.MQ_PORT,
-    virtual_host='/',
+    virtual_host=settings.MQ_VHOST,
     heartbeat_interval=0,
     credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
 )
@@ -44,7 +45,7 @@ BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     host=settings.MQ_HOST,
     port=settings.MQ_PORT,
-    virtual_host='/',
+    virtual_host=settings.MQ_VHOST,
     credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
 )
 
