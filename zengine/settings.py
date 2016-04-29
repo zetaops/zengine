@@ -46,9 +46,10 @@ ROLE_MODEL = 'zengine.models.Role'
 
 
 MQ_HOST = os.getenv('MQ_HOST', 'localhost')
-MQ_PORT = int(os.getenv('MQ_HOST', '5672'))
+MQ_PORT = int(os.getenv('MQ_PORT', '5672'))
 MQ_USER = os.getenv('MQ_USER', 'guest')
 MQ_PASS = os.getenv('MQ_PASS', 'guest')
+MQ_VHOST = os.getenv('MQ_VHOST', '/')
 
 #: Logging Settings
 #:
