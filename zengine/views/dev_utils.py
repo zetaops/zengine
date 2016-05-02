@@ -89,7 +89,7 @@ class SessionFixture(object):
             for k in set(sys.PYOKO_LOGS[mdl_name]):
                 if k not in sys.PYOKO_LOGS['new']:
                     out.append("{}/|{}/|{}".format(
-                        bucket_name, k, mdl.objects.data().get(k).data))
+                        bucket_name, k, mdl.objects.data().get(k)[0]))
                     # print(str(mdl.objects.get(k).name))
             sys.PYOKO_LOGS[mdl_name] = []
             mdl.objects.bucket.set_decoder('application/json', binary_json_decoder)
