@@ -124,7 +124,6 @@ class BaseTestCase:
     """
     client = None
 
-
     def setup_method(self, method):
         """
         Creates a new user and Role with all Permissions.
@@ -138,7 +137,8 @@ class BaseTestCase:
                 fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
                 if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
                     sys.LOADED_FIXTURES.append(fixture_guess)
-                    FlushDB(model='all').run()
+                    FlushDB(model='all',
+                            exclude='Unit,Permission,User,AbstractRole,Role').run()
                     LoadData(path=fixture_guess).run()
                     sleep(2)
             # from zengine.models import User, Permission, Role
