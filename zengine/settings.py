@@ -8,7 +8,7 @@ Zengine Default Project Settings
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-
+from pyoko.settings import *
 import os.path
 
 
