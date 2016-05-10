@@ -76,11 +76,14 @@ class Worker(object):
             self.exit()
 
     def _prepare_error_msg(self, msg):
-        return \
-            msg + '\n\n' + \
-            "INPUT DATA: %s\n\n" %  pformat(self.current.input) + \
-            "OUTPUT DATA: %s\n\n" %  pformat(self.current.output) + \
-               sys._zops_wf_state_log
+        try:
+            return \
+                msg + '\n\n' + \
+                "INPUT DATA: %s\n\n" %  pformat(self.current.input) + \
+                "OUTPUT DATA: %s\n\n" %  pformat(self.current.output) + \
+                   sys._zops_wf_state_log
+        except:
+            return msg
 
     def _handle_view(self, session, data, headers):
         login_required_msg = {'error': "Login required", "code": 401}
