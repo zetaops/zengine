@@ -74,7 +74,8 @@ class User(Model):
         Returns:
             List of Permission objects.
         """
-        return (p.permission.code for p in self.Permissions)
+        users_primary_role = self.role_set[0]
+        return users_primary_role.get_permissions()
 
     def get_role(self, role_id):
         """
