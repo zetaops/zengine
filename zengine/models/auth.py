@@ -11,7 +11,6 @@ from pyoko import Model, field, ListNode
 from passlib.hash import pbkdf2_sha512
 
 
-
 class Permission(Model):
     """
     Permission model
@@ -22,6 +21,24 @@ class Permission(Model):
 
     def __unicode__(self):
         return "Permission %s" % self.name
+
+    def get_permitted_users(self):
+        """
+        Get users which has this permission
+
+        Returns:
+            User list
+        """
+        return [r.role.user for r in self.role_set]
+
+    def get_permitted_roles(self):
+        """
+        Get roles which has this permission
+
+        Returns:
+            Role list
+        """
+        return [rset.role for rset in self.role_set]
 
 
 class User(Model):
@@ -74,7 +91,7 @@ class User(Model):
         Returns:
             List of Permission objects.
         """
-        users_primary_role = self.role_set[0]
+        users_primary_role = self.role_set[0].role
         return users_primary_role.get_permissions()
 
     def get_role(self, role_id):
@@ -146,8 +163,8 @@ class Role(Model):
         """
         if not save:
             return ["%s | %s" % (p.name, p.code) for p in
-                    Permission.objects.filter(code='*' + code + '*')]
-        for p in Permission.objects.filter(code='*' + code + '*'):
+                    Permission.objects.filter(code__contains=code)]
+        for p in Permission.objects.filter(code__contains=code):
             if p not in self.Permissions:
                 self.Permissions(permission=p)
         if p:

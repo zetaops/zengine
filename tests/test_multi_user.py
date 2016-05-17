@@ -19,7 +19,7 @@ from zengine.signals import lane_user_change
 
 class TestCase(BaseTestCase):
     def test_multi_user_mono(self):
-        self.prepare_client('/multi_user/', username='test_user')
+        self.prepare_client('/multi_user2/', username='test_user')
         resp = self.client.post()
         resp.raw()
         resp = self.client.post()
