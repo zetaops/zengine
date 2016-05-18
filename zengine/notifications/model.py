@@ -13,10 +13,22 @@ from pyoko.lib.utils import get_object_from_path
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 NOTIFY_MSG_TYPES = (
-    (1, "Info"), (11, "Error"), (111, "Success"), (2, "User Message"), (3, "Broadcast Message")
+    (1, "Info"),
+    (11, "Error"),
+    (111, "Success"),
+    (2, "User Message"),
+    (3, "Broadcast Message")
 )
 
 
+NOTIFICATION_STATUS = (
+    (1, "Created"),
+    (11, "Transmitted"),
+    (22, "Seen"),
+    (33, "Read"),
+    (44, "Archived"),
+
+)
 
 class NotificationMessage(Model):
     """
@@ -24,6 +36,7 @@ class NotificationMessage(Model):
     """
 
     typ = field.Integer("Message Type", choices=NOTIFY_MSG_TYPES)
+    status = field.Integer("Status", choices=NOTIFICATION_STATUS)
     msg_title = field.String("Title")
     body = field.String("Body")
     url = field.String("URL")
@@ -31,5 +44,6 @@ class NotificationMessage(Model):
     receiver = UserModel(reverse_name='received_messages')
 
     def __unicode__(self):
-        return "Msg %s" % self.title
+        content = self.msg_title or self.body
+        return "%s%s" % (content[:30], '...' if len(content) > 30 else '')
 
