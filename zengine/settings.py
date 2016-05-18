@@ -11,39 +11,30 @@ Zengine Default Project Settings
 from pyoko.settings import *
 import os.path
 
-
 #: Default lang
 #: Multi-language support not implemented yet.
 DEFAULT_LANG = 'en'
 
-
 #: Project base
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-
 
 #: Path of the activity modules which will be invoked by workflow tasks
 ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.views']
 
-
 #: Absolute path to the workflow packages
 WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'diagrams')]
-
 
 #: Authentication backend
 AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
-
 #: Permissions model
 PERMISSION_MODEL = 'zengine.models.Permission'
-
 
 #: User model
 USER_MODEL = 'zengine.models.User'
 
-
 #: Role model
 ROLE_MODEL = 'zengine.models.Role'
-
 
 MQ_HOST = os.getenv('MQ_HOST', 'localhost')
 MQ_PORT = int(os.getenv('MQ_PORT', '5672'))
@@ -61,22 +52,17 @@ LOG_HANDLER = os.environ.get('LOG_HANDLER', 'file')
 #: Logging Level. Can be one INFO or DEBUG.
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG')
 
-
 #: Log file path.
 LOG_FILE = os.environ.get('LOG_FILE', './zengine.log')
-
 
 #: Default cache expire time in seconds
 DEFAULT_CACHE_EXPIRE_TIME = 99999999
 
-
 #: Workflows that dosen't require logged in user.
 ANONYMOUS_WORKFLOWS = ['login', 'reset_cache', 'login.']
 
-
 #: Currently only affects logging level
 DEBUG = bool(int(os.environ.get('DEBUG', 0)))
-
 
 #: Pyoko (DB) Settings
 #:
@@ -86,14 +72,11 @@ DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
 #: RIAK Server address
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
 
-
 #: Riak access protocol. Can be 'http' or 'pbc'
 RIAK_PROTOCOL = os.environ.get('RIAK_PROTOCOL', 'http')
 
-
 #: Riak port. By default 8098 for http, 8087 for pbc.
 RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
-
 
 #: Redis address and port.
 REDIS_SERVER = os.environ.get('REDIS_SERVER', '127.0.0.1:6379')
@@ -104,13 +87,11 @@ REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD', None)
 #: Riak port. By default 8098 for http, 8087 for pbc.
 RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
 
-
 #: Allowed origins for serving client from a different host.
 ALLOWED_ORIGINS = [
                       'http://127.0.0.1:8080',
                       'http://127.0.0.1:9001',
                   ] + os.environ.get('ALLOWED_ORIGINS', '').split(',')
-
 
 #: Enabled middlewares.
 ENABLED_MIDDLEWARES = [
@@ -118,7 +99,6 @@ ENABLED_MIDDLEWARES = [
     'zengine.middlewares.RequireJSON',
     'zengine.middlewares.JSONTranslator',
 ]
-
 
 #: Beaker session options.
 SESSION_OPTIONS = {
@@ -143,8 +123,6 @@ if DEBUG:
         'db_stats': 'zengine.views.dev_utils.DBStats',
         'reset_cache': 'zengine.views.dev_utils.ResetCache'
     })
-
-
 
 #: Relation focused CRUD menus with category support.
 #:
@@ -173,46 +151,40 @@ QUICK_MENU = []
 MESSAGES = {
     'lane_change_invite_title': 'System needs you!',
     'lane_change_invite_body': 'Some workflow reached a state that needs your action, '
-                                'please follow the link bellow',
+                               'please follow the link bellow',
     'lane_change_message_title': 'Thank you!',
     'lane_change_message_body': 'You have completed your part on this workflow. '
                                 'Interested parties are notified to join and take over the job.',
 
 }
 
-
 #: A manager object for DB stored catalog data.
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
-
 
 #: Default category for un-categorized workflows.
 DEFAULT_WF_CATEGORY_NAME = 'General Workflows'
 
-
 #: Enable auto generated CRUD menu for all models.
 ENABLE_SIMPLE_CRUD_MENU = True
-
 
 #: Category name for auto generated CRUD items.
 DEFAULT_OBJECT_CATEGORY_NAME = 'Object Tasks'
 
-
 #: Default date format
 DATE_DEFAULT_FORMAT = "%d.%m.%Y"
 
-
 #: Default datetime format
 DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
-
 
 #: Permission provider.
 #: UpdatePermissions command uses this object to get available permmissions
 PERMISSION_PROVIDER = 'zengine.auth.permissions.get_all_permissions'
 
-
 #: Max number of items for non-filtered dropdown boxes.
 MAX_NUM_DROPDOWN_LINKED_MODELS = 20
 
-
 #: Internal Server Error message description
 ERROR_MESSAGE_500 = 'Internal Server Error'
+
+#: These models will not flushed when running tests
+TEST_FLUSHING_EXCLUDES = 'Permission,User,Role'

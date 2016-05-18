@@ -3,6 +3,8 @@ from uuid import uuid4
 from time import sleep
 import json
 import os
+
+from pyoko.conf import settings
 from pyoko.manage import FlushDB, LoadData
 from pyoko.lib.utils import pprnt
 from pprint import pprint
@@ -131,26 +133,24 @@ class BaseTestCase:
 
         if not '--ignore=fixture' in sys.argv:
             if hasattr(self, 'fixture'):
+                print("REPORT:: Running test cases own fixture() method")
                 self.fixture()
                 sleep(2)
+
             else:
                 fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
                 if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
                     sys.LOADED_FIXTURES.append(fixture_guess)
                     FlushDB(model='all',
-                            exclude='Unit,Permission,User,AbstractRole,Role').run()
-                    LoadData(path=fixture_guess).run()
+                            exclude=settings.TEST_FLUSHING_EXCLUDES).run()
+                    print("REPORT:: Test fixture will be loaded: %s" % fixture_guess)
+                    LoadData(path=fixture_guess, update=True).run()
                     sleep(2)
-            # from zengine.models import User, Permission, Role
-            # cls.cleanup()
-            # cls.client.user, new = User(super_context).objects.get_or_create({"password": user_pass,
-            #                                                                   "superuser": True},
-            #                                                                  username=username)
-            # if new:
-            #     Role(super_context, user=cls.client.user).save()
-            #     for perm in Permission(super_context).objects.raw("*:*"):
-            #         cls.client.user.Permissions(permission=perm)
-            #     cls.client.user.save()
+                else:
+                    print("REPORT:: Test case doen not have a fixture file like %s" % fixture_guess)
+
+        else:
+            print("REPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
 
     @classmethod
     def prepare_client(cls, path, reset=False, user=None, login=None, token='', username=None):

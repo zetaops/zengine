@@ -56,8 +56,8 @@ class Notify(Cache, ClientQueue):
     def set_message(self, title, msg, typ, url=None, sender=None):
         message = {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex}
         if sender and isinstance(sender, six.string_types):
-            sender = NotificationMessage.sender.__class__(key=sender)
-        receiver = NotificationMessage.receiver.__class__(key=self.user_id)
+            sender = NotificationMessage.sender.objects.get(sender)
+        receiver = NotificationMessage.receiver.objects.get(self.user_id)
         NotificationMessage(typ=typ, msg_title=title, body=msg, url=url,
                             sender=sender, receiver=receiver).save()
         if KeepAlive(user_id=self.user_id).is_alive():
