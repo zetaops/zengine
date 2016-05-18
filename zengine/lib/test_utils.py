@@ -193,4 +193,5 @@ class BaseTestCase:
         assert all([(field in req_fields) for field in ('username', 'password')])
         resp = self.client.post(username=self.client.username or self.client.user.username,
                                 password="123", cmd="do")
-        # assert resp.json['msg'] == 'Success'
+        resp.raw()
+        assert resp.json['cmd'] == 'upgrade'

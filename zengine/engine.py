@@ -717,7 +717,7 @@ class ZEngine(object):
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
             self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
-            raise HTTPError(401, "Login required")
+            raise HTTPError(401, "Login required for %s" % self.current.workflow_name)
 
     def check_for_lane_permission(self):
         """
