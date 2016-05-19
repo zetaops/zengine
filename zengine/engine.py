@@ -216,6 +216,7 @@ class WFCurrent(Current):
         self.task_type = ''
         self.task = None
         self.pool = {}
+        self.flow_enabled = True
         self.task_name = ''
         self.activity = ''
         self.lane_permissions = []
@@ -564,9 +565,11 @@ class ZEngine(object):
         """
         # FIXME: raise if first task after line change isn't a UserTask
         # actually this check should be done at parser
-        while (self.current.task_type != 'UserTask' and
-                   not self.current.task_type.startswith('End')):
+        while (self.current.flow_enabled and
+                       self.current.task_type != 'UserTask' and not
+        self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
+                self.current.old_lane = self.current.lane_name
                 self.current._update_task(task)
                 self.check_for_permission()
                 self.check_for_lane_permission()
@@ -575,16 +578,16 @@ class ZEngine(object):
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
-                self.catch_lane_change(for_what='sendoff')
+
         self.current.output['token'] = self.current.token
 
         # look for incoming ready task(s)
         for task in self.workflow.get_tasks(state=Task.READY):
             self.current._update_task(task)
-            self.catch_lane_change(for_what='notify')
+            self.catch_lane_change()
             self.handle_wf_finalization()
 
-    def catch_lane_change(self, for_what=None):
+    def catch_lane_change(self):
         """
         trigger a lane_user_change signal if we switched to a new lane
         and new lane's user is different from current one
@@ -594,9 +597,9 @@ class ZEngine(object):
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
-                    if self.current.lane_auto_sendoff and for_what == 'sendoff':
-                        self.current.sendoff_current_user()
-                    if self.current.lane_auto_invite and for_what == 'notify':
+                    self.current.sendoff_current_user()
+                    self.current.flow_enabled = False
+                    if self.current.lane_auto_invite:
                         self.current.invite_other_parties(self._get_possible_lane_owners())
             self.current.old_lane = self.current.lane_name
 
@@ -780,5 +783,6 @@ class ZEngine(object):
         """
         Removes the ``token`` key from ``current.output`` if WF is over.
         """
-        if self.current.task_type.startswith('End') and 'token' in self.current.output:
+        if ((self.current.flow_enabled or self.current.task_type.startswith('End')) and
+                    'token' in self.current.output):
             del self.current.output['token']

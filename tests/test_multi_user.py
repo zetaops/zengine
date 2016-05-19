@@ -22,10 +22,10 @@ class TestCase(BaseTestCase):
         self.prepare_client('/multi_user2/', username='test_user')
         resp = self.client.post()
         resp.raw()
-        resp = self.client.post()
-        resp.raw()
-        resp = self.client.post()
-        resp.raw()
+        # resp = self.client.post()
+        # resp.raw()
+        # resp = self.client.post()
+        # resp.raw()
 
     @classmethod
     def create_wrong_user(cls):
