@@ -10,22 +10,29 @@ from time import sleep
 import falcon
 import pytest
 
+from pyoko.conf import settings
 from pyoko.model import super_context
 from zengine.lib.test_utils import BaseTestCase, user_pass
 from zengine.models import User, Role
+from zengine.notifications.model import NotificationMessage
 from zengine.signals import lane_user_change
 
 
 
 class TestCase(BaseTestCase):
     def test_multi_user_mono(self):
-        self.prepare_client('/multi_user2/', username='test_user')
+        test_user = User.objects.get(username='test_user')
+        self.prepare_client('/multi_user2/', user=test_user)
+        resp = self.client.post()
+        assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
+        test_user2 = User.objects.get(username='test_user2')
+        msg = NotificationMessage.objects.filter(receiver=test_user2)[0]
+        token = msg.url.split('/')[-1]
+        self.prepare_client('/multi_user2/', user=test_user2, token=token)
         resp = self.client.post()
         resp.raw()
-        # resp = self.client.post()
-        # resp.raw()
-        # resp = self.client.post()
-        # resp.raw()
+        resp = self.client.post()
+        resp.raw()
 
     @classmethod
     def create_wrong_user(cls):

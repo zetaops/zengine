@@ -75,6 +75,7 @@ class Login(SimpleView):
                         notify.old_to_new_queue(old_sess_id)
                     self.current.output['cmd'] = 'upgrade'
             except:
+                raise
                 self.current.log.exception("Wrong username or another error occurred")
             self.current.task_data['login_successful'] = False
             if self.current.output.get('cmd') != 'upgrade':

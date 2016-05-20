@@ -238,6 +238,9 @@ class WFCurrent(Current):
         # log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
         self.set_client_cmds()
 
+    def get_wf_link(self):
+        return "#cwf/%s/%s" % (self.workflow_name, self.token)
+
     def sendoff_current_user(self):
         """
         Tell current user that s/he finished it's job for now.
@@ -259,8 +262,8 @@ class WFCurrent(Current):
     def _set_lane_data(self):
         # TODO: Cache lane_data in process
         if 'lane_data' in self.spec.data:
-            self.lane_name = self.spec.lane
             lane_data = self.spec.data['lane_data']
+            self.lane_name = lane_data['name']
             if 'permissions' in lane_data:
                 self.lane_permissions = lane_data['permissions'].split(',')
             if 'relations' in lane_data:
@@ -270,12 +273,6 @@ class WFCurrent(Current):
             self.lane_auto_sendoff = 'False' not in lane_data.get('auto_sendoff', '')
             self.lane_auto_invite = 'False' not in lane_data.get('auto_invite', '')
 
-    def get_wf_url(self):
-        """
-        Returns:
-            Relative URL for the current workflow.
-        """
-        return "#/%s/%s" % (self.workflow_name, self.token)
 
     def _update_task(self, task):
         """
@@ -565,10 +562,13 @@ class ZEngine(object):
         """
         # FIXME: raise if first task after line change isn't a UserTask
         # actually this check should be done at parser
+        is_lane_changed = False
         while (self.current.flow_enabled and
                        self.current.task_type != 'UserTask' and not
         self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
+                if self.catch_lane_change():
+                    return
                 self.current.old_lane = self.current.lane_name
                 self.current._update_task(task)
                 self.check_for_permission()
@@ -578,7 +578,6 @@ class ZEngine(object):
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_workflow()
-
         self.current.output['token'] = self.current.token
 
         # look for incoming ready task(s)
@@ -597,11 +596,14 @@ class ZEngine(object):
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
                             self.current.pool[self.current.lane_name] != self.current.user_id):
+                    self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
+                                                                      self.current.lane_name))
                     self.current.sendoff_current_user()
                     self.current.flow_enabled = False
                     if self.current.lane_auto_invite:
                         self.current.invite_other_parties(self._get_possible_lane_owners())
-            self.current.old_lane = self.current.lane_name
+                    return True
+                        # self.current.old_lane = self.current.lane_name
 
     def parse_workflow_messages(self):
         """
@@ -783,6 +785,6 @@ class ZEngine(object):
         """
         Removes the ``token`` key from ``current.output`` if WF is over.
         """
-        if ((self.current.flow_enabled or self.current.task_type.startswith('End')) and
+        if ((not self.current.flow_enabled or self.current.task_type.startswith('End')) and
                     'token' in self.current.output):
             del self.current.output['token']

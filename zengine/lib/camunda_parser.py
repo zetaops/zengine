@@ -148,7 +148,7 @@ class CamundaProcessParser(ProcessParser):
             {'perms': 'foo,bar'}
         """
         lane_name = self.get_lane(node.get('id'))
-        lane_data = {}
+        lane_data = {'name': lane_name}
         for a in self.xpath(".//bpmn:lane[@name='%s']/*/*/" % lane_name):
             lane_data[a.attrib['name']] = a.attrib['value'].strip()
         return lane_data
