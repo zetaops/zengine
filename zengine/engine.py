@@ -379,7 +379,7 @@ class ZEngine(object):
             if self.current.lane_name:
                 self.current.pool[self.current.lane_name] = self.current.role.key
             wf_cache['pool'] = self.current.pool
-            self.current.log.debug("POOOOOOL: %s" % self.current.pool)
+            self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
             self.current.wfcache.set(wf_cache)
 
     def get_pool_context(self):
@@ -599,7 +599,8 @@ class ZEngine(object):
                             self.current.pool[self.current.lane_name] != self.current.role_id):
                     self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
                                                                       self.current.lane_name))
-                    self.current.sendoff_current_user()
+                    if self.current.lane_auto_sendoff:
+                        self.current.sendoff_current_user()
                     self.current.flow_enabled = False
                     if self.current.lane_auto_invite:
                         self.current.invite_other_parties(self._get_possible_lane_owners())
