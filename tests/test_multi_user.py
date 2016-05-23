@@ -33,6 +33,7 @@ class TestCase(BaseTestCase):
         resp.raw()
         resp = self.client.post()
         resp.raw()
+        assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
 
     @classmethod
     def create_wrong_user(cls):

@@ -379,6 +379,7 @@ class ZEngine(object):
             if self.current.lane_name:
                 self.current.pool[self.current.lane_name] = self.current.role.key
             wf_cache['pool'] = self.current.pool
+            self.current.log.debug("POOOOOOL: %s" % self.current.pool)
             self.current.wfcache.set(wf_cache)
 
     def get_pool_context(self):
@@ -567,10 +568,10 @@ class ZEngine(object):
                        self.current.task_type != 'UserTask' and not
         self.current.task_type.startswith('End')):
             for task in self.workflow.get_tasks(state=Task.READY):
-                if self.catch_lane_change():
-                    return
                 self.current.old_lane = self.current.lane_name
                 self.current._update_task(task)
+                if self.catch_lane_change():
+                    return
                 self.check_for_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
@@ -595,7 +596,7 @@ class ZEngine(object):
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
-                            self.current.pool[self.current.lane_name] != self.current.user_id):
+                            self.current.pool[self.current.lane_name] != self.current.role_id):
                     self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
                                                                       self.current.lane_name))
                     self.current.sendoff_current_user()
