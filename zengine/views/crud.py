@@ -13,6 +13,7 @@ import six
 from falcon import HTTPNotFound
 
 from pyoko.conf import settings
+from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.model import Model, model_registry
 from zengine import signals
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
@@ -385,8 +386,8 @@ class CrudView(BaseView):
             if object_id and object_id != self.current.task_data.get('deleted_obj'):
                 try:
                     self.object = self.model_class(self.current).objects.get(object_id)
-                    if self.object.deleted:
-                        raise HTTPNotFound()
+                except ObjectDoesNotExist:
+                        raise HTTPNotFound("Possibly you are trying to retrieve a just deleted object!")
                 except:
                     raise
             elif 'added_obj' in self.current.task_data:
