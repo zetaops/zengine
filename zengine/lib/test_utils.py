@@ -141,7 +141,7 @@ class BaseTestCase:
                 fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
                 if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
                     sys.LOADED_FIXTURES.append(fixture_guess)
-                    FlushDB(model='all',
+                    FlushDB(model='all', wait_sync=True,
                             exclude=settings.TEST_FLUSHING_EXCLUDES).run()
                     print("REPORT:: Test fixture will be loaded: %s" % fixture_guess)
                     LoadData(path=fixture_guess, update=True).run()
