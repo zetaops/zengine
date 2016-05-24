@@ -82,6 +82,10 @@ class JsonForm(ModelForm):
         """ Fake method to emulate pyoko model API. """
         return []
 
+    def _set_get_choice_display_method(self, *args, **kwargs):
+        """ Fake method to emulate pyoko model API. """
+        pass
+
     def get_humane_value(self, name):
         """ Fake method to emulate pyoko model API. """
         return name
