@@ -147,7 +147,7 @@ class BaseTestCase:
                     LoadData(path=fixture_guess, update=True).run()
                     sleep(2)
                 else:
-                    print("REPORT:: Test case doen not have a fixture file like %s" % fixture_guess)
+                    print("REPORT:: Test case does not have a fixture file like %s" % fixture_guess)
 
         else:
             print("REPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
