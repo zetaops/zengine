@@ -16,13 +16,12 @@
       <bpmn2:lane id="danisman" name="danisman">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property name="permissions" value="danisman" />
             <camunda:property name="relations" value="self == ogrenci" />
             <camunda:property name="owners" value="User.objects.filter(username=&#39;test_user&#39;)" />
           </camunda:properties>
         </bpmn2:extensionElements>
-        <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
-        <bpmn2:flowNodeRef>ServiceTask_1</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>UserTask_22</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>ServiceTask_11</bpmn2:flowNodeRef>
       </bpmn2:lane>
       <bpmn2:lane id="ogrenci" name="ogrenci">
         <bpmn2:extensionElements>
@@ -32,37 +31,37 @@
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>StartEvent_1</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>UserTask_1</bpmn2:flowNodeRef>
-        <bpmn2:flowNodeRef>ServiceTask_2</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>ServiceTask_22</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>EndEvent_1</bpmn2:flowNodeRef>
       </bpmn2:lane>
     </bpmn2:laneSet>
     <bpmn2:startEvent id="StartEvent_1">
       <bpmn2:outgoing>SequenceFlow_1</bpmn2:outgoing>
     </bpmn2:startEvent>
-    <bpmn2:userTask id="UserTask_1">
+    <bpmn2:userTask id="UserTask_1" name="UserTask_1">
       <bpmn2:incoming>SequenceFlow_1</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_2</bpmn2:outgoing>
     </bpmn2:userTask>
     <bpmn2:sequenceFlow id="SequenceFlow_1" name="" sourceRef="StartEvent_1" targetRef="UserTask_1" />
-    <bpmn2:sequenceFlow id="SequenceFlow_2" name="" sourceRef="UserTask_1" targetRef="UserTask_2" />
-    <bpmn2:userTask id="UserTask_2">
+    <bpmn2:sequenceFlow id="SequenceFlow_2" name="" sourceRef="UserTask_1" targetRef="UserTask_22" />
+    <bpmn2:userTask id="UserTask_22" name="UserTask_22">
       <bpmn2:incoming>SequenceFlow_2</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_3</bpmn2:outgoing>
     </bpmn2:userTask>
-    <bpmn2:serviceTask id="ServiceTask_1">
+    <bpmn2:serviceTask id="ServiceTask_11" name="ServiceTask_11">
       <bpmn2:incoming>SequenceFlow_3</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_4</bpmn2:outgoing>
     </bpmn2:serviceTask>
-    <bpmn2:sequenceFlow id="SequenceFlow_3" name="" sourceRef="UserTask_2" targetRef="ServiceTask_1" />
-    <bpmn2:sequenceFlow id="SequenceFlow_4" name="" sourceRef="ServiceTask_1" targetRef="ServiceTask_2" />
-    <bpmn2:serviceTask id="ServiceTask_2">
+    <bpmn2:sequenceFlow id="SequenceFlow_3" name="" sourceRef="UserTask_22" targetRef="ServiceTask_11" />
+    <bpmn2:sequenceFlow id="SequenceFlow_4" name="" sourceRef="ServiceTask_11" targetRef="ServiceTask_22" />
+    <bpmn2:serviceTask id="ServiceTask_22">
       <bpmn2:incoming>SequenceFlow_4</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_5</bpmn2:outgoing>
     </bpmn2:serviceTask>
     <bpmn2:endEvent id="EndEvent_1">
       <bpmn2:incoming>SequenceFlow_5</bpmn2:incoming>
     </bpmn2:endEvent>
-    <bpmn2:sequenceFlow id="SequenceFlow_5" name="" sourceRef="ServiceTask_2" targetRef="EndEvent_1" />
+    <bpmn2:sequenceFlow id="SequenceFlow_5" name="" sourceRef="ServiceTask_22" targetRef="EndEvent_1" />
   </bpmn2:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="_Collaboration_2">
@@ -85,7 +84,7 @@
         <di:waypoint xsi:type="dc:Point" x="271" y="304" />
         <di:waypoint xsi:type="dc:Point" x="321" y="304" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="_BPMNShape_UserTask_7" bpmnElement="UserTask_2">
+      <bpmndi:BPMNShape id="_BPMNShape_UserTask_7" bpmnElement="UserTask_22">
         <dc:Bounds x="324" y="63" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_2" bpmnElement="SequenceFlow_2" sourceElement="_BPMNShape_UserTask_6" targetElement="_BPMNShape_UserTask_7">
@@ -97,14 +96,14 @@
           <dc:Bounds x="368" y="239" width="6" height="6" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="_BPMNShape_ServiceTask_13" bpmnElement="ServiceTask_1">
+      <bpmndi:BPMNShape id="_BPMNShape_ServiceTask_13" bpmnElement="ServiceTask_11">
         <dc:Bounds x="474" y="63" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_3" bpmnElement="SequenceFlow_3" sourceElement="_BPMNShape_UserTask_7" targetElement="_BPMNShape_ServiceTask_13">
         <di:waypoint xsi:type="dc:Point" x="424" y="103" />
         <di:waypoint xsi:type="dc:Point" x="474" y="103" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="_BPMNShape_ServiceTask_14" bpmnElement="ServiceTask_2">
+      <bpmndi:BPMNShape id="_BPMNShape_ServiceTask_14" bpmnElement="ServiceTask_22">
         <dc:Bounds x="480" y="264" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_4" bpmnElement="SequenceFlow_4" sourceElement="_BPMNShape_ServiceTask_13" targetElement="_BPMNShape_ServiceTask_14">

@@ -67,7 +67,7 @@ class TestClient(Worker):
         self.user = None
         self.username = None
         self.path = ''
-        self.sess_id = None
+        self.sess_id = uuid4().hex
         import sys
         sys._called_from_test = True
 
@@ -193,5 +193,4 @@ class BaseTestCase:
         assert all([(field in req_fields) for field in ('username', 'password')])
         resp = self.client.post(username=self.client.username or self.client.user.username,
                                 password="123", cmd="do")
-        resp.raw()
         assert resp.json['cmd'] == 'upgrade'

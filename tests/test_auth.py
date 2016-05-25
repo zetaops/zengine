@@ -6,25 +6,14 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-import falcon
-import pytest
-from zengine.lib.test_utils import BaseTestCase, ResponseWrapper
+from zengine.lib.test_utils import BaseTestCase
 
 
 class TestCase(BaseTestCase):
     def test_login_fail(self):
-        self.prepare_client('/login/', reset=True, login=False)
-        resp = self.client.post()
-        # resp.raw()
-
-        # wrong username
-        with pytest.raises(falcon.errors.HTTPForbidden):
-            self.client.post(username="test_loser", password="123", cmd="do")
-        # resp.raw()
-
-        self.client.set_path('/logout/')
-
-        # not logged in so cannot logout, should got an error
-        with pytest.raises(falcon.errors.HTTPUnauthorized):
-            self.client.post()
+        self.prepare_client('/login/', login=False)
+        self.client.post()
+        resp = self.client.post(username='wrong_user', password="WRONG_PASS", cmd="do")
+        resp.raw()
+        assert resp.json['status_code'] == 403
 

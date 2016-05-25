@@ -6,8 +6,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from time import sleep
-from zengine.lib.test_utils import BaseTestCase, username
+from zengine.lib.test_utils import BaseTestCase
 from pyoko.db.connection import client
 
 RESPONSES = {}
@@ -17,7 +16,7 @@ fixture_bucket = client.bucket_type('catalog').bucket('ulakbus_settings_fixtures
 class TestCase(BaseTestCase):
     def test_catalog_data_edit_save(self):
         # setup workflow
-        self.prepare_client('/edit_catalog_data/')
+        self.prepare_client('/edit_catalog_data/', username='test_user')
 
         resp = self.client.post(filters={})
         # check if forms in response object

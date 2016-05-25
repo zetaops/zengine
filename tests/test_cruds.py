@@ -15,7 +15,7 @@ RESPONSES = {}
 class TestCase(BaseTestCase):
     def test_list_search_add_delete_with_user_model(self):
         # setup workflow
-        self.prepare_client('/crud/')
+        self.prepare_client('/crud/', username='super_user')
 
         # calling the crud view without any model should list available models
         # resp = self.client.post()
