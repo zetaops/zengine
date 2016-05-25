@@ -383,16 +383,16 @@ class CrudView(BaseView):
             object_id = self.current.task_data.get('object_id')
             if not object_id and 'form' in self.input:
                 object_id = self.input['form'].pop('object_key', None)
-            if object_id and object_id != self.current.task_data.get('deleted_obj'):
+            if object_id:
                 try:
                     self.object = self.model_class(self.current).objects.get(object_id)
                 except ObjectDoesNotExist:
                         raise HTTPNotFound("Possibly you are trying to retrieve a just deleted object!")
                 except:
                     raise
-            elif 'added_obj' in self.current.task_data:
-                self.object = self.model_class(self.current).objects.get(
-                        self.current.task_data['added_obj'])
+            # elif 'added_obj' in self.current.task_data:
+            #     self.object = self.model_class(self.current).objects.get(
+            #             self.current.task_data['added_obj'])
             else:
                 self.object = self.model_class(self.current)
         else:
@@ -815,10 +815,10 @@ class CrudView(BaseView):
         """
         signals.crud_pre_save.send(self, current=self.current, object=self.object)
         obj_is_new = not self.object.exist
-        self.object.save()
+        self.object.blocking_save()
         signals.crud_post_save.send(self, current=self.current, object=self.object)
-        if self.next_cmd and obj_is_new:
-            self.current.task_data['added_obj'] = self.object.key
+        # if self.next_cmd and obj_is_new:
+        #     self.current.task_data['added_obj'] = self.object.key
 
     @view_method
     def save(self):
@@ -839,12 +839,12 @@ class CrudView(BaseView):
         # TODO: add confirmation dialog
         # to overcome 1s riak-solr delay
         signals.crud_pre_delete.send(self, current=self.current, object=self.object)
-        if self.current.task_data.get('added_object') == self.object.key:
-            del self.current.task_data['added_object']
-        self.current.task_data['deleted_obj'] = self.object.key
+        # if self.current.task_data.get('added_object') == self.object.key:
+        #     del self.current.task_data['added_object']
+        # self.current.task_data['deleted_obj'] = self.object.key
         if 'object_id' in self.current.task_data:
             del self.current.task_data['object_id']
         object_data = self.object._data
-        self.object.delete()
+        self.object.blocking_delete()
         signals.crud_post_delete.send(self, current=self.current, object_data=object_data)
         self.set_client_cmd('reload')
