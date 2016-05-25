@@ -142,7 +142,7 @@ if DEBUG:
 #: 'field' defaults to 'object_type'
 #:
 #: verbose_name can be specified to override the model's verbose_name_plural
-OBJECT_MENU = []
+OBJECT_MENU = {}
 
 #: List of menu entries for Dashoboard Quick Menu.
 QUICK_MENU = []
