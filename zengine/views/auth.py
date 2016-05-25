@@ -57,6 +57,7 @@ class Login(SimpleView):
         """
         Authenticate user with given credentials.
         """
+        self.current.task_data['login_successful'] = False
         if self.current.is_auth:
             self.current.output['cmd'] = 'upgrade'
         else:
@@ -77,7 +78,6 @@ class Login(SimpleView):
             except:
                 raise
                 self.current.log.exception("Wrong username or another error occurred")
-            self.current.task_data['login_successful'] = False
             if self.current.output.get('cmd') != 'upgrade':
                 self.current.output['status_code'] = 403
             else:
