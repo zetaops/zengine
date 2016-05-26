@@ -24,7 +24,7 @@ def get_logger(settings):
 
     # create formatter
     formatter = logging.Formatter(
-        '%(asctime)s - %(pathname)s:%(lineno)d [%(module)s > %(funcName)s] - %(name)s - %(levelname)s - %(message)s')
+        '%(asctime)s - %(process)d - %(pathname)s:%(lineno)d [%(module)s > %(funcName)s] - %(name)s - %(levelname)s - %(message)s')
 
     # add formatter to ch
     ch.setFormatter(formatter)

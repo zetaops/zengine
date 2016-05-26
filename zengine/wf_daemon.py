@@ -36,10 +36,13 @@ class Worker(object):
     Workflow runner worker object
     """
     INPUT_QUEUE_NAME = 'in_queue'
+    INPUT_EXCHANGE = 'tornado_input'
 
     def __init__(self):
         self.connect()
         signal.signal(signal.SIGTERM, self.exit)
+        log.info("Worker starting")
+        print("Worker started")
 
     def exit(self, signal=None, frame=None):
         """
@@ -48,6 +51,7 @@ class Worker(object):
         self.input_channel.close()
         self.client_queue.close()
         self.connection.close()
+        log.info("Worker exiting")
         sys.exit(0)
 
     def connect(self):
@@ -58,9 +62,10 @@ class Worker(object):
         self.client_queue = ClientQueue()
         self.input_channel = self.connection.channel()
 
-        self.input_channel.exchange_declare(exchange='tornado_input', type='topic')
+        self.input_channel.exchange_declare(exchange=self.INPUT_EXCHANGE, type='topic')
         self.input_channel.queue_declare(queue=self.INPUT_QUEUE_NAME)
-        self.input_channel.queue_bind(exchange='tornado_input', queue=self.INPUT_QUEUE_NAME)
+        self.input_channel.queue_bind(exchange=self.INPUT_EXCHANGE, queue=self.INPUT_QUEUE_NAME)
+        log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME, self.INPUT_EXCHANGE))
 
     def run(self):
         """
@@ -151,13 +156,14 @@ class Worker(object):
             if hasattr(sys, '_called_from_test'):
                 raise
             output = {'cmd': 'error', 'error': self._prepare_error_msg(e.message), "code": e.code}
+            log.exception("Http error occurred")
         except:
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
             err = traceback.format_exc()
             output = {'error': self._prepare_error_msg(err), "code": 500}
-            log.info(err)
+            log.exception("Worker error occurred")
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
         log.info("OUTPUT for %s: %s" % (sessid, output))
