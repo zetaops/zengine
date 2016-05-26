@@ -207,6 +207,7 @@ class JsonForm(ModelForm):
 
         if self._model.is_in_db():
             result["model"]['object_key'] = self._model.key
+            result["model"]['model_type'] = self._model.__class__.__name__
             result["model"]['unicode'] = six.text_type(self._model)
 
         for itm in self._serialize():

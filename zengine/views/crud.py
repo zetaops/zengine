@@ -8,9 +8,7 @@ This module holds CrudView and related classes that helps building
 CRUDS (Create Read Update Delete Search) type of views.
 """
 
-import falcon
 import six
-from falcon import HTTPNotFound
 
 from pyoko.conf import settings
 from pyoko.exceptions import ObjectDoesNotExist
@@ -21,6 +19,7 @@ from zengine.dispatch.dispatcher import receiver
 from zengine import forms
 from zengine.forms import fields
 from zengine.lib.cache import Cache
+from zengine.lib.exceptions import HTTPError
 from zengine.lib.utils import date_to_solr
 from zengine.log import log
 from zengine.signals import crud_post_save
@@ -325,8 +324,7 @@ class CrudView(BaseView):
                     permission in settings.ANONYMOUS_WORKFLOWS):
             return
         if not self.current.has_permission(permission):
-            raise falcon.HTTPForbidden("Permission denied",
-                                       "You don't have required CRUD permission: %s" % permission)
+            raise HTTPError(403, "You don't have required CRUD permission: %s" % permission)
 
     def create_object_form(self):
         """
@@ -370,11 +368,12 @@ class CrudView(BaseView):
 
         or
 
-        ``current.input['form']['object_key']``
+        ``current.task_data['object_id']``
 
         or
 
-        ``current.task_data['added_obj']``
+        ``current.input['form']['object_key']``
+
 
         then it will be retrieved from DB and assigned to ``self.object``.
         """
@@ -382,12 +381,19 @@ class CrudView(BaseView):
         if self.model_class:
             object_id = self.current.task_data.get('object_id')
             if not object_id and 'form' in self.input:
+                self.input['form'].pop('model_type')
                 object_id = self.input['form'].pop('object_key', None)
+                if object_id:
+                    form_model_type = self.input['form'].pop('model_type', None)
+                    if form_model_type != self.model_class.__name__:
+                        object_id = None
             if object_id:
                 try:
                     self.object = self.model_class(self.current).objects.get(object_id)
                 except ObjectDoesNotExist:
-                        raise HTTPNotFound("Possibly you are trying to retrieve a just deleted object!")
+                    raise HTTPError(404, "Possibly you are trying to retrieve a just deleted "
+                                       "object or object key (%s) does not belong to current model:"
+                                       " %s" % (object_id, self.model_class.__name__))
                 except:
                     raise
             # elif 'added_obj' in self.current.task_data:

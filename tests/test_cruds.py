@@ -13,6 +13,20 @@ RESPONSES = {}
 
 
 class TestCase(BaseTestCase):
+
+    def test_sequential_cruds(self):
+        """
+        tests proper handling of sequential crudviews.
+        if first view's form's "object_key" should not
+        broke the latter form
+        """
+        self.prepare_client('/sequential_cruds/', username='super_user')
+        resp = self.client.post()
+        object_key = resp.json['forms']['model']['object_key']
+        resp = self.client.post(object_id=object_key)
+        assert resp.json['msgbox']['title'] == 'object_id:HjgPuHelltHC9USbj8wqd286vbS'
+        assert resp.json['msgbox']['msg'] == 'test_ok'
+
     def test_list_search_add_delete_with_user_model(self):
         # setup workflow
         self.prepare_client('/crud/', username='super_user')
