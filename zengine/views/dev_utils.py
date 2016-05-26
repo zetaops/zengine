@@ -84,15 +84,17 @@ class SessionFixture(object):
                 mdl = model_registry.get_model(mdl_name)
             except KeyError:
                 continue
-            bucket_name = mdl.objects.bucket.name
-            mdl.objects.bucket.set_decoder('application/json', lambda a: bytes_to_str(a))
+            bucket_name = mdl.objects.adapter.bucket.name
+            mdl.objects.adapter.bucket.set_decoder('application/json', lambda a: bytes_to_str(a))
             for k in set(sys.PYOKO_LOGS[mdl_name]):
                 if k not in sys.PYOKO_LOGS['new']:
+                    obj = mdl.objects.data().get(k)
+                    print(obj)
                     out.append("{}/|{}/|{}".format(
-                        bucket_name, k, mdl.objects.data().get(k)[0]))
+                        bucket_name, k, obj[0]))
                     # print(str(mdl.objects.get(k).name))
             sys.PYOKO_LOGS[mdl_name] = []
-            mdl.objects.bucket.set_decoder('application/json', binary_json_decoder)
+            mdl.objects.adapter.bucket.set_decoder('application/json', binary_json_decoder)
         sys.PYOKO_LOGS['new'] = []
         current.output = {
             'response': "\n".join(out),
