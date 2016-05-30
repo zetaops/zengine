@@ -140,7 +140,8 @@ class ModelForm(object):
                 linked_model = self._model.get_link(field=name)['mdl']
                 linked_model_instance = linked_model(self._model._context).objects.get(val)
                 setattr(new_instance, name, linked_model_instance)
-            elif isinstance(val, (six.string_types, bool, int, float)):  # field
+            elif (isinstance(val, (six.string_types, bool, int, float)) and
+                  key in new_instance._fields):  # field
                 setattr(new_instance, key, val)
             elif val and isinstance(new_instance.get_field(key), File):  # File field
                 _val = {
