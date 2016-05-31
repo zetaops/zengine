@@ -8,6 +8,8 @@ from pyoko.conf import settings
 from pyoko.manage import FlushDB, LoadData
 from pyoko.lib.utils import pprnt
 from pprint import pprint
+
+from zengine.lib.cache import ClearCache
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 from zengine.wf_daemon import Worker
@@ -133,7 +135,7 @@ class BaseTestCase:
 
         if not '--ignore=fixture' in sys.argv:
             if hasattr(self, 'fixture'):
-                print("REPORT:: Running test cases own fixture() method")
+                print("\nREPORT:: Running test cases own fixture() method")
                 self.fixture()
                 sleep(2)
 
@@ -143,14 +145,19 @@ class BaseTestCase:
                     sys.LOADED_FIXTURES.append(fixture_guess)
                     FlushDB(model='all', wait_sync=True,
                             exclude=settings.TEST_FLUSHING_EXCLUDES).run()
-                    print("REPORT:: Test fixture will be loaded: %s" % fixture_guess)
+                    print("\nREPORT:: Test fixture will be loaded: %s" % fixture_guess)
                     LoadData(path=fixture_guess, update=True).run()
                     sleep(2)
                 else:
-                    print("REPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+                    print("\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
 
         else:
-            print("REPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
+            print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
+        # clear all caches
+        if not hasattr(sys, 'cache_cleared'):
+            sys.cache_cleared = True
+            print ClearCache.flush()
+            print("\nREPORT:: Cache cleared")
 
     @classmethod
     def prepare_client(cls, path, reset=False, user=None, login=None, token='', username=None):

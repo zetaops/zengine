@@ -181,8 +181,8 @@ class Cache(object):
     @classmethod
     def flush(cls, *args):
         """
-        Removes all keys in this current namespace
-        If called from class itself, clears all keys starting with cls.PREFIX
+        Removes all keys of this namespace
+        Without args, clears all keys starting with cls.PREFIX
         if called with args, clears keys starting with given cls.PREFIX + args
 
         Args:
