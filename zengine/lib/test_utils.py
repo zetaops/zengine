@@ -33,6 +33,12 @@ class ResponseWrapper(object):
         self.code = self.json.get('code', None)
 
         self.token = self.json.get('token')
+        self.form_data = self.json['forms']['model'] if 'forms' in self.json else {}
+
+        if 'object_key' in self.form_data:
+            self.object_key = self.form_data['object_key']
+        else:
+            self.object_key = self.json.get('object_id', None)
 
         if self.code and int(self.code) >= 400:
             self.raw()
@@ -97,13 +103,22 @@ class TestClient(Worker):
         """
         if 'token' not in data and self.token:
             data['token'] = self.token
-
+        if self.response_wrapper:
+            form_data = self.response_wrapper.form_data.copy()
+        else:
+            form_data = {}
         data['path'] = self.path.replace('/', '')
+        if 'form' in data:
+            form_data.update(data['form'])
 
-        data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
-        data = json.dumps(data)
+        data['form'] = form_data
+
+        post_data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
+        log.info("PostData : %s" % post_data)
+        print("PostData : %s" % post_data)
+        post_data = json.dumps(post_data)
         fake_method = type('FakeMethod', (object,), {'routing_key': self.sess_id})
-        self.handle_message(None, fake_method, None, data)
+        self.handle_message(None, fake_method, None, post_data)
         # update client token from response
         self.token = self.response_wrapper.token
         return self.response_wrapper
@@ -149,7 +164,8 @@ class BaseTestCase:
                     LoadData(path=fixture_guess, update=True).run()
                     sleep(2)
                 else:
-                    print("\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+                    print(
+                    "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
 
         else:
             print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
