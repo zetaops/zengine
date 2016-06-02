@@ -16,7 +16,6 @@ from zengine.notifications.model import NotificationMessage
 from zengine.signals import lane_user_change
 
 
-
 class TestCase(BaseTestCase):
     def test_multi_user_mono(self):
         test_user = User.objects.get(username='test_user')
@@ -31,13 +30,6 @@ class TestCase(BaseTestCase):
         resp = self.client.post()
         resp.raw()
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
-
-    @staticmethod
-    def get_user_token(username):
-        user = User.objects.get(username=username)
-        msg = NotificationMessage.objects.filter(receiver=user)[0]
-        token = msg.url.split('/')[-1]
-        return token, user
 
     def test_multi_user_with_fail(self):
         def mock(sender, *args, **kwargs):
