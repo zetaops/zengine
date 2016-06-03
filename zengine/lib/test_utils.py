@@ -14,6 +14,9 @@ from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 from zengine.wf_daemon import Worker
 
+from zengine.models import User
+from zengine.notifications.model import NotificationMessage
+
 
 class ResponseWrapper(object):
     """
@@ -217,3 +220,10 @@ class BaseTestCase:
         resp = self.client.post(username=self.client.username or self.client.user.username,
                                 password="123", cmd="do")
         assert resp.json['cmd'] == 'upgrade'
+
+    @staticmethod
+    def get_user_token(username):
+        user = User.objects.get(username=username)
+        msg = NotificationMessage.objects.filter(receiver=user)[0]
+        token = msg.url.split('/')[-1]
+        return token, user

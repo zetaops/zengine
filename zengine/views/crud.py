@@ -681,7 +681,7 @@ class CrudView(BaseView):
                 ]
 
     @view_method
-    def list(self):
+    def list(self, custom_form=None):
         """
         Creates object listings for the model.
         """
@@ -699,7 +699,7 @@ class CrudView(BaseView):
                 self.output['objects'].append(list_obj)
         self._add_just_created_object(new_added_key, new_added_listed)
         title = getattr(self.object.Meta, 'verbose_name_plural', self.object.__class__.__name__)
-        self.form_out(self.ListForm(current=self.current, title=title))
+        self.form_out(custom_form or self.ListForm(current=self.current, title=title))
         if new_added_key:
             del self.current.task_data['added_obj']
 
