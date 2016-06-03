@@ -15,12 +15,31 @@ three main goals:
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from uuid import uuid4
+
 import six
 
 from pyoko.fields import BaseField
 from zengine.forms.fields import Button
+from zengine.lib.cache import Cache
+from zengine.lib.exceptions import FormValidationError
 from .model_form import ModelForm
 
+class FormCache(Cache):
+    """
+    Caches various properties of serialized form to validate incoming form data
+
+    Args:
+        form_id: Unique form id
+    """
+    PREFIX = 'FRMCACHE'
+    SERIALIZE = True
+
+    def __init__(self, form_id=None):
+        if not form_id:
+            form_id = uuid4().hex
+        self.form_id = form_id
+        super(FormCache, self).__init__(form_id)
 
 class JsonForm(ModelForm):
     """
@@ -252,7 +271,38 @@ class JsonForm(ModelForm):
 
             if itm['required']:
                 result["schema"]["required"].append(itm['name'])
+        self._cache_form_details(result)
         return result
+
+    def deserialize(self, form_data, do_validation=True):
+        if form_data and do_validation:
+            form_id = form_data['form_key']
+            form_details = FormCache(form_id).get()
+            if form_data.keys() != form_details['model']:
+                not_matching = filter(lambda x: x not in form_details['model'],
+                               form_data.keys())
+                if not_matching:
+                    raise FormValidationError("Form keys not match: %s" % not_matching)
+            self.non_data_fields = form_details['non_data_fields']
+        return self._deserialize(form_data)
+
+    def _cache_form_details(self, form):
+        """
+        Caches some form details to lates process and validate incoming (response) form data
+
+        Args:
+            form: form dict
+        """
+        cache = FormCache()
+        form['model']['form_key'] = cache.form_id
+        cache.set(
+            {
+                'model': form['model'].keys(),
+                'non_data_fields': self.non_data_fields
+            }
+        )
+        # updating form inplace
+
 
     def _handle_choices(self, itm, item_props, result):
         # ui expects a different format for select boxes

@@ -381,9 +381,9 @@ class CrudView(BaseView):
         if self.model_class:
             object_id = self.current.task_data.get('object_id')
             if not object_id and 'form' in self.input:
-                object_id = self.input['form'].pop('object_key', None)
+                object_id = self.input['form'].get('object_key', None)
                 if object_id:
-                    form_model_type = self.input['form'].pop('model_type', None)
+                    form_model_type = self.input['form'].get('model_type', None)
                     if form_model_type != self.model_class.__name__:
                         object_id = None
             if object_id:

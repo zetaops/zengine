@@ -116,7 +116,7 @@ class ModelForm(object):
     def get_verbose_name(self):
         return getattr(self._model.Meta, 'verbose_name', self._model.__class__.__name__)
 
-    def deserialize(self, data):
+    def _deserialize(self, data):
         """
         Creates a model instance with given form data.
 

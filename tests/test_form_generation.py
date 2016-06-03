@@ -49,6 +49,6 @@ class TestCase:
 
     def test_plain_form_deserialize(self):
         login_data = {'username': 'Samuel', 'password': 'seeice'}
-        model = LoginForm().deserialize(login_data)
+        model = LoginForm().deserialize(login_data, do_validation=False)
         assert model.password == login_data["password"]
         assert model.username == login_data["username"]

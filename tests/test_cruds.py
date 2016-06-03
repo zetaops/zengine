@@ -7,13 +7,16 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from time import sleep
+
+import pytest
+
+from zengine.lib.exceptions import FormValidationError
 from zengine.lib.test_utils import BaseTestCase, username
 
 RESPONSES = {}
 
 
 class TestCase(BaseTestCase):
-
     def test_sequential_cruds(self):
         """
         tests proper handling of sequential crudviews.
@@ -27,6 +30,18 @@ class TestCase(BaseTestCase):
         assert resp.json['msgbox']['title'] == 'object_id:HjgPuHelltHC9USbj8wqd286vbS'
         assert resp.json['msgbox']['msg'] == 'test_ok'
 
+    def test_form_validation(self):
+        """
+        tests form validation with addition of extra field.
+        """
+        self.prepare_client('/crud/', username='super_user')
+        resp = self.client.post(model='User',
+                                cmd='add_edit_form')
+        with pytest.raises(FormValidationError):
+            self.client.post(model='User',
+                             form=dict(foo="bar"),
+                             cmd='save::show')
+
     def test_list_search_add_delete_with_user_model(self):
         # setup workflow
         self.prepare_client('/crud/', username='super_user')
@@ -38,7 +53,7 @@ class TestCase(BaseTestCase):
         #                                model_registry.get_base_models()]
         model_name = 'User'
         # calling with just model name (without any cmd) equals to cmd="list"
-        resp = self.client.post(model=model_name, filters={"username": {"values":[username]}})
+        resp = self.client.post(model=model_name, filters={"username": {"values": [username]}})
         assert 'objects' in resp.json
         assert resp.json['objects'][1]['fields'][0] == username
 
@@ -68,4 +83,3 @@ class TestCase(BaseTestCase):
         resp = self.client.post(model=model_name, cmd='list')
         resp.raw()
         assert num_of_objects == len(resp.json['objects']) - 1
-
