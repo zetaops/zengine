@@ -346,7 +346,7 @@ class ModelForm(object):
                            'type': 'model',
                            'title': model_instance.Meta.verbose_name,
                            'required': None,})
-        for name, field in node._fields.items():
+        for name, field in node._ordered_fields:
             if field.kwargs.get('hidden'):
                 continue
             choices =  getattr(field, 'choices', None)
