@@ -570,45 +570,6 @@ class CrudView(BaseView):
             queryset = f(self, queryset)
         return queryset
 
-    @obj_filter
-    def _remove_just_deleted_object(self, obj, result):
-        """
-        To compensate riak~solr sync delay, remove just deleted
-        object from from object list (if exists)
-
-        Args:
-            obj (:class:`Model<pyoko:pyoko.model.Model>`): Model instance
-            result (dict): Result dict.
-
-                .. code-block:: python
-
-                    {
-                        'key': obj.key,
-                        'fields': [],
-                        'actions': self.Meta.object_actions
-                    }
-        """
-        if ('deleted_obj' in self.current.task_data and
-                    self.current.task_data['deleted_obj'] == obj.key):
-            del self.current.task_data['deleted_obj']
-            result['exclude'] = True
-
-    def _add_just_created_object(self, new_added_key, new_added_listed):
-        """
-        To compensate 1sec Riak~Solr sync delay, manually add
-        just created object to the object listing.
-
-        Args:
-            new_added_key (str): Key of just created object.
-            new_added_listed (bool): Is already listed.
-
-        """
-        if new_added_key and not new_added_listed:
-            obj = self.object.objects.get(new_added_key)
-            list_obj = self._parse_object_actions(obj)
-            if not ('exclude' in list_obj or obj.deleted):
-                self.output['objects'].insert(1,list_obj)
-
     @list_query
     def _handle_list_pagination(self, query):
         """
@@ -688,20 +649,14 @@ class CrudView(BaseView):
         query = self._apply_list_queries(self.object.objects.filter())
         self.output['objects'] = []
         self.make_list_header()
-        new_added_key = self.current.task_data.get('added_obj')
-        new_added_listed = False
         self.display_list_filters()
         for obj in query:
-            new_added_listed = obj.key == new_added_key
             list_obj = self._parse_object_actions(obj)
             list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', ''))
             if not ('exclude' in list_obj or obj.deleted):
                 self.output['objects'].append(list_obj)
-        self._add_just_created_object(new_added_key, new_added_listed)
         title = getattr(self.object.Meta, 'verbose_name_plural', self.object.__class__.__name__)
         self.form_out(custom_form or self.ListForm(current=self.current, title=title))
-        if new_added_key:
-            del self.current.task_data['added_obj']
 
     @view_method
     def reload(self):
@@ -790,8 +745,6 @@ class CrudView(BaseView):
         Add edit form
         """
         self.form_out()
-        # self.output['forms'] = self.object_form.serialize()
-        # self.set_client_cmd('form')
 
     def set_form_data_to_object(self):
         """
@@ -822,8 +775,6 @@ class CrudView(BaseView):
         obj_is_new = not self.object.exist
         self.object.blocking_save()
         signals.crud_post_save.send(self, current=self.current, object=self.object)
-        # if self.next_cmd and obj_is_new:
-        #     self.current.task_data['added_obj'] = self.object.key
 
     @view_method
     def save(self):
@@ -842,11 +793,7 @@ class CrudView(BaseView):
         Triggers pre_delete and post_delete signals.
         """
         # TODO: add confirmation dialog
-        # to overcome 1s riak-solr delay
         signals.crud_pre_delete.send(self, current=self.current, object=self.object)
-        # if self.current.task_data.get('added_object') == self.object.key:
-        #     del self.current.task_data['added_object']
-        # self.current.task_data['deleted_obj'] = self.object.key
         if 'object_id' in self.current.task_data:
             del self.current.task_data['object_id']
         object_data = self.object._data
