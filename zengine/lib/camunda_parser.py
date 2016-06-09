@@ -9,6 +9,8 @@ This BPMN parser module takes the following extension elements from Camunda's ou
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_NS
+from SpiffWorkflow.bpmn.storage.Packager import Packager
+from six import BytesIO
 
 __author__ = "Evren Esat Ozkan"
 
@@ -16,6 +18,8 @@ from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
 from SpiffWorkflow.bpmn.parser.ProcessParser import ProcessParser
 from zengine.lib.utils import DotDict
 from zengine.log import log
+
+
 
 
 class CamundaBMPNParser(BpmnParser):
@@ -180,3 +184,27 @@ class CamundaProcessParser(ProcessParser):
     @classmethod
     def _parse_script(cls, elm):
         return elm.get('scriptFormat'), elm.text
+
+class InMemoryPackager(Packager):
+    """
+    Creates spiff's wf packages on the fly.
+    """
+    PARSER_CLASS = CamundaBMPNParser
+
+    @classmethod
+    def package_in_memory(cls, workflow_name, workflow_files):
+        """
+        Generates wf packages from workflow diagrams.
+
+        Args:
+            workflow_name: Name of wf
+            workflow_files:  Diagram  file.
+
+        Returns:
+            Workflow package (file like) object
+        """
+        s = BytesIO()
+        p = cls(s, workflow_name, meta_data=[])
+        p.add_bpmn_files_by_glob(workflow_files)
+        p.create_package()
+        return s.getvalue()

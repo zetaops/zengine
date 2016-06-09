@@ -10,13 +10,13 @@ import signal
 from time import sleep, time
 
 import pika
-from pika.exceptions import ConnectionClosed
 from tornado.escape import json_decode
 
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
 from zengine.client_queue import ClientQueue, BLOCKING_MQ_PARAMS
-from zengine.engine import ZEngine, Current
+from zengine.engine import ZEngine
+from zengine.current import Current
 from zengine.lib.cache import Session, KeepAlive
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
