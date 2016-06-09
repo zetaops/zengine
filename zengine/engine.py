@@ -355,6 +355,9 @@ class ZEngine(object):
         self.permission_model = get_object_from_path(settings.PERMISSION_MODEL)
         self.role_model = get_object_from_path(settings.ROLE_MODEL)
 
+    def are_we_in_subprocess(self):
+        return self.current.task.workflow.name !=  self.current.workflow.name
+
     def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
         """
         If we aren't come to the end of the wf,
@@ -363,7 +366,7 @@ class ZEngine(object):
         Task_data items that starts with underscore "_" are treated as
          local and does not passed to subsequent task steps.
         """
-        if self.current.task_name.startswith('End'):
+        if self.current.task_name.startswith('End') and not self.are_we_in_subprocess():
             self.current.wfcache.delete()
             self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
                                                              self.current.token))
@@ -566,7 +569,7 @@ class ZEngine(object):
         is_lane_changed = False
         while (self.current.flow_enabled and
                        self.current.task_type != 'UserTask' and not
-        self.current.task_type.startswith('End')):
+        (self.current.task_type.startswith('EndEvent') and not self.are_we_in_subprocess())):
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.old_lane = self.current.lane_name
                 self.current._update_task(task)
@@ -787,6 +790,6 @@ class ZEngine(object):
         """
         Removes the ``token`` key from ``current.output`` if WF is over.
         """
-        if ((not self.current.flow_enabled or self.current.task_type.startswith('End')) and
+        if ((not self.current.flow_enabled or (self.current.task_type.startswith('End') and not self.are_we_in_subprocess())) and
                     'token' in self.current.output):
             del self.current.output['token']
