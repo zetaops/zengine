@@ -18,7 +18,9 @@ from zengine.signals import lane_user_change
 
 class TestCase(BaseTestCase):
     def test_call_activity(self):
-        self.prepare_client('/call_activity/', username='test_user')
+        self.prepare_client('/call_activity/', username='super_user')
         resp = self.client.post()
-        resp.raw()
+        assert resp.json['msgbox']['title'] =='inner_title'
+        resp = self.client.post()
+        assert resp.json['msgbox']['title'] == 'otter_title'
 
