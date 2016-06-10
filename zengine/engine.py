@@ -62,6 +62,7 @@ class ZEngine(object):
         self.use_compact_serializer = True
         # self.current = None
         self.wf_activities = {}
+        self.wf_cache = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
@@ -72,7 +73,7 @@ class ZEngine(object):
     def are_we_in_subprocess(self):
         return self.current.task.workflow.name !=  self.current.workflow.name
 
-    def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
+    def save_workflow_to_cache(self, serialized_wf_instance):
         """
         If we aren't come to the end of the wf,
         saves the wf state and task_data to cache
@@ -80,24 +81,22 @@ class ZEngine(object):
         Task_data items that starts with underscore "_" are treated as
          local and does not passed to subsequent task steps.
         """
-        if self.current.task_name.startswith('End') and not self.are_we_in_subprocess():
-            self.current.wfcache.delete()
-            self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
-                                                             self.current.token))
-        else:
-            # self.current.task_data['flow'] = None
-            task_data = self.current.task_data.copy()
-            for k, v in list(task_data.items()):
-                if k.startswith('_'):
-                    del task_data[k]
-            if 'cmd' in task_data:
-                del task_data['cmd']
-            wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data,}
-            if self.current.lane_name:
-                self.current.pool[self.current.lane_name] = self.current.role.key
-            wf_cache['pool'] = self.current.pool
-            self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
-            self.current.wfcache.set(wf_cache)
+        # self.current.task_data['flow'] = None
+        task_data = self.current.task_data.copy()
+        for k, v in list(task_data.items()):
+            if k.startswith('_'):
+                del task_data[k]
+        if 'cmd' in task_data:
+            del task_data['cmd']
+        self.wf_cache.update({'wf_state': serialized_wf_instance,
+                              'data': task_data,
+                              'wf_name': self.current.workflow_name,
+                              })
+        if self.current.lane_name:
+            self.current.pool[self.current.lane_name] = self.current.role.key
+        self.wf_cache['pool'] = self.current.pool
+        self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
+        self.current.wfcache.set(self.wf_cache)
 
     def get_pool_context(self):
         # TODO: Add in-process caching
@@ -123,11 +122,11 @@ class ZEngine(object):
         updates the self.current.task_data
         """
         if not self.current.new_token:
-            wf_cache = self.current.wfcache.get()
-            self.current.task_data = wf_cache['data']
+            self.wf_cache = self.current.wfcache.get()
+            self.current.task_data = self.wf_cache['data']
             self.current.set_client_cmds()
-            self.current.pool = wf_cache['pool']
-            return wf_cache['wf_state']
+            self.current.pool = self.wf_cache['pool']
+            return self.wf_cache['wf_state']
 
     def _load_workflow(self):
         # gets the serialized wf data from cache and deserializes it
@@ -208,12 +207,17 @@ class ZEngine(object):
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
-    def _save_workflow(self):
+    def _save_or_delete_workflow(self):
         """
         Calls the real save method if we pass the beggining of the wf
         """
         if not self.current.task_type.startswith('Start'):
-            self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
+            if self.current.task_name.startswith('End') and not self.are_we_in_subprocess():
+                self.current.wfcache.delete()
+                self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
+                                                                 self.current.token))
+            else:
+                self.save_workflow_to_cache(self.serialize_workflow())
 
     def start_engine(self, **kwargs):
         """
@@ -227,6 +231,7 @@ class ZEngine(object):
 
         """
         self.current = WFCurrent(**kwargs)
+        self.wf_cache = {}
         self.check_for_authentication()
         self.check_for_permission()
         self.workflow = self.load_or_create_workflow()
@@ -265,6 +270,18 @@ class ZEngine(object):
     def log_wf_state(self):
         log.debug(self.generate_wf_state_log() + "\n= = = = = =\n")
 
+    def _handle_external_wf(self):
+        if (self.current.task_type == 'ServiceTask' and
+                    self.current.task.task_spec.type == 'external'):
+            external_wf_name = self.current.task.task_spec.topic
+            self.check_for_authentication()
+            self.check_for_permission()
+            main_wf = self.wf_cache.copy()
+            self.wf_cache = {'main_wf': main_wf}
+            self.workflow = self.load_or_create_workflow()
+            log.debug("EXTERNAL WF HANDLER")
+            self.current.workflow = self.workflow
+
     def run(self):
         """
         Main loop of the workflow engine
@@ -295,7 +312,8 @@ class ZEngine(object):
                 self.run_activity()
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
-                self._save_workflow()
+                self._save_or_delete_workflow()
+                self._handle_external_wf()
         self.current.output['token'] = self.current.token
 
         # look for incoming ready task(s)

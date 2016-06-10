@@ -37,11 +37,6 @@
     </bpmn2:endEvent>
     <bpmn2:sequenceFlow id="SequenceFlow_1qaf42c" sourceRef="post_call" targetRef="EndEvent_0f69bn2" />
     <bpmn2:serviceTask id="jump_to" name="jump_to" camunda:type="external" camunda:topic="jump_to_wf2">
-      <bpmn2:extensionElements>
-        <camunda:properties>
-          <camunda:property name="call_workflow" value="jump_to_wf2" />
-        </camunda:properties>
-      </bpmn2:extensionElements>
       <bpmn2:incoming>SequenceFlow_0i0ltl5</bpmn2:incoming>
       <bpmn2:outgoing>SequenceFlow_19vldbe</bpmn2:outgoing>
     </bpmn2:serviceTask>
