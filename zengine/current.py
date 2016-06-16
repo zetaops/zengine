@@ -159,8 +159,7 @@ class Current(object):
         :param str title:
         :param str typ: 'info', 'error', 'warning'
         """
-        self.output['msgbox'] = {'type': typ, "title": title or msg[:20],
-                                 "msg": msg}
+        self.output['msgbox'] = {'type': typ, "title": title or msg[:20], "msg": msg}
 
 
 class WFCurrent(Current):

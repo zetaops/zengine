@@ -20,7 +20,9 @@ class TestCase(BaseTestCase):
     def test_jump_to_wf(self):
         self.prepare_client('/jump_to_wf/', username='super_user')
         resp = self.client.post()
-        # assert resp.json['msgbox']['title'] =='inner_title'
-        # resp = self.client.post()
-        # assert resp.json['msgbox']['title'] == 'otter_title'
+        assert resp.json['from_jumped'] is None
+        assert resp.json['from_main'] == True
+        assert resp.json['msgbox']['title'] =='jumped_task_msg'
+        resp = self.client.post()
+        assert resp.json['from_jumped'] == True
 

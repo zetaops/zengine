@@ -14,6 +14,7 @@ import importlib
 import os
 import sys
 import traceback
+from copy import deepcopy
 
 import lazy_object_proxy
 from SpiffWorkflow import Task
@@ -31,7 +32,6 @@ from zengine.current import WFCurrent
 from zengine.lib.camunda_parser import InMemoryPackager
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
-
 
 
 # crud_view = CrudView()
@@ -62,7 +62,7 @@ class ZEngine(object):
         self.use_compact_serializer = True
         # self.current = None
         self.wf_activities = {}
-        self.wf_cache = {}
+        self.wf_cache = {'in_external': False}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
@@ -71,7 +71,11 @@ class ZEngine(object):
         self.role_model = get_object_from_path(settings.ROLE_MODEL)
 
     def are_we_in_subprocess(self):
-        return self.current.task.workflow.name !=  self.current.workflow.name
+        are_we = False
+        if self.current.task:
+            are_we = self.current.task.workflow.name != self.current.workflow.name
+        self.current.log.debug("Are We in subprocess: %s" % are_we)
+        return are_we
 
     def save_workflow_to_cache(self, serialized_wf_instance):
         """
@@ -122,7 +126,7 @@ class ZEngine(object):
         updates the self.current.task_data
         """
         if not self.current.new_token:
-            self.wf_cache = self.current.wfcache.get()
+            self.wf_cache = self.current.wfcache.get(self.wf_cache)
             self.current.task_data = self.wf_cache['data']
             self.current.set_client_cmds()
             self.current.pool = self.wf_cache['pool']
@@ -231,7 +235,9 @@ class ZEngine(object):
 
         """
         self.current = WFCurrent(**kwargs)
-        self.wf_cache = {}
+        if not self.current.new_token:
+            self.wf_cache = self.current.wfcache.get(self.wf_cache)
+            self.current.workflow_name = self.wf_cache['wf_name']
         self.check_for_authentication()
         self.check_for_permission()
         self.workflow = self.load_or_create_workflow()
@@ -262,6 +268,7 @@ class ZEngine(object):
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
         output += "\n\tPOOL: %s" % self.current.pool
+        output += "\n\tIN EXTERNAL: %s" % self.wf_cache['in_external']
         output += "\n\tLANE: %s" % self.current.lane_name
         output += "\n\tTOKEN: %s" % self.current.token
         sys._zops_wf_state_log = output
@@ -270,17 +277,42 @@ class ZEngine(object):
     def log_wf_state(self):
         log.debug(self.generate_wf_state_log() + "\n= = = = = =\n")
 
-    def _handle_external_wf(self):
+    def switch_from_external_to_main_wf(self):
+        if self.wf_cache['in_external'] and self.current.task_type == 'Simple' and self.current.task_name == 'End':
+            main_wf = self.wf_cache['main_wf']
+            self.current.workflow_name = main_wf['wf_name']
+            self.workflow_spec = self.get_worfklow_spec()
+            self.workflow = self.deserialize_workflow(main_wf['wf_state'])
+            self.current.workflow = self.workflow
+            self.wf_cache['in_external'] = False
+            self.wf_cache['pool'] = main_wf['pool']
+            self.current.pool = self.wf_cache['pool']
+            self.current.task_name = None
+            self.current.task_type = None
+            self.current.task = None
+            self.run()
+
+    def switch_to_external_wf(self):
         if (self.current.task_type == 'ServiceTask' and
                     self.current.task.task_spec.type == 'external'):
+            log.debug("Entering to EXTERNAL WF")
+            main_wf = self.wf_cache.copy()
             external_wf_name = self.current.task.task_spec.topic
+            self.current.workflow_name = external_wf_name
+            self.workflow_spec = self.get_worfklow_spec()
+            self.workflow = self.create_workflow()
+            self.current.workflow = self.workflow
             self.check_for_authentication()
             self.check_for_permission()
-            main_wf = self.wf_cache.copy()
-            self.wf_cache = {'main_wf': main_wf}
-            self.workflow = self.load_or_create_workflow()
-            log.debug("EXTERNAL WF HANDLER")
-            self.current.workflow = self.workflow
+
+            self.wf_cache = {'main_wf': main_wf, 'in_external': True}
+
+    def _should_we_run(self):
+        not_a_user_task = self.current.task_type != 'UserTask'
+        wf_not_finished = not (self.current.task_name == 'End' and self.current.task_type == 'Simple')
+        if not wf_not_finished and self.are_we_in_subprocess():
+            wf_not_finished = True
+        return self.current.flow_enabled and not_a_user_task and wf_not_finished
 
     def run(self):
         """
@@ -296,11 +328,12 @@ class ZEngine(object):
 
         """
         # FIXME: raise if first task after line change isn't a UserTask
+        # FIXME: raise if last task of a workflow is a UserTask
         # actually this check should be done at parser
         is_lane_changed = False
-        while (self.current.flow_enabled and
-                       self.current.task_type != 'UserTask' and not
-        (self.current.task_type.startswith('EndEvent') and not self.are_we_in_subprocess())):
+
+        while self._should_we_run():
+            task = None
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.old_lane = self.current.lane_name
                 self.current._update_task(task)
@@ -313,7 +346,10 @@ class ZEngine(object):
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_or_delete_workflow()
-                self._handle_external_wf()
+                self.switch_to_external_wf()
+            if task is None:
+                break
+        self.switch_from_external_to_main_wf()
         self.current.output['token'] = self.current.token
 
         # look for incoming ready task(s)
@@ -340,7 +376,7 @@ class ZEngine(object):
                     if self.current.lane_auto_invite:
                         self.current.invite_other_parties(self._get_possible_lane_owners())
                     return True
-                        # self.current.old_lane = self.current.lane_name
+                    # self.current.old_lane = self.current.lane_name
 
     def parse_workflow_messages(self):
         """
@@ -522,6 +558,7 @@ class ZEngine(object):
         """
         Removes the ``token`` key from ``current.output`` if WF is over.
         """
-        if ((not self.current.flow_enabled or (self.current.task_type.startswith('End') and not self.are_we_in_subprocess())) and
+        if ((not self.current.flow_enabled or (
+            self.current.task_type.startswith('End') and not self.are_we_in_subprocess())) and
                     'token' in self.current.output):
             del self.current.output['token']
