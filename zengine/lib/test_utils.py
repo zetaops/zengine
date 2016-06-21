@@ -15,7 +15,7 @@ from zengine.log import log
 from zengine.wf_daemon import Worker
 
 from zengine.models import User
-from zengine.notifications.model import NotificationMessage
+from zengine.messaging.model import Message
 
 
 class ResponseWrapper(object):
@@ -224,6 +224,6 @@ class BaseTestCase:
     @staticmethod
     def get_user_token(username):
         user = User.objects.get(username=username)
-        msg = NotificationMessage.objects.filter(receiver=user)[0]
+        msg = Message.objects.filter(receiver=user)[0]
         token = msg.url.split('/')[-1]
         return token, user

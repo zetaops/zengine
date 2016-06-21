@@ -111,10 +111,11 @@ SESSION_OPTIONS = {
 
 #: View URL list for non-workflow views.
 #:
-#: ('falcon URI template', 'python path to view method/class'),
+#: ('URI template', 'python path to view method/class'),
 VIEW_URLS = {
     'dashboard': 'zengine.views.menu.Menu',
     'ping': 'zengine.views.dev_utils.Ping',
+
 }
 
 if DEBUG:

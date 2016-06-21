@@ -37,7 +37,7 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     from zengine.lib.catalog_data import gettxt as _
     from pyoko.lib.utils import get_object_from_path
     UserModel = get_object_from_path(settings.USER_MODEL)
-    from zengine.notifications import Notify
+    from zengine.messaging import Notify
     current = kwargs['current']
     old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']

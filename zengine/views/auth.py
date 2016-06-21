@@ -10,7 +10,7 @@ import falcon
 from pyoko import fields
 from zengine.forms.json_form import JsonForm
 from zengine.lib.cache import UserSessionID, KeepAlive
-from zengine.notifications import Notify
+from zengine.messaging import Notify
 from zengine.views.base import SimpleView
 
 
