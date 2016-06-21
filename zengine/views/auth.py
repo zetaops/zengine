@@ -53,9 +53,21 @@ class Login(SimpleView):
     does the authentication at ``do`` stage.
     """
 
+    def _do_binding(self):
+        """
+        Bind user's ephemeral session queue to user's durable private exchange
+        """
+        from zengine.messaging.model import get_mq_connection
+        connection, channel = get_mq_connection()
+        channel.queue_bind(exchange=self.current.user_id,
+                           queue=self.current.session.sess_id,
+                           # routing_key="#"
+                           )
+
     def do_view(self):
         """
         Authenticate user with given credentials.
+        Connects user's queue and exchange
         """
         self.current.task_data['login_successful'] = False
         if self.current.is_auth:
@@ -67,6 +79,7 @@ class Login(SimpleView):
                     self.current.input['password'])
                 self.current.task_data['login_successful'] = auth_result
                 if auth_result:
+                    self._do_binding()
                     user_sess = UserSessionID(self.current.user_id)
                     old_sess_id = user_sess.get()
                     user_sess.set(self.current.session.sess_id)
