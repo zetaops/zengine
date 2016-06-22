@@ -18,27 +18,34 @@ from zengine.client_queue import BLOCKING_MQ_PARAMS
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
+
 def get_mq_connection():
     connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
     channel = connection.channel()
     return connection, channel
 
 
-CHANNEL_TYPES = (
-    # (1, "Notification"),
-    (10, "System Broadcast"),
-    (15, "User Broadcast"),
-    (20, "Chat"),
-    (25, "Direct"),
-)
+# CHANNEL_TYPES = (
+#     (1, "Notification"),
+    # (10, "System Broadcast"),
+    # (20, "Chat"),
+    # (25, "Direct"),
+# )
 
 
 class Channel(Model):
+    channel = None
+    connection = None
+
     name = field.String("Name")
     code_name = field.String("Internal name")
     description = field.String("Description")
     owner = UserModel(reverse_name='created_channels')
-    typ = field.Integer("Type", choices=CHANNEL_TYPES)
+    # is this users private exchange
+    is_private = field.Boolean()
+    # is this a One-To-One channel
+    is_direct = field.Boolean()
+    # typ = field.Integer("Type", choices=CHANNEL_TYPES)
 
     class Managers(ListNode):
         user = UserModel(reverse_name='managed_channels')
@@ -50,7 +57,8 @@ class Channel(Model):
         Message(sender=sender, body=body, msg_title=title, url=url, typ=typ, channel=self).save()
 
     def _connect_mq(self):
-        self.connection, self.channel = get_mq_connection()
+        if not self.connection is None or self.connection.is_closed:
+            self.connection, self.channel = get_mq_connection()
         return self.channel
 
     def create_exchange(self):
@@ -113,7 +121,7 @@ MSG_TYPES = (
     (11, "Error"),
     (111, "Success"),
     (2, "Direct Message"),
-    (3, "Broadcast Message")
+    (3, "Broadcast Message"),
     (4, "Channel Message")
 )
 MESSAGE_STATUS = (
@@ -130,7 +138,6 @@ class Message(Model):
     """
     Permission model
     """
-
     typ = field.Integer("Type", choices=MSG_TYPES)
     status = field.Integer("Status", choices=MESSAGE_STATUS)
     msg_title = field.String("Title")
@@ -172,7 +179,7 @@ class Attachment(Model):
 
 class Favorite(Model):
     """
-    A model to store users favorited messages
+    A model to store users bookmarked messages
     """
     channel = Channel()
     user = UserModel()

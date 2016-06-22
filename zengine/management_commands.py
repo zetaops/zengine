@@ -183,3 +183,20 @@ class RunWorker(Command):
         else:
             worker = Worker()
             worker.run()
+
+
+class PrepareMQ(Command):
+    """
+    Creates necessary exchanges, queues and bindings
+    """
+    CMD_NAME = 'preparemq'
+    HELP = 'Creates necessary exchanges, queues and bindings'
+
+    def run(self):
+        from zengine.wf_daemon import run_workers, Worker
+        worker_count = int(self.manager.args.workers or 1)
+        if worker_count > 1:
+            run_workers(worker_count)
+        else:
+            worker = Worker()
+            worker.run()

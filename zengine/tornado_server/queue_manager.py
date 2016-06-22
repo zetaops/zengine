@@ -66,7 +66,7 @@ class BlockingConnectionForHTTP(object):
 
     def _send_message(self, sess_id, input_data):
         log.info("sending data for %s" % sess_id)
-        self.input_channel.basic_publish(exchange='tornado_input',
+        self.input_channel.basic_publish(exchange='input_exc',
                                          routing_key=sess_id,
                                          body=json_encode(input_data))
 
@@ -160,7 +160,7 @@ class QueueManager(object):
         Args:
             channel: input channel
         """
-        self.in_channel.exchange_declare(exchange='tornado_input', type='topic')
+        self.in_channel.exchange_declare(exchange='input_exc', type='topic', durable=True)
         channel.queue_declare(callback=self.on_input_queue_declare, queue=self.INPUT_QUEUE_NAME)
 
     def on_input_queue_declare(self, queue):
@@ -172,7 +172,7 @@ class QueueManager(object):
             queue: input queue
         """
         self.in_channel.queue_bind(callback=None,
-                                   exchange='tornado_input',
+                                   exchange='input_exc',
                                    queue=self.INPUT_QUEUE_NAME,
                                    routing_key="#")
 
@@ -212,10 +212,12 @@ class QueueManager(object):
         self.connection.channel(_on_output_channel_creation)
 
     def redirect_incoming_message(self, sess_id, message, request):
-        message = message[:-1] + ',"_zops_remote_ip":"%s"}' % request.remote_ip
-        self.in_channel.basic_publish(exchange='tornado_input',
+        message = json_decode(message)
+        message['_zops_sess_id'] = sess_id
+        message['_zops_remote_ip'] = request.remote_ip
+        self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
-                                      body=message)
+                                      body=json_encode(message))
 
     def on_message(self, channel, method, header, body):
         sess_id = method.routing_key
