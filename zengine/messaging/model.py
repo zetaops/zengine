@@ -18,7 +18,6 @@ from zengine.client_queue import BLOCKING_MQ_PARAMS
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
-
 def get_mq_connection():
     connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
     channel = connection.channel()
@@ -27,9 +26,9 @@ def get_mq_connection():
 
 # CHANNEL_TYPES = (
 #     (1, "Notification"),
-    # (10, "System Broadcast"),
-    # (20, "Chat"),
-    # (25, "Direct"),
+# (10, "System Broadcast"),
+# (20, "Chat"),
+# (25, "Direct"),
 # )
 
 
@@ -45,7 +44,11 @@ class Channel(Model):
     is_private = field.Boolean()
     # is this a One-To-One channel
     is_direct = field.Boolean()
+
     # typ = field.Integer("Type", choices=CHANNEL_TYPES)
+
+    class Meta:
+        unique_together = (('is_private', 'owner'),)
 
     class Managers(ListNode):
         user = UserModel(reverse_name='managed_channels')
@@ -56,10 +59,11 @@ class Channel(Model):
         channel.basic_publish(exchange=self.code_name, body=mq_msg)
         Message(sender=sender, body=body, msg_title=title, url=url, typ=typ, channel=self).save()
 
-    def _connect_mq(self):
-        if not self.connection is None or self.connection.is_closed:
-            self.connection, self.channel = get_mq_connection()
-        return self.channel
+    @classmethod
+    def _connect_mq(cls):
+        if cls.connection is None or cls.connection.is_closed:
+            cls.connection, cls.channel = get_mq_connection()
+        return cls.channel
 
     def create_exchange(self):
         """
@@ -68,6 +72,10 @@ class Channel(Model):
         """
         channel = self._connect_mq()
         channel.exchange_declare(exchange=self.code_name, exchange_type='fanout', durable=True)
+
+    def pre_creation(self):
+        if not self.code_name:
+            self.code_name = self.key
 
     def post_creation(self):
         self.create_exchange()
@@ -86,16 +94,18 @@ class Subscription(Model):
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 
-    def _connect_mq(self):
-        self.connection, self.channel = get_mq_connection()
-        return self.channel
+    @classmethod
+    def _connect_mq(cls):
+        if cls.connection is None or cls.connection.is_closed:
+            cls.connection, cls.channel = get_mq_connection()
+        return cls.channel
 
     def create_exchange(self):
         """
         Creates user's private exchange
         Actually needed to be defined only once.
         but since we don't know if it's exists or not
-        we always call it before
+        we always call it before binding it to related channel
         """
         channel = self._connect_mq()
         channel.exchange_declare(exchange=self.user.key, exchange_type='direct', durable=True)
@@ -117,9 +127,9 @@ class Subscription(Model):
 
 
 MSG_TYPES = (
-    (1, "Info"),
-    (11, "Error"),
-    (111, "Success"),
+    (1, "Info Notification"),
+    (11, "Error Notification"),
+    (111, "Success Notification"),
     (2, "Direct Message"),
     (3, "Broadcast Message"),
     (4, "Channel Message")
@@ -138,15 +148,14 @@ class Message(Model):
     """
     Permission model
     """
+    channel = Channel()
+    sender = UserModel(reverse_name='sent_messages')
+    receiver = UserModel(reverse_name='received_messages')
     typ = field.Integer("Type", choices=MSG_TYPES)
     status = field.Integer("Status", choices=MESSAGE_STATUS)
     msg_title = field.String("Title")
     body = field.String("Body")
     url = field.String("URL")
-    channel = Channel()
-    sender = UserModel(reverse_name='sent_messages')
-    # FIXME: receiver should be removed after all of it's usages refactored to channels
-    receiver = UserModel(reverse_name='received_messages')
 
     def __unicode__(self):
         content = self.msg_title or self.body

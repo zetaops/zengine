@@ -9,6 +9,7 @@
 import six
 
 from pyoko.exceptions import ObjectDoesNotExist
+from pyoko.lib.utils import get_object_from_path
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 
@@ -193,10 +194,19 @@ class PrepareMQ(Command):
     HELP = 'Creates necessary exchanges, queues and bindings'
 
     def run(self):
-        from zengine.wf_daemon import run_workers, Worker
-        worker_count = int(self.manager.args.workers or 1)
-        if worker_count > 1:
-            run_workers(worker_count)
-        else:
-            worker = Worker()
-            worker.run()
+        self.create_user_channels()
+        self.create_exchanges()
+
+    def create_user_channels(self):
+        from zengine.messaging.model import Channel
+        user_model = get_object_from_path(settings.USER_MODEL)
+        for usr in user_model.objects.filter():
+            ch, new = Channel.objects.get_or_create(owner=usr, is_private=True)
+            print("%s exchange: %s" % ('created' if new else 'existing', ch.name))
+
+    def create_channel_exchanges(self):
+        from zengine.messaging.model import Channel
+        for ch in Channel.objects.filter():
+            print("(re)creation exchange: %s" % ch.name)
+            ch.create_exchange()
+

@@ -9,6 +9,7 @@
 
 from pyoko import Model, field, ListNode
 from passlib.hash import pbkdf2_sha512
+from zengine.messaging.lib import BaseUser
 
 
 class Permission(Model):
@@ -41,48 +42,20 @@ class Permission(Model):
         return [rset.role for rset in self.role_set]
 
 
-class User(Model):
+class User(Model, BaseUser):
     """
     Basic User model
     """
     username = field.String("Username", index=True)
     password = field.String("Password")
     superuser = field.Boolean("Super user", default=False)
+    avatar = field.File("Avatar", random_name=True, required=False)
 
     class Meta:
         """ meta class
         """
         list_fields = ['username', 'superuser']
 
-    def __unicode__(self):
-        return "User %s" % self.username
-
-    def __repr__(self):
-        return "User_%s" % self.key
-
-    def set_password(self, raw_password):
-        """
-        Encrypts user password.
-
-        Args:
-            raw_password: Clean password string.
-
-        """
-        self.password = pbkdf2_sha512.encrypt(raw_password,
-                                              rounds=10000,
-                                              salt_size=10)
-
-    def check_password(self, raw_password):
-        """
-        Checks given clean password against stored encrtyped password.
-
-        Args:
-            raw_password: Clean password.
-
-        Returns:
-            Boolean. True if given password match.
-        """
-        return pbkdf2_sha512.verify(raw_password, self.password)
 
     def get_permissions(self):
         """
@@ -93,22 +66,6 @@ class User(Model):
         """
         users_primary_role = self.role_set[0].role
         return users_primary_role.get_permissions()
-
-    def get_role(self, role_id):
-        """
-            Gets the first role of the user with given key.
-
-        Args:
-            role_id: Key of the Role object.
-
-        Returns:
-            :class:`Role` object
-        """
-        return self.role_set.node_dict[role_id]
-
-    def send_message(self, title, message, sender=None):
-        from zengine.messaging import Notify
-        Notify(self.key).set_message(title, message, typ=Notify.Message, sender=sender)
 
 
 class Role(Model):
