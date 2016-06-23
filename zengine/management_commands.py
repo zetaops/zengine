@@ -195,18 +195,18 @@ class PrepareMQ(Command):
 
     def run(self):
         self.create_user_channels()
-        self.create_exchanges()
+        self.create_channel_exchanges()
 
     def create_user_channels(self):
         from zengine.messaging.model import Channel
         user_model = get_object_from_path(settings.USER_MODEL)
         for usr in user_model.objects.filter():
             ch, new = Channel.objects.get_or_create(owner=usr, is_private=True)
-            print("%s exchange: %s" % ('created' if new else 'existing', ch.name))
+            print("%s exchange: %s" % ('created' if new else 'existing', ch.code_name))
 
     def create_channel_exchanges(self):
         from zengine.messaging.model import Channel
         for ch in Channel.objects.filter():
-            print("(re)creation exchange: %s" % ch.name)
+            print("(re)creation exchange: %s" % ch.code_name)
             ch.create_exchange()
 

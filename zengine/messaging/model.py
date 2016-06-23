@@ -12,8 +12,10 @@ import pika
 
 from pyoko import Model, field, ListNode
 from pyoko.conf import settings
+from pyoko.exceptions import IntegrityError
 from pyoko.lib.utils import get_object_from_path
 from zengine.client_queue import BLOCKING_MQ_PARAMS
+from zengine.lib.utils import to_safe_str
 
 UserModel = get_object_from_path(settings.USER_MODEL)
 
@@ -33,6 +35,15 @@ def get_mq_connection():
 
 
 class Channel(Model):
+    """
+    Represents MQ exchanges.
+
+    is_private: Represents users exchange hub
+    Each user have a durable private exchange,
+     which their code_name composed from user key prefixed with "prv_"
+
+    is_direct: Represents a user-to-user direct message exchange
+    """
     channel = None
     connection = None
 
@@ -53,11 +64,37 @@ class Channel(Model):
     class Managers(ListNode):
         user = UserModel(reverse_name='managed_channels')
 
-    def add_message(self, body, title, sender=None, url=None, typ=2):
+    @classmethod
+    def get_or_create_direct_channel(cls, initiator, receiver):
+        """
+        Creates a  direct messaging channel between two user
+
+        Args:
+            initiator: User, who sent the first message
+            receiver: User, other party
+
+        Returns:
+            Channel
+        """
+        existing = cls.objects.or_filter(
+            code_name='%s_%s' % (initiator.key, receiver.key)).or_filter(
+            code_name='%s_%s' % (receiver.key, initiator.key))
+        if existing:
+            return existing[0]
+        else:
+            channel_name = '%s_%s' % (initiator.key, receiver.key)
+            channel = cls(is_direct=True, code_name=channel_name).save()
+            Subscription(channel=channel, user=initiator).save()
+            Subscription(channel=channel, user=receiver).save()
+            return channel
+
+
+    def add_message(self, body, title, sender=None, url=None, typ=2, receiver=None):
         channel = self._connect_mq()
         mq_msg = json.dumps(dict(sender=sender, body=body, msg_title=title, url=url, typ=typ))
         channel.basic_publish(exchange=self.code_name, body=mq_msg)
-        Message(sender=sender, body=body, msg_title=title, url=url, typ=typ, channel=self).save()
+        Message(sender=sender, body=body, msg_title=title, url=url,
+                typ=typ, channel=self, receiver=receiver).save()
 
     @classmethod
     def _connect_mq(cls):
@@ -75,7 +112,13 @@ class Channel(Model):
 
     def pre_creation(self):
         if not self.code_name:
-            self.code_name = self.key
+            if self.name:
+                self.code_name = to_safe_str(self.name)
+                return
+            if self.owner and self.is_private:
+                self.code_name = "prv_%s" % to_safe_str(self.owner.key)
+                return
+            raise IntegrityError('Non-private and non-direct channels should have a "name".')
 
     def post_creation(self):
         self.create_exchange()
@@ -89,7 +132,8 @@ class Subscription(Model):
     channel = Channel()
     user = UserModel(reverse_name='channels')
     is_muted = field.Boolean("Mute the channel")
-    inform_me = field.Boolean("Inform when I'm mentioned")
+    inform_me = field.Boolean("Inform when I'm mentioned", default=True)
+    visible = field.Boolean("Show under user's channel list", default=True)
     can_leave = field.Boolean("Membership is not obligatory", default=True)
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
@@ -108,7 +152,7 @@ class Subscription(Model):
         we always call it before binding it to related channel
         """
         channel = self._connect_mq()
-        channel.exchange_declare(exchange=self.user.key, exchange_type='direct', durable=True)
+        channel.exchange_declare(exchange=self.user.key, exchange_type='fanout', durable=True)
 
     def bind_to_channel(self):
         """

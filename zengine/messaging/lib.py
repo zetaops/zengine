@@ -103,9 +103,9 @@ class BaseUser(object):
             mq_msg['sender_key'] = sender.key
 
         mq_channel.basic_publish(exchange=self.key, body=json.dumps(mq_msg))
-        self._write_message(sender, message, title, url, typ)
+        self._write_message_to_db(sender, message, title, url, typ)
 
-    def _write_message(self, sender, body, title, url, typ):
+    def _write_message_to_db(self, sender, body, title, url, typ):
         from zengine.messaging.model import Channel, Message
         channel = Channel.objects.get(owner=self, is_private=True)
         Message(channel=channel, sender=sender, msg_title=title,
