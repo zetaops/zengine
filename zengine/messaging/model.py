@@ -76,8 +76,8 @@ class Channel(Model):
         Returns:
             Channel
         """
-        existing = cls.objects.or_filter(
-            code_name='%s_%s' % (initiator.key, receiver.key)).or_filter(
+        existing = cls.objects.OR().filter(
+            code_name='%s_%s' % (initiator.key, receiver.key)).filter(
             code_name='%s_%s' % (receiver.key, initiator.key))
         if existing:
             return existing[0]
@@ -88,13 +88,12 @@ class Channel(Model):
             Subscription(channel=channel, user=receiver).save()
             return channel
 
-
-    def add_message(self, body, title, sender=None, url=None, typ=2, receiver=None):
-        channel = self._connect_mq()
+    def add_message(self, body, title=None, sender=None, url=None, typ=2, receiver=None):
+        mq_channel = self._connect_mq()
         mq_msg = json.dumps(dict(sender=sender, body=body, msg_title=title, url=url, typ=typ))
-        channel.basic_publish(exchange=self.code_name, body=mq_msg)
-        Message(sender=sender, body=body, msg_title=title, url=url,
-                typ=typ, channel=self, receiver=receiver).save()
+        mq_channel.basic_publish(exchange=self.code_name, body=mq_msg)
+        return Message(sender=sender, body=body, msg_title=title, url=url,
+                       typ=typ, channel=self, receiver=receiver).save()
 
     @classmethod
     def _connect_mq(cls):
@@ -221,7 +220,7 @@ class Attachment(Model):
     """
     file = field.File("File", random_name=True, required=False)
     typ = field.Integer("Type", choices=ATTACHMENT_TYPES)
-    name = field.String("Name")
+    name = field.String("File Name")
     description = field.String("Description")
     channel = Channel()
     message = Message()
