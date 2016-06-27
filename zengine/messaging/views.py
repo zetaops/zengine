@@ -19,14 +19,15 @@ def create_message(current):
     """
     Creates a message for the given channel.
 
-    API:
-
     .. code-block:: python
 
-            {'view':'_zops_create_message',
+        #  request:
+        {
+            'view':'_zops_create_message',
             'message': {
                 'channel': "code_name of the channel",
                 'receiver': "Key of receiver. Can be blank for non-direct messages",
+                'client_id': "Client side unique id for referencing this message",
                 'title': "Title of the message. Can be blank.",
                 'body': "Message body.",
                 'type': zengine.messaging.model.MSG_TYPES,
@@ -35,6 +36,10 @@ def create_message(current):
                     'name': "File name with extension.",
                     'content': "base64 encoded file content"
                     }]}
+        # response:
+        {
+            'msg_key': "Key of the just created message object",
+        }
 
     """
     msg = current.input['message']
@@ -50,16 +55,45 @@ def create_message(current):
 
 def _dedect_file_type(current, name, content):
     # TODO: Attachment type detection
-    return 1  # Document
+    return 1  # Return as Document for now
 
-def show_channel(current):
+def show_public_channel(current):
     """
-    Initial display of channel content
+    Initial display of channel content.
+    Returns chanel description, no of members, last 20 messages etc.
 
-    API:
 
+    .. code-block:: python
 
+        #  request:
+            {
+                'view':'_zops_show_public_channel',
+                'channel_key': "Key of the requested channel"
+            }
+
+        #  response:
+            {
+                'channel_key': "key of channel",
+                'description': string,
+                'no_of_members': int,
+                'member_list': [
+                    {'name': string,
+                     'is_online': bool,
+                     'avatar_url': string,
+                    }],
+                'last_messages': [
+                    {'content': string,
+                     'key': string,
+                     'actions':[
+                        {'title': string,
+                         'cmd': string
+                         }
+                        ]
+                    }
+                ]
+            }
     """
+
 
 
 def list_channels(current):
