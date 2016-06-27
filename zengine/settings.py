@@ -115,6 +115,7 @@ SESSION_OPTIONS = {
 VIEW_URLS = {
     'dashboard': 'zengine.views.menu.Menu',
     'ping': 'zengine.views.dev_utils.Ping',
+    '_zops_create_message': 'zengine.messaging.views.create_message',
 
 }
 

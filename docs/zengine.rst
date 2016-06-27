@@ -14,6 +14,8 @@ zengine package
     zengine.dispatch
     zengine.forms
     zengine.lib
+    zengine.messaging
+    zengine.models
     zengine.tornado_server
     zengine.views
 
@@ -33,6 +35,14 @@ zengine.engine module
 ---------------------
 
 .. automodule:: zengine.engine
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+zengine.messaging module
+---------------------
+
+.. automodule:: zengine.messaging
     :members:
     :undoc-members:
     :show-inheritance:
