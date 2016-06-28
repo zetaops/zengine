@@ -166,7 +166,7 @@ class Worker(object):
                 raise
             err = traceback.format_exc()
             output = {'error': self._prepare_error_msg(err), "code": 500}
-            log.exception("Worker error occurred")
+            log.exception("Worker error occurred with messsage body:\n%s" % body)
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
         log.info("OUTPUT for %s: %s" % (sessid, output))

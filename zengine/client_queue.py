@@ -54,9 +54,11 @@ class ClientQueue(object):
         return self.sess_id
 
     def send_to_queue(self, message=None, json_message=None):
-        log.debug("Sending following message to %s queue:\n%s " % (
-            self.sess_id, json_message or json.dumps(message)))
-        self.get_channel().publish(exchange=self.user_id or '',
+        exchange = self.user_id or ''
+        log.debug("Sending following message to %s queue, \"%s\" exchange:\n%s " % (
+            self.sess_id, exchange, json_message or json.dumps(message)))
+
+        self.get_channel().publish(exchange=exchange,
                                          routing_key=self.sess_id,
                                          body=json_message or json.dumps(message))
 

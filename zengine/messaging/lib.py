@@ -106,7 +106,8 @@ class BaseUser(object):
     def full_name(self):
         return self.username
 
-    def bind_private_channel(self, sess_id):
+    @classmethod
+    def bind_private_channel(cls, sess_id):
         mq_channel = self._connect_mq()
         mq_channel.queue_bind(exchange='prv_%s' % self.key, queue=sess_id)
 
