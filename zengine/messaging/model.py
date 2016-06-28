@@ -88,12 +88,13 @@ class Channel(Model):
             Subscriber(channel=channel, user=receiver).save()
             return channel
 
-    def add_message(self, body, title=None, sender=None, url=None, typ=2, receiver=None):
+    @classmethod
+    def add_message(self, channel_key, body, title=None, sender=None, url=None, typ=2, receiver=None):
         mq_channel = self._connect_mq()
         mq_msg = json.dumps(dict(sender=sender, body=body, msg_title=title, url=url, typ=typ))
-        mq_channel.basic_publish(exchange=self.code_name, body=mq_msg)
+        mq_channel.basic_publish(exchange=channel_key, body=mq_msg)
         return Message(sender=sender, body=body, msg_title=title, url=url,
-                       typ=typ, channel=self, receiver=receiver).save()
+                       typ=typ, channel_id=channel_key, receiver=receiver).save()
 
     def get_last_messages(self):
         # TODO: Refactor this with RabbitMQ Last Cached Messages exchange
@@ -117,11 +118,15 @@ class Channel(Model):
         if not self.code_name:
             if self.name:
                 self.code_name = to_safe_str(self.name)
+                self.key = self.code_name
                 return
             if self.owner and self.is_private:
                 self.code_name = "prv_%s" % to_safe_str(self.owner.key)
+                self.key = self.code_name
                 return
             raise IntegrityError('Non-private and non-direct channels should have a "name".')
+        else:
+            self.key = self.code_name
 
     def post_creation(self):
         self.create_exchange()
@@ -138,6 +143,7 @@ class Subscriber(Model):
     inform_me = field.Boolean("Inform when I'm mentioned", default=True)
     visible = field.Boolean("Show under user's channel list", default=True)
     can_leave = field.Boolean("Membership is not obligatory", default=True)
+    last_seen = field.DateTime("Last seen time")
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 
@@ -160,6 +166,10 @@ class Subscriber(Model):
         """
         channel = self._connect_mq()
         channel.exchange_declare(exchange=self.user.key, exchange_type='fanout', durable=True)
+
+    @classmethod
+    def mark_seen(cls, key, datetime_str):
+        cls.objects.filter(key=key).update(last_seen=datetime_str)
 
     def bind_to_channel(self):
         """
@@ -197,13 +207,18 @@ MESSAGE_STATUS = (
 
 class Message(Model):
     """
-    Permission model
+    Message model
+
+    Notes:
+        Never use directly for creating new messages! Use these methods:
+            - Channel objects's **add_message()** method.
+            - User object's **set_message()** method. (which uses channel.add_message)
     """
     channel = Channel()
     sender = UserModel(reverse_name='sent_messages')
     receiver = UserModel(reverse_name='received_messages')
-    typ = field.Integer("Type", choices=MSG_TYPES)
-    status = field.Integer("Status", choices=MESSAGE_STATUS)
+    typ = field.Integer("Type", choices=MSG_TYPES, default=1)
+    status = field.Integer("Status", choices=MESSAGE_STATUS, default=1)
     msg_title = field.String("Title")
     body = field.String("Body")
     url = field.String("URL")
@@ -226,6 +241,7 @@ class Message(Model):
         return {
             'content': self.body,
             'type': self.typ,
+            'time': self.updated_at,
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
             'sender_name': self.sender.full_name,

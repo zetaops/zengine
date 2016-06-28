@@ -24,7 +24,7 @@ def create_message(current):
         {
             'view':'_zops_create_message',
             'message': {
-                'channel': "code_name of the channel",
+                'channel': key, # of channel",
                 'receiver': key, " of receiver. Should be set only for direct messages",
                 'title': "Title of the message. Can be blank.",
                 'body': "Message body.",
@@ -84,6 +84,7 @@ def show_channel(current):
                 'last_messages': [
                     {'content': string,
                      'title': string,
+                     'time': datetime,
                      'channel_key': key,
                      'sender_name': string,
                      'sender_key': key,
@@ -106,6 +107,47 @@ def show_channel(current):
                       'last_messages': [msg.serialize_for(current.user)
                                         for msg in ch.get_last_messages()]
                       }
+
+def last_seen_channel(current):
+    """
+    Initial display of channel content.
+    Returns channel description, members, no of members, last 20 messages etc.
+
+
+    .. code-block:: python
+
+        #  request:
+            {
+                'view':'_zops_last_seen_msg',
+                'channel_key': key,
+                'msg_key': key,
+                'msg_date': datetime,
+            }
+
+        #  response:
+            {
+                'channel_key': key,
+                'description': string,
+                'no_of_members': int,
+                'member_list': [
+                    {'name': string,
+                     'is_online': bool,
+                     'avatar_url': string,
+                    }],
+                'last_messages': [
+                    {'content': string,
+                     'title': string,
+                     'channel_key': key,
+                     'sender_name': string,
+                     'sender_key': key,
+                     'type': int,
+                     'key': key,
+                     'actions':[('name_string', 'cmd_string'),]
+                    }
+                ]
+            }
+    """
+    current.input['seen_channel']
 
 def mark_offline_user(current):
     current.user.is_online(False)
