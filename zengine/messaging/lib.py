@@ -30,14 +30,14 @@ class ConnectionStatus(Cache):
 
 
 class BaseUser(object):
-    connection = None
-    channel = None
+    mq_connection = None
+    mq_channel = None
 
     def _connect_mq(self):
-        if not self.connection is None or self.connection.is_closed:
-            self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-            self.channel = self.connection.channel()
-        return self.channel
+        if not self.mq_connection is None or self.mq_connection.is_closed:
+            self.mq_connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+            self.mq_channel = self.mq_connection.channel()
+        return self.mq_channel
 
     def get_avatar_url(self):
         """
@@ -90,7 +90,7 @@ class BaseUser(object):
 
     def get_role(self, role_id):
         """
-        Kullanıcıya ait Role nesnesini getirir.
+        Retrieves user's roles.
 
         Args:
             role_id (int)
@@ -105,7 +105,11 @@ class BaseUser(object):
     def full_name(self):
         return self.username
 
-    def send_message(self, title, message, sender=None, url=None, typ=1):
+    def bind_private_channel(self, sess_id):
+        mq_channel = self._connect_mq()
+        mq_channel.queue_bind(exchange='prv_%s' % self.key, queue=sess_id)
+
+    def send_notification(self, title, message, typ=1, url=None):
         """
         sends message to users private mq exchange
         Args:
@@ -117,17 +121,10 @@ class BaseUser(object):
 
 
         """
-        mq_channel = self._connect_mq()
-        mq_msg = dict(body=message, msg_title=title, url=url, typ=typ)
-        if sender:
-            mq_msg['sender_name'] = sender.full_name
-            mq_msg['sender_key'] = sender.key
-
-        mq_channel.basic_publish(exchange=self.key, body=json.dumps(mq_msg))
-        self._write_message_to_db(sender, message, title, url, typ)
-
-    def _write_message_to_db(self, sender, body, title, url, typ):
-        from zengine.messaging.model import Channel, Message
-        channel = Channel.objects.get(owner=self, is_private=True)
-        Message(channel=channel, sender=sender, msg_title=title,
-                body=body, receiver=self, url=url, typ=typ).save()
+        self.channel_set.channel.__class__.add_message(
+            channel_key='prv_%s' % self.key,
+            body=message,
+            title=title,
+            typ=typ,
+            url=url
+        )

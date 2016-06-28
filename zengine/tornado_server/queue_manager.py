@@ -51,7 +51,7 @@ NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 
 
 class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 10  # sec
+    REPLY_TIMEOUT = 100  # sec
 
     def __init__(self):
         self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
@@ -215,6 +215,7 @@ class QueueManager(object):
                                   # auto_delete=True,
                                   # exclusive=True
                                   )
+
 
         self.connection.channel(_on_output_channel_creation)
 

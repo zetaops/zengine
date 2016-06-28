@@ -54,8 +54,8 @@ class ClientQueue(object):
         return self.sess_id
 
     def send_to_queue(self, message=None, json_message=None):
-        self.get_channel().basic_publish(exchange='',
-                                         routing_key=self.get_sess_id(),
+        self.get_channel().basic_publish(exchange=self.user_id or '',
+                                         routing_key=self.sess_id,
                                          body=json_message or json.dumps(message))
 
     def old_to_new_queue(self, old_sess_id):

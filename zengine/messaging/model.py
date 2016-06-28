@@ -44,8 +44,8 @@ class Channel(Model):
 
     is_direct: Represents a user-to-user direct message exchange
     """
-    channel = None
-    connection = None
+    mq_channel = None
+    mq_connection = None
 
     name = field.String("Name")
     code_name = field.String("Internal name")
@@ -62,7 +62,8 @@ class Channel(Model):
         unique_together = (('is_private', 'owner'),)
 
     class Managers(ListNode):
-        user = UserModel(reverse_name='managed_channels')
+        user = UserModel()
+
 
     @classmethod
     def get_or_create_direct_channel(cls, initiator, receiver):
@@ -102,17 +103,17 @@ class Channel(Model):
 
     @classmethod
     def _connect_mq(cls):
-        if cls.connection is None or cls.connection.is_closed:
-            cls.connection, cls.channel = get_mq_connection()
-        return cls.channel
+        if cls.mq_connection is None or cls.mq_connection.is_closed:
+            cls.mq_connection, cls.mq_channel = get_mq_connection()
+        return cls.mq_channel
 
     def create_exchange(self):
         """
         Creates MQ exchange for this channel
         Needs to be defined only once.
         """
-        channel = self._connect_mq()
-        channel.exchange_declare(exchange=self.code_name, exchange_type='fanout', durable=True)
+        mq_channel = self._connect_mq()
+        mq_channel.exchange_declare(exchange=self.code_name, exchange_type='fanout', durable=True)
 
     def pre_creation(self):
         if not self.code_name:
@@ -212,7 +213,7 @@ class Message(Model):
     Notes:
         Never use directly for creating new messages! Use these methods:
             - Channel objects's **add_message()** method.
-            - User object's **set_message()** method. (which uses channel.add_message)
+            - User object's **set_message()** method. (which also uses channel.add_message)
     """
     channel = Channel()
     sender = UserModel(reverse_name='sent_messages')

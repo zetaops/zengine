@@ -62,10 +62,13 @@ class Worker(object):
         self.client_queue = ClientQueue()
         self.input_channel = self.connection.channel()
 
-        self.input_channel.exchange_declare(exchange=self.INPUT_EXCHANGE, type='topic', durable=True)
+        self.input_channel.exchange_declare(exchange=self.INPUT_EXCHANGE,
+                                            type='topic',
+                                            durable=True)
         self.input_channel.queue_declare(queue=self.INPUT_QUEUE_NAME)
         self.input_channel.queue_bind(exchange=self.INPUT_EXCHANGE, queue=self.INPUT_QUEUE_NAME)
-        log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME, self.INPUT_EXCHANGE))
+        log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME,
+                                                                        self.INPUT_EXCHANGE))
 
     def run(self):
         """
@@ -172,11 +175,10 @@ class Worker(object):
 
     def send_output(self, output, sessid):
         self.client_queue.sess_id = sessid
+        # TODO: This is ugly
+        if 'login_process' not in output:
+            self.client_queue.user_id = self.current.user_id
         self.client_queue.send_to_queue(output)
-        # self.output_channel.basic_publish(exchange='',
-        #                                   routing_key=sessid,
-        #                                   body=json.dumps(output))
-        # except ConnectionClosed:
 
 
 def run_workers(no_subprocess):
