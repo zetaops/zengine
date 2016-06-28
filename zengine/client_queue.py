@@ -22,7 +22,7 @@ BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     heartbeat_interval=0,
     credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
 )
-
+from zengine.log import log
 
 class ClientQueue(object):
     """
@@ -54,7 +54,9 @@ class ClientQueue(object):
         return self.sess_id
 
     def send_to_queue(self, message=None, json_message=None):
-        self.get_channel().basic_publish(exchange=self.user_id or '',
+        log.debug("Sending following message to %s queue:\n%s " % (
+            self.sess_id, json_message or json.dumps(message)))
+        self.get_channel().publish(exchange=self.user_id or '',
                                          routing_key=self.sess_id,
                                          body=json_message or json.dumps(message))
 

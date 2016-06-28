@@ -33,11 +33,12 @@ class BaseUser(object):
     mq_connection = None
     mq_channel = None
 
-    def _connect_mq(self):
-        if not self.mq_connection is None or self.mq_connection.is_closed:
-            self.mq_connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-            self.mq_channel = self.mq_connection.channel()
-        return self.mq_channel
+    @classmethod
+    def _connect_mq(cls):
+        if cls.mq_connection is None or cls.mq_connection.is_closed:
+            cls.mq_connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+            cls.mq_channel = cls.mq_connection.channel()
+        return cls.mq_channel
 
     def get_avatar_url(self):
         """

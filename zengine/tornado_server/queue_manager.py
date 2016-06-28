@@ -51,7 +51,7 @@ NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 
 
 class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 100  # sec
+    REPLY_TIMEOUT = 5  # sec
 
     def __init__(self):
         self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
@@ -76,6 +76,7 @@ class BlockingConnectionForHTTP(object):
         timeout_start = time.time()
         while 1:
             method_frame, header_frame, body = channel.basic_get(sess_id)
+            log.debug("\n%s\n%s\n%s\n%s" % (sess_id, method_frame, header_frame, body))
             if method_frame:
                 reply = json_decode(body)
                 if 'callbackID' in reply and reply['callbackID'] == input_data['callbackID']:
@@ -90,7 +91,7 @@ class BlockingConnectionForHTTP(object):
             if time.time() - timeout_start > self.REPLY_TIMEOUT:
                 break
             else:
-                time.sleep(0.4)
+                time.sleep(1)
         log.info('No message returned for %s' % sess_id)
         channel.close()
 
@@ -187,10 +188,12 @@ class QueueManager(object):
         channel = self.create_out_channel(sess_id)
 
     def inform_disconnection(self, sess_id):
-        self.websockets[sess_id].write_message({
-            'view': 'mark_offline_user',
-            'sess_id': sess_id
-        })
+        self.in_channel.basic_publish(exchange='input_exc',
+                                      routing_key=sess_id,
+                                      body=json_encode({
+                                          'view': 'mark_offline_user',
+                                          'sess_id': sess_id
+                                      }))
 
     def unregister_websocket(self, sess_id):
         try:
@@ -215,7 +218,6 @@ class QueueManager(object):
                                   # auto_delete=True,
                                   # exclusive=True
                                   )
-
 
         self.connection.channel(_on_output_channel_creation)
 
