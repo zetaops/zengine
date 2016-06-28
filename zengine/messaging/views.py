@@ -14,20 +14,18 @@ from zengine.views.base import BaseView
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
-
 def create_message(current):
     """
     Creates a message for the given channel.
 
     .. code-block:: python
 
-        #  request:
+        # request:
         {
             'view':'_zops_create_message',
             'message': {
                 'channel': "code_name of the channel",
-                'receiver': "Key of receiver. Can be blank for non-direct messages",
-                'client_id': "Client side unique id for referencing this message",
+                'receiver': key, " of receiver. Should be set only for direct messages",
                 'title': "Title of the message. Can be blank.",
                 'body': "Message body.",
                 'type': zengine.messaging.model.MSG_TYPES,
@@ -38,7 +36,7 @@ def create_message(current):
                     }]}
         # response:
         {
-            'msg_key': "Key of the just created message object",
+            'msg_key': key,  # of the just created message object,
         }
 
     """
@@ -53,14 +51,16 @@ def create_message(current):
             Attachment(channel=ch, msg=msg_obj, name=atch['name'], file=atch['content'],
                        description=atch['description'], typ=typ).save()
 
-def _dedect_file_type(current, name, content):
-    # TODO: Attachment type detection
+
+def _dedect_file_type(name, content):
+    # FIXME: Implement attachment type detection
     return 1  # Return as Document for now
 
-def show_public_channel(current):
+
+def show_channel(current):
     """
     Initial display of channel content.
-    Returns chanel description, no of members, last 20 messages etc.
+    Returns channel description, members, no of members, last 20 messages etc.
 
 
     .. code-block:: python
@@ -68,12 +68,12 @@ def show_public_channel(current):
         #  request:
             {
                 'view':'_zops_show_public_channel',
-                'channel_key': "Key of the requested channel"
+                'channel_key': key,
             }
 
         #  response:
             {
-                'channel_key': "key of channel",
+                'channel_key': key,
                 'description': string,
                 'no_of_members': int,
                 'member_list': [
@@ -83,24 +83,44 @@ def show_public_channel(current):
                     }],
                 'last_messages': [
                     {'content': string,
-                     'key': string,
-                     'actions':[
-                        {'title': string,
-                         'cmd': string
-                         }
-                        ]
+                     'title': string,
+                     'channel_key': key,
+                     'sender_name': string,
+                     'sender_key': key,
+                     'type': int,
+                     'key': key,
+                     'actions':[('name_string', 'cmd_string'),]
                     }
                 ]
             }
     """
+    ch_key = current.input['channel_key']
+    ch = Channel.objects.get(ch_key)
+    current.output = {'channel_key': ch_key,
+                      'description': ch.description,
+                      'no_of_members': len(ch.subscriber_set),
+                      'member_list': [{'name': sb.user.full_name,
+                                       'is_online': sb.user.is_online(),
+                                       'avatar_url': sb.user.get_avatar_url()
+                                       } for sb in ch.subscriber_set],
+                      'last_messages': [msg.serialize_for(current.user)
+                                        for msg in ch.get_last_messages()]
+                      }
 
-
+def mark_offline_user(current):
+    current.user.is_online(False)
 
 def list_channels(current):
-    pass
+    return [
+        {'name': sbs.channel.name,
+         'key': sbs.channel.key,
+         'unread': sbs.unread_count()} for sbs in
+        current.user.subscriptions]
+
 
 def create_public_channel(current):
     pass
+
 
 def create_direct_channel(current):
     """
@@ -109,11 +129,22 @@ def create_direct_channel(current):
     """
     pass
 
+
+def create_broadcast_channel(current):
+    """
+    Create a One-To-One channel for current user and selected user.
+
+    """
+    pass
+
+
 def find_message(current):
     pass
 
+
 def delete_message(current):
     pass
+
 
 def edit_message(current):
     pass

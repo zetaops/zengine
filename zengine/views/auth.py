@@ -64,6 +64,9 @@ class Login(SimpleView):
                            # routing_key="#"
                            )
 
+    def _user_is_online(self):
+        self.current.user.is_online(True)
+
     def do_view(self):
         """
         Authenticate user with given credentials.
@@ -79,6 +82,7 @@ class Login(SimpleView):
                     self.current.input['password'])
                 self.current.task_data['login_successful'] = auth_result
                 if auth_result:
+                    self._user_is_online()
                     self._do_binding()
                     user_sess = UserSessionID(self.current.user_id)
                     old_sess_id = user_sess.get()

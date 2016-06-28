@@ -84,8 +84,8 @@ class Channel(Model):
         else:
             channel_name = '%s_%s' % (initiator.key, receiver.key)
             channel = cls(is_direct=True, code_name=channel_name).save()
-            Subscription(channel=channel, user=initiator).save()
-            Subscription(channel=channel, user=receiver).save()
+            Subscriber(channel=channel, user=initiator).save()
+            Subscriber(channel=channel, user=receiver).save()
             return channel
 
     def add_message(self, body, title=None, sender=None, url=None, typ=2, receiver=None):
@@ -94,6 +94,10 @@ class Channel(Model):
         mq_channel.basic_publish(exchange=self.code_name, body=mq_msg)
         return Message(sender=sender, body=body, msg_title=title, url=url,
                        typ=typ, channel=self, receiver=receiver).save()
+
+    def get_last_messages(self):
+        # TODO: Refactor this with RabbitMQ Last Cached Messages exchange
+        return self.message_set.objects.filter()[:20]
 
     @classmethod
     def _connect_mq(cls):
@@ -123,13 +127,13 @@ class Channel(Model):
         self.create_exchange()
 
 
-class Subscription(Model):
+class Subscriber(Model):
     """
     Permission model
     """
 
     channel = Channel()
-    user = UserModel(reverse_name='channels')
+    user = UserModel(reverse_name='subscriptions')
     is_muted = field.Boolean("Mute the channel")
     inform_me = field.Boolean("Inform when I'm mentioned", default=True)
     visible = field.Boolean("Show under user's channel list", default=True)
@@ -142,6 +146,10 @@ class Subscription(Model):
         if cls.connection is None or cls.connection.is_closed:
             cls.connection, cls.channel = get_mq_connection()
         return cls.channel
+
+    def unread_count(self):
+        # FIXME: track and return actual unread message count
+        return 0
 
     def create_exchange(self):
         """
@@ -200,6 +208,32 @@ class Message(Model):
     body = field.String("Body")
     url = field.String("URL")
 
+    def get_actions_for(self, user):
+        actions = [
+            ('Favorite', 'favorite_message')
+        ]
+        if self.sender == user:
+            actions.extend([
+                ('Delete', 'delete_message'),
+                ('Edit', 'delete_message')
+            ])
+        else:
+            actions.extend([
+                ('Flag', 'flag_message')
+            ])
+
+    def serialize_for(self, user):
+        return {
+            'content': self.body,
+            'type': self.typ,
+            'attachments': [attachment.serialize() for attachment in self.attachment_set],
+            'title': self.msg_title,
+            'sender_name': self.sender.full_name,
+            'sender_key': self.sender.key,
+            'key': self.key,
+            'actions': self.get_actions_for(user),
+        }
+
     def __unicode__(self):
         content = self.msg_title or self.body
         return "%s%s" % (content[:30], '...' if len(content) > 30 else '')
@@ -224,6 +258,13 @@ class Attachment(Model):
     description = field.String("Description")
     channel = Channel()
     message = Message()
+
+    def serialize(self):
+        return {
+            'description': self.description,
+            'file_name': self.name,
+            'url': "%s%s" % (settings.S3_PUBLIC_URL, self.file)
+        }
 
     def __unicode__(self):
         return self.name

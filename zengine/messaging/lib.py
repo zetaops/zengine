@@ -13,7 +13,20 @@ from passlib.handlers.pbkdf2 import pbkdf2_sha512
 
 from pyoko.conf import settings
 from zengine.client_queue import BLOCKING_MQ_PARAMS
+from zengine.lib.cache import Cache
 
+
+class ConnectionStatus(Cache):
+    """
+    Cache object for workflow instances.
+
+    Args:
+        wf_token: Token of the workflow instance.
+    """
+    PREFIX = 'ONOFF'
+
+    def __init__(self, user_id):
+        super(ConnectionStatus, self).__init__(user_id)
 
 
 class BaseUser(object):
@@ -47,6 +60,14 @@ class BaseUser(object):
         """
         self.password = pbkdf2_sha512.encrypt(raw_password, rounds=10000,
                                               salt_size=10)
+
+    def is_online(self, status=None):
+        if status is None:
+            return ConnectionStatus(self.key).get()
+        ConnectionStatus(self.key).set(status)
+        if status == False:
+            pass
+            # TODO: do
 
     def pre_save(self):
         """ encrypt password if not already encrypted """

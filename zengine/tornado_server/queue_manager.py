@@ -186,8 +186,15 @@ class QueueManager(object):
         self.websockets[sess_id] = ws
         channel = self.create_out_channel(sess_id)
 
+    def inform_disconnection(self, sess_id):
+        self.websockets[sess_id].write_message({
+            'view': 'mark_offline_user',
+            'sess_id': sess_id
+        })
+
     def unregister_websocket(self, sess_id):
         try:
+            self.inform_disconnection(sess_id)
             del self.websockets[sess_id]
         except KeyError:
             log.exception("Non-existent websocket")
