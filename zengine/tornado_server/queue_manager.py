@@ -9,8 +9,8 @@
 import json
 from uuid import uuid4
 
-import os
-
+import os, sys
+sys.sessid_to_userid = {}
 import pika
 import time
 from pika.adapters import TornadoConnection, BaseConnection
@@ -30,6 +30,7 @@ settings = type('settings', (object,), {
     'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),
     'MQ_USER': os.environ.get('MQ_USER', 'guest'),
     'MQ_PASS': os.environ.get('MQ_PASS', 'guest'),
+    'DEBUG': os.environ.get('DEBUG', False),
     'MQ_VHOST': os.environ.get('MQ_VHOST', '/'),
 })
 log = get_logger(settings)
@@ -70,9 +71,15 @@ class BlockingConnectionForHTTP(object):
                                          routing_key=sess_id,
                                          body=json_encode(input_data))
 
+    def _store_user_id(self, sess_id, body):
+        sys.sessid_to_userid[sess_id[5:]] = json_decode(body)['user_id']
+
     def _wait_for_reply(self, sess_id, input_data):
         channel = self.create_channel()
-        channel.queue_declare(queue=sess_id, auto_delete=True)
+        channel.queue_declare(queue=sess_id,
+                              arguments={'x-expires': 4000}
+                              # auto_delete=True
+                              )
         timeout_start = time.time()
         while 1:
             method_frame, header_frame, body = channel.basic_get(sess_id)
@@ -83,6 +90,8 @@ class BlockingConnectionForHTTP(object):
                     channel.basic_ack(method_frame.delivery_tag)
                     channel.close()
                     log.info('Returned view message for %s: %s' % (sess_id, body))
+                    if 'upgrade' in body:
+                        self._store_user_id(sess_id, body)
                     return body
                 else:
                     if time.time() - json_decode(body)['reply_timestamp'] > self.REPLY_TIMEOUT:
@@ -184,6 +193,7 @@ class QueueManager(object):
             sess_id:
             ws:
         """
+        user_id = sys.sessid_to_userid[sess_id]
         self.websockets[sess_id] = ws
         channel = self.create_out_channel(sess_id)
 
@@ -192,8 +202,8 @@ class QueueManager(object):
                                       routing_key=sess_id,
                                       body=json_encode(dict(data={
                                           'view': 'mark_offline_user',
-                                          'sess_id': sess_id
-                                      })))
+                                          'sess_id': sess_id,},
+                                          _zops_remote_ip='')))
 
     def unregister_websocket(self, sess_id):
         try:
@@ -211,15 +221,18 @@ class QueueManager(object):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
                 channel.basic_consume(self.on_message, queue=sess_id)
-
+                log.debug("BIND QUEUE TO WS Q.%s on Ch.%s" % (sess_id, channel.consumer_tags[0]))
             self.out_channels[sess_id] = channel
+
             channel.queue_declare(callback=_on_output_queue_decleration,
                                   queue=sess_id,
+                                  arguments={'x-expires': 40000},
                                   # auto_delete=True,
                                   # exclusive=True
                                   )
 
         self.connection.channel(_on_output_channel_creation)
+
 
     def redirect_incoming_message(self, sess_id, message, request):
         message = json_decode(message)
@@ -231,9 +244,10 @@ class QueueManager(object):
 
     def on_message(self, channel, method, header, body):
         sess_id = method.routing_key
+        log.debug("WS RPLY for %s: %s" % (sess_id, body))
         if sess_id in self.websockets:
             self.websockets[sess_id].write_message(body)
-            log.debug("WS RPLY for %s: %s" % (sess_id, body))
+
             channel.basic_ack(delivery_tag=method.delivery_tag)
             # else:
             #     channel.basic_reject(delivery_tag=method.delivery_tag)

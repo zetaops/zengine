@@ -132,7 +132,7 @@ class Worker(object):
         """
         input = {}
         try:
-            sessid = method.routing_key
+            self.sessid = method.routing_key
 
             input = json_decode(body)
             data = input['data']
@@ -144,9 +144,9 @@ class Worker(object):
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']
-                session = Session(sessid[5:])  # clip "HTTP_" prefix from sessid
+                session = Session(self.sessid[5:])  # clip "HTTP_" prefix from sessid
             else:
-                session = Session(sessid)
+                session = Session(self.sessid)
 
             headers = {'remote_ip': input['_zops_remote_ip']}
 
@@ -169,16 +169,19 @@ class Worker(object):
             log.exception("Worker error occurred with messsage body:\n%s" % body)
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
-        log.info("OUTPUT for %s: %s" % (sessid, output))
+        log.info("OUTPUT for %s: %s" % (self.sessid, output))
         output['reply_timestamp'] = time()
-        self.send_output(output, sessid)
+        self.send_output(output)
 
-    def send_output(self, output, sessid):
-        self.client_queue.sess_id = sessid
-        # TODO: This is ugly
-        if 'login_process' not in output:
-            self.client_queue.user_id = self.current.user_id
-        self.client_queue.send_to_queue(output)
+    def send_output(self, output):
+        # TODO: This is ugly, we should separate login process
+        log.debug("SEND_OUTPUT: %s" % output)
+        if self.current.user_id is None or 'login_process' in output:
+            self.client_queue.send_to_default_exchange(self.sessid, output)
+        else:
+            self.client_queue.send_to_prv_exchange(self.current.user_id, output)
+
+
 
 
 def run_workers(no_subprocess):

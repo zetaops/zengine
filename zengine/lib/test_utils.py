@@ -126,7 +126,7 @@ class TestClient(Worker):
         self.token = self.response_wrapper.token
         return self.response_wrapper
 
-    def send_output(self, output, sessid):
+    def send_output(self, output):
         self.response_wrapper = ResponseWrapper(output)
 
 
@@ -219,6 +219,7 @@ class BaseTestCase:
         assert all([(field in req_fields) for field in ('username', 'password')])
         resp = self.client.post(username=self.client.username or self.client.user.username,
                                 password="123", cmd="do")
+        log.debug("login result :\n%s" % resp.json)
         assert resp.json['cmd'] == 'upgrade'
 
     @staticmethod

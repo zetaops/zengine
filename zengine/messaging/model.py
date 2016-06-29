@@ -113,7 +113,9 @@ class Channel(Model):
         Needs to be defined only once.
         """
         mq_channel = self._connect_mq()
-        mq_channel.exchange_declare(exchange=self.code_name, exchange_type='fanout', durable=True)
+        mq_channel.exchange_declare(exchange=self.code_name,
+                                    exchange_type='fanout',
+                                    durable=True)
 
     def pre_creation(self):
         if not self.code_name:
@@ -122,7 +124,7 @@ class Channel(Model):
                 self.key = self.code_name
                 return
             if self.owner and self.is_private:
-                self.code_name = "prv_%s" % to_safe_str(self.owner.key)
+                self.code_name = self.owner.prv_exchange
                 self.key = self.code_name
                 return
             raise IntegrityError('Non-private and non-direct channels should have a "name".')
@@ -161,12 +163,16 @@ class Subscriber(Model):
     def create_exchange(self):
         """
         Creates user's private exchange
-        Actually needed to be defined only once.
-        but since we don't know if it's exists or not
-        we always call it before binding it to related channel
+
+        Actually user's private channel needed to be defined only once,
+        and this should be happened when user first created.
+        But since this has a little performance cost,
+        to be safe we always call it before binding to the channel we currently subscribe
         """
         channel = self._connect_mq()
-        channel.exchange_declare(exchange=self.user.key, exchange_type='fanout', durable=True)
+        channel.exchange_declare(exchange='prv_%s' % self.user.key.lower(),
+                                 exchange_type='fanout',
+                                 durable=True)
 
     @classmethod
     def mark_seen(cls, key, datetime_str):

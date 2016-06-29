@@ -14,7 +14,7 @@ from passlib.handlers.pbkdf2 import pbkdf2_sha512
 from pyoko.conf import settings
 from zengine.client_queue import BLOCKING_MQ_PARAMS
 from zengine.lib.cache import Cache
-
+from zengine.log import log
 
 class ConnectionStatus(Cache):
     """
@@ -106,10 +106,16 @@ class BaseUser(object):
     def full_name(self):
         return self.username
 
-    @classmethod
-    def bind_private_channel(cls, sess_id):
-        mq_channel = self._connect_mq()
-        mq_channel.queue_bind(exchange='prv_%s' % self.key, queue=sess_id)
+    @property
+    def prv_exchange(self):
+        return 'prv_%s' % self.key.lower()
+
+    def bind_private_channel(self, sess_id):
+        mq_channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS).channel()
+        mq_channel.queue_declare(queue=sess_id, arguments={'x-expires': 40000})
+        log.debug("Binding private exchange to client queue: Q:%s --> E:%s" % (sess_id,
+                                                                               self.prv_exchange))
+        mq_channel.queue_bind(exchange=self.prv_exchange, queue=sess_id)
 
     def send_notification(self, title, message, typ=1, url=None):
         """
@@ -124,7 +130,7 @@ class BaseUser(object):
 
         """
         self.channel_set.channel.__class__.add_message(
-            channel_key='prv_%s' % self.key,
+            channel_key=self.prv_exchange,
             body=message,
             title=title,
             typ=typ,

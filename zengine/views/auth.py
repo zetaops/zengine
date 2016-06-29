@@ -56,6 +56,15 @@ class Login(SimpleView):
     def _user_is_online(self):
         self.current.user.is_online(True)
 
+    def _do_upgrade(self):
+        """ open websocket connection """
+        self.current.output['cmd'] = 'upgrade'
+        self.current.output['user_id'] = self.current.user_id
+        self.current.user.is_online(True)
+        self.current.user.bind_private_channel(self.current.session.sess_id)
+        user_sess = UserSessionID(self.current.user_id)
+        user_sess.set(self.current.session.sess_id)
+
     def do_view(self):
         """
         Authenticate user with given credentials.
@@ -64,7 +73,7 @@ class Login(SimpleView):
         self.current.output['login_process'] = True
         self.current.task_data['login_successful'] = False
         if self.current.is_auth:
-            self.current.output['cmd'] = 'upgrade'
+            self._do_upgrade()
         else:
             try:
                 auth_result = self.current.auth.authenticate(
@@ -72,16 +81,13 @@ class Login(SimpleView):
                     self.current.input['password'])
                 self.current.task_data['login_successful'] = auth_result
                 if auth_result:
-                    self.current.user.is_online(True)
-                    self.current.user.bind_private_channel(self.current.session.sess_id)
-                    user_sess = UserSessionID(self.current.user_id)
-                    old_sess_id = user_sess.get()
-                    user_sess.set(self.current.session.sess_id)
-                    notify = Notify(self.current.user_id)
-                    notify.cache_to_queue()
-                    if old_sess_id:
-                        notify.old_to_new_queue(old_sess_id)
-                    self.current.output['cmd'] = 'upgrade'
+                    self._do_upgrade()
+
+                    # old_sess_id = user_sess.get()
+                    # notify = Notify(self.current.user_id)
+                    # notify.cache_to_queue()
+                    # if old_sess_id:
+                    #     notify.old_to_new_queue(old_sess_id)
             except:
                 raise
                 self.current.log.exception("Wrong username or another error occurred")
@@ -96,7 +102,6 @@ class Login(SimpleView):
         """
         self.current.output['login_process'] = True
         if self.current.is_auth:
-            self.current.output['cmd'] = 'upgrade'
+            self._do_upgrade()
         else:
-
             self.current.output['forms'] = LoginForm(current=self.current).serialize()

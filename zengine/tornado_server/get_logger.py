@@ -23,8 +23,13 @@ def get_logger(settings):
     # ch.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(process)d - %(pathname)s:%(lineno)d [%(module)s > %(funcName)s] - %(name)s - %(levelname)s - %(message)s')
+    if settings.DEBUG:
+        # make log messages concise and readble for developemnt
+        format_str = '%(created)d - %(filename)s:%(lineno)d [%(module)s > %(funcName)s] - %(name)s - %(levelname)s - %(message)s'
+    else:
+        format_str = '%(asctime)s - %(process)d - %(pathname)s:%(lineno)d [%(module)s > %(funcName)s] - %(name)s - %(levelname)s - %(message)s'
+
+    formatter = logging.Formatter(format_str)
 
     # add formatter to ch
     ch.setFormatter(formatter)
