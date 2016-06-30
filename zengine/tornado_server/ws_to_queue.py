@@ -189,9 +189,8 @@ class QueueManager(object):
     def ask_for_user_id(self, sess_id):
         log.debug(sess_id)
         # TODO: add remote ip
-        self.publish_incoming_message({'view': 'sessid_to_userid',
-                                       '_zops_remote_ip': '',
-                                       }, sess_id)
+        self.publish_incoming_message(dict(_zops_remote_ip='',
+                                           data={'view': 'sessid_to_userid'}), sess_id)
 
 
     def register_websocket(self, sess_id, ws):
@@ -204,12 +203,12 @@ class QueueManager(object):
         log.debug("GET SESSUSERS: %s" % sys.sessid_to_userid)
         try:
             user_id = sys.sessid_to_userid[sess_id]
+            self.websockets[user_id] = ws
         except KeyError:
             self.ask_for_user_id(sess_id)
             self.websockets[sess_id] = ws
-        self.websockets[user_id] = ws
+            user_id = sess_id
         self.create_out_channel(sess_id, user_id)
-        return True
 
     def inform_disconnection(self, sess_id):
         self.in_channel.basic_publish(exchange='input_exc',
@@ -272,6 +271,8 @@ class QueueManager(object):
             reply = json_decode(body)
             sys.sessid_to_userid[reply['sess_id']] = reply['user_id']
             self.websockets[reply['user_id']] = self.websockets[reply['sess_id']]
+            del self.websockets[reply['sess_id']]
             channel.basic_ack(delivery_tag=method.delivery_tag)
+
             # else:
             #     channel.basic_reject(delivery_tag=method.delivery_tag)
