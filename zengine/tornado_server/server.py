@@ -15,7 +15,7 @@ from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
-from queue_manager import QueueManager, BlockingConnectionForHTTP, log
+from ws_to_queue import QueueManager, BlockingConnectionForHTTP, log
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)

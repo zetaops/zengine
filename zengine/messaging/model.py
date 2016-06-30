@@ -93,7 +93,7 @@ class Channel(Model):
     def add_message(self, channel_key, body, title=None, sender=None, url=None, typ=2, receiver=None):
         mq_channel = self._connect_mq()
         mq_msg = json.dumps(dict(sender=sender, body=body, msg_title=title, url=url, typ=typ))
-        mq_channel.basic_publish(exchange=channel_key, body=mq_msg)
+        mq_channel.basic_publish(exchange=channel_key, routing_key='', body=mq_msg)
         return Message(sender=sender, body=body, msg_title=title, url=url,
                        typ=typ, channel_id=channel_key, receiver=receiver).save()
 

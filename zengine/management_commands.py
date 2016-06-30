@@ -8,6 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import six
 
+from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
 from pyoko.manage import *
@@ -200,9 +201,10 @@ class PrepareMQ(Command):
     def create_user_channels(self):
         from zengine.messaging.model import Channel
         user_model = get_object_from_path(settings.USER_MODEL)
-        for usr in user_model.objects.filter():
-            ch, new = Channel.objects.get_or_create(owner=usr, is_private=True)
-            print("%s exchange: %s" % ('created' if new else 'existing', ch.code_name))
+        with BlockSave(Channel):
+            for usr in user_model.objects.filter():
+                ch, new = Channel.objects.get_or_create(owner=usr, is_private=True)
+                print("%s exchange: %s" % ('created' if new else 'existing', ch.code_name))
 
     def create_channel_exchanges(self):
         from zengine.messaging.model import Channel

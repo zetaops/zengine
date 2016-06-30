@@ -13,7 +13,7 @@ import pika
 import time
 from pika.exceptions import ConnectionClosed, ChannelClosed
 
-from zengine.lib.cache import UserSessionID
+
 
 BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     host=settings.MQ_HOST,
@@ -47,11 +47,6 @@ class ClientQueue(object):
                 self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
                 self.channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         return self.channel
-    #
-    # def get_sess_id(self):
-    #     if not self.sess_id:
-    #         self.sess_id = UserSessionID(self.user_id).get()
-    #     return self.sess_id
 
     def send_to_default_exchange(self, sess_id, message=None):
         msg = json.dumps(message)
@@ -65,27 +60,3 @@ class ClientQueue(object):
         log.debug("Sending following users \"%s\" exchange:\n%s " % (exchange, msg))
         self.get_channel().publish(exchange=exchange, routing_key='', body=msg)
 
-    # def old_to_new_queue(self, old_sess_id):
-    #     """
-    #     Somehow if users old (obsolete) queue has
-    #     undelivered messages, we should redirect them to
-    #     current queue.
-    #     """
-    #     old_input_channel = self.connection.channel()
-    #     while True:
-    #         try:
-    #             method_frame, header_frame, body = old_input_channel.basic_get(old_sess_id)
-    #             if method_frame:
-    #                 self.send_to_queue(json_message=body)
-    #                 old_input_channel.basic_ack(method_frame.delivery_tag)
-    #             else:
-    #                 old_input_channel.queue_delete(old_sess_id)
-    #                 old_input_channel.close()
-    #                 break
-    #         except ChannelClosed as e:
-    #             if e[0] == 404:
-    #                 break
-    #                 # e => (404, "NOT_FOUND - no queue 'sess_id' in vhost '/'")
-    #             else:
-    #                 raise
-    #                 # old_input_channel = self.connection.channel()

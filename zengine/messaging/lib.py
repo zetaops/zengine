@@ -108,7 +108,7 @@ class BaseUser(object):
 
     @property
     def prv_exchange(self):
-        return 'prv_%s' % self.key.lower()
+        return 'prv_%s' % str(self.key).lower()
 
     def bind_private_channel(self, sess_id):
         mq_channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS).channel()

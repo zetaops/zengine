@@ -114,6 +114,7 @@ SESSION_OPTIONS = {
 #: ('URI template', 'python path to view method/class'),
 VIEW_URLS = {
     'dashboard': 'zengine.views.menu.Menu',
+    'sessid_to_userid': 'zengine.views.system.sessid_to_userid',
     'ping': 'zengine.views.dev_utils.Ping',
     '_zops_create_message': 'zengine.messaging.views.create_message',
     'mark_offline_user': 'zengine.messaging.views.mark_offline_user',
