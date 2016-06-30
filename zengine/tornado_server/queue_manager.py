@@ -72,6 +72,7 @@ class BlockingConnectionForHTTP(object):
                                          body=json_encode(input_data))
 
     def _store_user_id(self, sess_id, body):
+        log.debug("SET SESSUSERS: %s" % sys.sessid_to_userid)
         sys.sessid_to_userid[sess_id[5:]] = json_decode(body)['user_id'].lower()
 
     def _wait_for_reply(self, sess_id, input_data):
@@ -193,6 +194,7 @@ class QueueManager(object):
             sess_id:
             ws:
         """
+        log.debug("GET SESSUSERS: %s" % sys.sessid_to_userid)
         user_id = sys.sessid_to_userid[sess_id]
         self.websockets[user_id] = ws
         self.create_out_channel(sess_id, user_id)
