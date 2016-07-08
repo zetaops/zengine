@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
-from zengine.messaging.model import Channel, Attachment
+from zengine.messaging.model import Channel, Attachment, Subscriber
 from zengine.views.base import BaseView
 
 UserModel = get_object_from_path(settings.USER_MODEL)
@@ -67,7 +67,7 @@ def show_channel(current):
 
         #  request:
             {
-                'view':'_zops_show_public_channel',
+                'view':'_zops_show_channel',
                 'channel_key': key,
             }
 
@@ -108,7 +108,8 @@ def show_channel(current):
                                         for msg in ch.get_last_messages()]
                       }
 
-def last_seen_channel(current):
+
+def last_seen_msg(current):
     """
     Initial display of channel content.
     Returns channel description, members, no of members, last 20 messages etc.
@@ -125,39 +126,48 @@ def last_seen_channel(current):
             }
 
         #  response:
+            None
+    """
+    Subscriber.objects.filter(channel_id=current.input['channel_key'],
+                              user_id=current.user_id
+                              ).update(last_seen_msg_time=current.input['msg_date'])
+
+
+
+
+
+def list_channels(current):
+    """
+        List channel memberships of current user
+
+
+        .. code-block:: python
+
+            #  request:
+                {
+                    'view':'_zops_list_channels',
+                }
+
+        #  response:
             {
-                'channel_key': key,
-                'description': string,
-                'no_of_members': int,
-                'member_list': [
+                'channels': [
                     {'name': string,
-                     'is_online': bool,
-                     'avatar_url': string,
-                    }],
-                'last_messages': [
-                    {'content': string,
-                     'title': string,
-                     'channel_key': key,
-                     'sender_name': string,
-                     'sender_key': key,
+                     'key': key,
+                     'unread': int,
                      'type': int,
                      'key': key,
                      'actions':[('name_string', 'cmd_string'),]
                     }
                 ]
             }
-    """
-    current.input['seen_channel']
-
-def mark_offline_user(current):
-    current.user.is_online(False)
-
-def list_channels(current):
-    return [
+        """
+    current.output['channels'] = [
         {'name': sbs.channel.name,
          'key': sbs.channel.key,
+         'type': sbs.channel.typ,
+         'actions': sbs.channel.get_actions_for(current.user),
          'unread': sbs.unread_count()} for sbs in
-        current.user.subscriptions]
+        current.user.subscriptions if sbs.is_visible]
 
 
 def create_public_channel(current):

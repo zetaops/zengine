@@ -115,10 +115,11 @@ SESSION_OPTIONS = {
 VIEW_URLS = {
     'dashboard': 'zengine.views.menu.Menu',
     'sessid_to_userid': 'zengine.views.system.sessid_to_userid',
+    'mark_offline_user': 'zengine.views.system.mark_offline_user',
     'ping': 'zengine.views.dev_utils.Ping',
     '_zops_create_message': 'zengine.messaging.views.create_message',
-    'mark_offline_user': 'zengine.messaging.views.mark_offline_user',
-    'show_channel': 'zengine.messaging.views.show_channel',
+    '_zops_show_channel': 'zengine.messaging.views.show_channel',
+    '_zops_list_channels': 'zengine.messaging.views.list_channels',
 }
 
 if DEBUG:

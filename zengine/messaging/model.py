@@ -26,12 +26,16 @@ def get_mq_connection():
     return connection, channel
 
 
-# CHANNEL_TYPES = (
-#     (1, "Notification"),
-# (10, "System Broadcast"),
-# (20, "Chat"),
-# (25, "Direct"),
-# )
+CHANNEL_TYPES = (
+    # users private message hub
+    (5, "Private"),
+    # system notifications of user
+    # (10, "Notify"),
+    #  a One-To-One communication between 2 user
+    (10, "Direct"),
+    # public chat rooms
+    (15, "Public"),
+)
 
 
 class Channel(Model):
@@ -47,23 +51,14 @@ class Channel(Model):
     mq_channel = None
     mq_connection = None
 
+    typ = field.Integer("Type", choices=CHANNEL_TYPES)
     name = field.String("Name")
     code_name = field.String("Internal name")
     description = field.String("Description")
-    owner = UserModel(reverse_name='created_channels')
-    # is this users private exchange
-    is_private = field.Boolean()
-    # is this a One-To-One channel
-    is_direct = field.Boolean()
-
-    # typ = field.Integer("Type", choices=CHANNEL_TYPES)
-
-    class Meta:
-        unique_together = (('is_private', 'owner'),)
+    owner = UserModel(reverse_name='created_channels', null=True)
 
     class Managers(ListNode):
         user = UserModel()
-
 
     @classmethod
     def get_or_create_direct_channel(cls, initiator, receiver):
@@ -90,8 +85,9 @@ class Channel(Model):
             return channel
 
     @classmethod
-    def add_message(self, channel_key, body, title=None, sender=None, url=None, typ=2, receiver=None):
-        mq_channel = self._connect_mq()
+    def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2,
+                    receiver=None):
+        mq_channel = cls._connect_mq()
         mq_msg = json.dumps(dict(sender=sender, body=body, msg_title=title, url=url, typ=typ))
         mq_channel.basic_publish(exchange=channel_key, routing_key='', body=mq_msg)
         return Message(sender=sender, body=body, msg_title=title, url=url,
@@ -116,6 +112,16 @@ class Channel(Model):
         mq_channel.exchange_declare(exchange=self.code_name,
                                     exchange_type='fanout',
                                     durable=True)
+
+    def get_actions_for(self, user):
+        actions = [
+            ('Pin', 'pin_channel')
+        ]
+        if self.sender == user:
+            actions.extend([
+                ('Delete', 'zops_delete_channel'),
+                ('Edit', 'zops_edit_channel')
+            ])
 
     def pre_creation(self):
         if not self.code_name:
@@ -142,11 +148,11 @@ class Subscriber(Model):
 
     channel = Channel()
     user = UserModel(reverse_name='subscriptions')
-    is_muted = field.Boolean("Mute the channel")
+    is_muted = field.Boolean("Mute the channel", default=False)
     inform_me = field.Boolean("Inform when I'm mentioned", default=True)
-    visible = field.Boolean("Show under user's channel list", default=True)
+    is_visible = field.Boolean("Show under user's channel list", default=True)
     can_leave = field.Boolean("Membership is not obligatory", default=True)
-    last_seen = field.DateTime("Last seen time")
+    last_seen_msg_time = field.DateTime("Last seen message's time")
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 
@@ -158,7 +164,8 @@ class Subscriber(Model):
 
     def unread_count(self):
         # FIXME: track and return actual unread message count
-        return 0
+        return self.channel.message_set.objects.filter(
+            timestamp__lt=self.last_seen_msg_time).count()
 
     def create_exchange(self):
         """
@@ -236,8 +243,8 @@ class Message(Model):
         ]
         if self.sender == user:
             actions.extend([
-                ('Delete', 'delete_message'),
-                ('Edit', 'delete_message')
+                ('Delete', 'zops_delete_message'),
+                ('Edit', 'zops_edit_message')
             ])
         else:
             actions.extend([

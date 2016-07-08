@@ -192,19 +192,26 @@ class PrepareMQ(Command):
     Creates necessary exchanges, queues and bindings
     """
     CMD_NAME = 'preparemq'
-    HELP = 'Creates necessary exchanges, queues and bindings'
+    HELP = 'Creates necessary exchanges, queues and bindings for messaging subsystem'
 
     def run(self):
         self.create_user_channels()
         self.create_channel_exchanges()
 
     def create_user_channels(self):
-        from zengine.messaging.model import Channel
+        from zengine.messaging.model import Channel, Subscriber
         user_model = get_object_from_path(settings.USER_MODEL)
         with BlockSave(Channel):
             for usr in user_model.objects.filter():
-                ch, new = Channel.objects.get_or_create(owner=usr, is_private=True)
+                # create private exchange of user
+                ch, new = Channel.objects.get_or_create(owner=usr, typ=5)
                 print("%s exchange: %s" % ('created' if new else 'existing', ch.code_name))
+                # create notification subscription to private exchange
+                sb, new = Subscriber.objects.get_or_create(channel=ch, user=usr, is_visible=False,
+                                                           can_leave=False, inform_me=False)
+                print("%s notify sub: %s" % ('created' if new else 'existing', ch.code_name))
+
+
 
     def create_channel_exchanges(self):
         from zengine.messaging.model import Channel

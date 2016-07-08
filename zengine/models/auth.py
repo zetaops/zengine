@@ -56,6 +56,11 @@ class User(Model, BaseUser):
         """
         list_fields = ['username', 'superuser']
 
+    def pre_save(self):
+        self.encrypt_password()
+
+    def post_creation(self):
+        self.prepare_channels()
 
     def get_permissions(self):
         """

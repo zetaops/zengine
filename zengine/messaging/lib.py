@@ -16,6 +16,7 @@ from zengine.client_queue import BLOCKING_MQ_PARAMS
 from zengine.lib.cache import Cache
 from zengine.log import log
 
+
 class ConnectionStatus(Cache):
     """
     Cache object for workflow instances.
@@ -70,10 +71,16 @@ class BaseUser(object):
             pass
             # TODO: do
 
-    def pre_save(self):
+    def encrypt_password(self):
         """ encrypt password if not already encrypted """
         if self.password and not self.password.startswith('$pbkdf2'):
             self.set_password(self.password)
+
+    def prepare_channels(self):
+        from zengine.messaging.model import Channel, Subscriber
+        ch, new = Channel.objects.get_or_create(owner=self, typ=5)
+        sb, new = Subscriber.objects.get_or_create(channel=ch, user=self, is_visible=False,
+                                                   can_leave=False, inform_me=False)
 
     def check_password(self, raw_password):
         """
