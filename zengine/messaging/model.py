@@ -94,7 +94,7 @@ class Channel(Model):
                        typ=typ, channel_id=channel_key, receiver=receiver).save()
 
     def get_last_messages(self):
-        # TODO: Refactor this with RabbitMQ Last Cached Messages exchange
+        # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
         return self.message_set.objects.filter()[:20]
 
     @classmethod

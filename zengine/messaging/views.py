@@ -24,20 +24,21 @@ def create_message(current):
         {
             'view':'_zops_create_message',
             'message': {
-                'channel': key, # of channel",
-                'receiver': key, " of receiver. Should be set only for direct messages",
-                'title': "Title of the message. Can be blank.",
-                'body': "Message body.",
-                'type': zengine.messaging.model.MSG_TYPES,
+                'channel': key,     # of channel
+                'receiver': key,    # of receiver. Should be set only for direct messages,
+                'body': string,     # message text.,
+                'type': int,        # zengine.messaging.model.MSG_TYPES,
                 'attachments': [{
-                    'description': "Can be blank.",
-                    'name': "File name with extension.",
-                    'content': "base64 encoded file content"
+                    'description': string,  # can be blank,
+                    'name': string,         # file name with extension,
+                    'content': string,      # base64 encoded file content
                     }]}
         # response:
-        {
-            'msg_key': key,  # of the just created message object,
-        }
+            {
+            'status': string,   # 'OK' for success
+            'code': int,        # 201 for success
+            'msg_key': key,     # key of the message object,
+            }
 
     """
     msg = current.input['message']
@@ -73,31 +74,29 @@ def show_channel(current):
 
         #  response:
             {
-                'channel_key': key,
-                'description': string,
-                'no_of_members': int,
-                'member_list': [
-                    {'name': string,
-                     'is_online': bool,
-                     'avatar_url': string,
-                    }],
-                'last_messages': [
-                    {'content': string,
-                     'title': string,
-                     'time': datetime,
-                     'channel_key': key,
-                     'sender_name': string,
-                     'sender_key': key,
-                     'type': int,
-                     'key': key,
-                     'actions':[('name_string', 'cmd_string'),]
-                    }
-                ]
+            'channel_key': key,
+            'description': string,
+            'no_of_members': int,
+            'member_list': [
+                {'name': string,
+                 'is_online': bool,
+                 'avatar_url': string,
+                }],
+            'last_messages': [
+                {'content': string,
+                 'title': string,
+                 'time': datetime,
+                 'channel_key': key,
+                 'sender_name': string,
+                 'sender_key': key,
+                 'type': int,
+                 'key': key,
+                 'actions':[('name_string', 'cmd_string'),]
+                }]
             }
     """
-    ch_key = current.input['channel_key']
-    ch = Channel.objects.get(ch_key)
-    current.output = {'channel_key': ch_key,
+    ch = Channel.objects.get(current.input['channel_key'])
+    current.output = {'channel_key': current.input['channel_key'],
                       'description': ch.description,
                       'no_of_members': len(ch.subscriber_set),
                       'member_list': [{'name': sb.user.full_name,
@@ -111,29 +110,28 @@ def show_channel(current):
 
 def last_seen_msg(current):
     """
-    Initial display of channel content.
-    Returns channel description, members, no of members, last 20 messages etc.
+    Push timestamp of last seen message for a channel
 
 
     .. code-block:: python
 
         #  request:
             {
-                'view':'_zops_last_seen_msg',
-                'channel_key': key,
-                'msg_key': key,
-                'msg_date': datetime,
+            'view':'_zops_last_seen_msg',
+            'channel_key': key,
+            'msg_key': key,
+            'timestamp': datetime,
             }
 
         #  response:
-            None
+            {
+            'status': 'OK',
+            'code': 200,
+            }
     """
     Subscriber.objects.filter(channel_id=current.input['channel_key'],
                               user_id=current.user_id
-                              ).update(last_seen_msg_time=current.input['msg_date'])
-
-
-
+                              ).update(last_seen_msg_time=current.input['timestamp'])
 
 
 def list_channels(current):
@@ -145,11 +143,11 @@ def list_channels(current):
 
             #  request:
                 {
-                    'view':'_zops_list_channels',
+                'view':'_zops_list_channels',
                 }
 
-        #  response:
-            {
+            #  response:
+                {
                 'channels': [
                     {'name': string,
                      'key': key,
@@ -157,9 +155,8 @@ def list_channels(current):
                      'type': int,
                      'key': key,
                      'actions':[('name_string', 'cmd_string'),]
-                    }
-                ]
-            }
+                    },]
+                }
         """
     current.output['channels'] = [
         {'name': sbs.channel.name,
@@ -171,7 +168,34 @@ def list_channels(current):
 
 
 def create_public_channel(current):
-    pass
+    """
+        Create a public chat room
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_create_public_channel,
+                'name': string,
+                'description': string,
+                }
+
+            #  response:
+                {
+                'status': 'Created',
+                'code': 201,
+                'channel_key': key, # of just created channel
+                }
+    """
+    channel = Channel(name=current.input['name'],
+                      description=current.input['description'],
+                      owner=current.user,
+                      typ=15).save()
+    current.output = {
+        'channel_key': channel.key,
+        'status': 'OK',
+        'code': 201
+    }
 
 
 def create_direct_channel(current):
