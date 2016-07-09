@@ -198,6 +198,74 @@ def create_public_channel(current):
     }
 
 
+def add_members(current):
+    """
+        Add member(s) to a public chat room
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_add_members,
+                'channel_key': key,
+                'members': [key, key],
+                }
+
+            #  response:
+                {
+                'existing': [key,], # existing members
+                'newly_added': [key,], # newly added members
+                'status': 'Created',
+                'code': 201
+                }
+    """
+    newly_added, existing = [], []
+    for member_key in current.input['members']:
+        sb, new = Subscriber.objects.get_or_create(user_id=member_key,
+                                                   channel_id=current.input['channel_key'])
+        if new:
+            newly_added.append(member_key)
+        else:
+            existing.append(member_key)
+
+    current.output = {
+        'existing': existing,
+        'newly_added': newly_added,
+        'status': 'OK',
+        'code': 201
+    }
+
+def search_user(current):
+    """
+        Search users for adding to a public rooms
+        or creating one to one direct messaging
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_search_user,
+                'query': string,
+                }
+
+            #  response:
+                {
+                'results': [('full_name', 'key', 'avatar_url'), ],
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    current.output = {
+        'results': [],
+        'status': 'OK',
+        'code': 201
+    }
+    for user in UserModel.objects.search_on(settings.MESSAGING_USER_SEARCH_FIELDS,
+                                contains=current.input['query']):
+        current.input['results'].append((user.full_name, user.key, user.avatar))
+
+
+
 def create_direct_channel(current):
     """
     Create a One-To-One channel for current user and selected user.

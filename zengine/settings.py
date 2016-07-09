@@ -193,3 +193,8 @@ ERROR_MESSAGE_500 = 'Internal Server Error'
 
 #: These models will not flushed when running tests
 TEST_FLUSHING_EXCLUDES = 'Permission,User,Role'
+
+
+#: User search method of messaging subsystem will work on these fields
+MESSAGING_USER_SEARCH_FIELDS = ['username', 'name', 'surname']
+
