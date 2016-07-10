@@ -56,32 +56,32 @@ class Channel(Model):
     code_name = field.String("Internal name")
     description = field.String("Description")
     owner = UserModel(reverse_name='created_channels', null=True)
-
-    class Managers(ListNode):
-        user = UserModel()
+    #
+    # class Managers(ListNode):
+    #     user = UserModel()
 
     @classmethod
-    def get_or_create_direct_channel(cls, initiator, receiver):
+    def get_or_create_direct_channel(cls, initiator_key, receiver_key):
         """
         Creates a  direct messaging channel between two user
 
         Args:
-            initiator: User, who sent the first message
+            initiator: User, who want's to make first contact
             receiver: User, other party
 
         Returns:
             Channel
         """
         existing = cls.objects.OR().filter(
-            code_name='%s_%s' % (initiator.key, receiver.key)).filter(
-            code_name='%s_%s' % (receiver.key, initiator.key))
+            code_name='%s_%s' % (initiator_key, receiver_key)).filter(
+            code_name='%s_%s' % (receiver_key, initiator_key))
         if existing:
             return existing[0]
         else:
-            channel_name = '%s_%s' % (initiator.key, receiver.key)
+            channel_name = '%s_%s' % (initiator_key, receiver_key)
             channel = cls(is_direct=True, code_name=channel_name).save()
-            Subscriber(channel=channel, user=initiator).save()
-            Subscriber(channel=channel, user=receiver).save()
+            Subscriber(channel=channel, user_id=initiator_key).save()
+            Subscriber(channel=channel, user_id=receiver_key).save()
             return channel
 
     @classmethod
@@ -151,6 +151,7 @@ class Subscriber(Model):
     is_muted = field.Boolean("Mute the channel", default=False)
     inform_me = field.Boolean("Inform when I'm mentioned", default=True)
     is_visible = field.Boolean("Show under user's channel list", default=True)
+    can_manage = field.Boolean("Can manage this channel", default=False)
     can_leave = field.Boolean("Membership is not obligatory", default=True)
     last_seen_msg_time = field.DateTime("Last seen message's time")
 

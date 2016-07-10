@@ -36,6 +36,9 @@ USER_MODEL = 'zengine.models.User'
 #: Role model
 ROLE_MODEL = 'zengine.models.Role'
 
+#: Unit model
+UNIT_MODEL = 'zengine.models.Unit'
+
 MQ_HOST = os.getenv('MQ_HOST', 'localhost')
 MQ_PORT = int(os.getenv('MQ_PORT', '5672'))
 MQ_USER = os.getenv('MQ_USER', 'guest')
@@ -197,4 +200,7 @@ TEST_FLUSHING_EXCLUDES = 'Permission,User,Role'
 
 #: User search method of messaging subsystem will work on these fields
 MESSAGING_USER_SEARCH_FIELDS = ['username', 'name', 'surname']
+
+#: Unit search method of messaging subsystem will work on these fields
+MESSAGING_UNIT_SEARCH_FIELDS = ['name',]
 

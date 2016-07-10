@@ -7,9 +7,33 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from pyoko import Model, field, ListNode
+from pyoko import Model, field, ListNode, LinkProxy
 from passlib.hash import pbkdf2_sha512
 from zengine.messaging.lib import BaseUser
+
+
+class Unit(Model):
+    """Unit model
+
+    Can be used do group users according to their physical or organizational position
+
+    """
+    name = field.String("İsim", index=True)
+    parent = LinkProxy('Unit', verbose_name='Parent Unit', reverse_name='sub_units')
+
+    class Meta:
+        verbose_name = "Unit"
+        verbose_name_plural = "Units"
+        search_fields = ['name']
+        list_fields = ['name',]
+
+    def __unicode__(self):
+        return '%s' % self.name
+
+    @classmethod
+    def get_user_keys(cls, current, unit_key):
+        return User(current).objects.filter(unit_id=unit_key).values_list('key', flatten=True)
+
 
 
 class Permission(Model):
@@ -50,6 +74,7 @@ class User(Model, BaseUser):
     password = field.String("Password")
     superuser = field.Boolean("Super user", default=False)
     avatar = field.File("Avatar", random_name=True, required=False)
+    unit = Unit()
 
     class Meta:
         """ meta class
@@ -71,7 +96,6 @@ class User(Model, BaseUser):
         """
         users_primary_role = self.role_set[0].role
         return users_primary_role.get_permissions()
-
 
 class Role(Model):
     """

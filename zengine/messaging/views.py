@@ -12,6 +12,7 @@ from zengine.messaging.model import Channel, Attachment, Subscriber
 from zengine.views.base import BaseView
 
 UserModel = get_object_from_path(settings.USER_MODEL)
+UnitModel = get_object_from_path(settings.UNIT_MODEL)
 
 
 def create_message(current):
@@ -42,7 +43,7 @@ def create_message(current):
 
     """
     msg = current.input['message']
-    ch = Channel.objects.get(msg['channel'])
+    ch = Channel(current).objects.get(msg['channel'])
     msg_obj = ch.add_message(body=msg['body'], typ=msg['typ'], sender=current.user,
                              title=msg['title'], receiver=msg['receiver'] or None)
     if 'attachment' in msg:
@@ -95,7 +96,7 @@ def show_channel(current):
                 }]
             }
     """
-    ch = Channel.objects.get(current.input['channel_key'])
+    ch = Channel(current).objects.get(current.input['channel_key'])
     current.output = {'channel_key': current.input['channel_key'],
                       'description': ch.description,
                       'no_of_members': len(ch.subscriber_set),
@@ -129,7 +130,7 @@ def last_seen_msg(current):
             'code': 200,
             }
     """
-    Subscriber.objects.filter(channel_id=current.input['channel_key'],
+    Subscriber(current).objects.filter(channel_id=current.input['channel_key'],
                               user_id=current.user_id
                               ).update(last_seen_msg_time=current.input['timestamp'])
 
@@ -167,9 +168,9 @@ def list_channels(current):
         current.user.subscriptions if sbs.is_visible]
 
 
-def create_public_channel(current):
+def create_channel(current):
     """
-        Create a public chat room
+        Create a public channel. Can be a broadcast channel or normal chat room.
 
         .. code-block:: python
 
@@ -200,7 +201,7 @@ def create_public_channel(current):
 
 def add_members(current):
     """
-        Add member(s) to a public chat room
+        Add member(s) to a channel
 
         .. code-block:: python
 
@@ -221,7 +222,44 @@ def add_members(current):
     """
     newly_added, existing = [], []
     for member_key in current.input['members']:
-        sb, new = Subscriber.objects.get_or_create(user_id=member_key,
+        sb, new = Subscriber(current).objects.get_or_create(user_id=member_key,
+                                                   channel_id=current.input['channel_key'])
+        if new:
+            newly_added.append(member_key)
+        else:
+            existing.append(member_key)
+
+    current.output = {
+        'existing': existing,
+        'newly_added': newly_added,
+        'status': 'OK',
+        'code': 201
+    }
+
+
+def add_unit_to_channel(current):
+    """
+        Subscribe users of a given unit to a channel
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_add_unit_to_channel,
+                'unit_key': key,
+                }
+
+            #  response:
+                {
+                'existing': [key,], # existing members
+                'newly_added': [key,], # newly added members
+                'status': 'Created',
+                'code': 201
+                }
+    """
+    newly_added, existing = [], []
+    for member_key in current.input['members']:
+        sb, new = Subscriber(current).objects.get_or_create(user_id=member_key,
                                                    channel_id=current.input['channel_key'])
         if new:
             newly_added.append(member_key)
@@ -260,26 +298,67 @@ def search_user(current):
         'status': 'OK',
         'code': 201
     }
-    for user in UserModel.objects.search_on(settings.MESSAGING_USER_SEARCH_FIELDS,
+    for user in UserModel(current).objects.search_on(settings.MESSAGING_USER_SEARCH_FIELDS,
                                 contains=current.input['query']):
         current.input['results'].append((user.full_name, user.key, user.avatar))
+
+def search_unit(current):
+    """
+        Search units for subscribing it's users to a channel
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_search_unit,
+                'query': string,
+                }
+
+            #  response:
+                {
+                'results': [('name', 'key'), ],
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    current.output = {
+        'results': [],
+        'status': 'OK',
+        'code': 201
+    }
+    for user in UnitModel(current).objects.search_on(settings.MESSAGING_UNIT_SEARCH_FIELDS,
+                                contains=current.input['query']):
+        current.input['results'].append((user.name, user.key))
+
 
 
 
 def create_direct_channel(current):
     """
-    Create a One-To-One channel for current user and selected user.
+    Create a One-To-One channel between current and selected user.
 
+
+    .. code-block:: python
+
+        #  request:
+            {
+            'view':'_zops_create_direct_channel,
+            'user_key': key,
+            }
+
+        #  response:
+            {
+            'status': 'Created',
+            'code': 201,
+            'channel_key': key, # of just created channel
+            }
     """
-    pass
-
-
-def create_broadcast_channel(current):
-    """
-    Create a One-To-One channel for current user and selected user.
-
-    """
-    pass
+    channel = Channel.get_or_create_direct_channel(current.user_id, current.input['user_key'])
+    current.output = {
+        'channel_key': channel.key,
+        'status': 'OK',
+        'code': 201
+    }
 
 
 def find_message(current):
