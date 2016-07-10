@@ -60,6 +60,9 @@ class Channel(Model):
     # class Managers(ListNode):
     #     user = UserModel()
 
+    def is_private(self):
+        return self.typ == 5
+
     @classmethod
     def get_or_create_direct_channel(cls, initiator_key, receiver_key):
         """

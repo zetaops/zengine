@@ -8,11 +8,32 @@
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
-from zengine.messaging.model import Channel, Attachment, Subscriber
+from zengine.messaging.model import Channel, Attachment, Subscriber, Message
 from zengine.views.base import BaseView
 
 UserModel = get_object_from_path(settings.USER_MODEL)
 UnitModel = get_object_from_path(settings.UNIT_MODEL)
+
+"""
+
+.. code-block:: python
+
+    MSG_DICT_FORMAT = {'content': string,
+                 'title': string,
+                 'time': datetime,
+                 'channel_key': key,
+                 'sender_name': string,
+                 'sender_key': key,
+                 'type': int,
+                 'key': key,
+                 'actions':[('name_string', 'cmd_string'),]
+                 'attachments': [{
+                                    'description': string,
+                                    'file_name': string,
+                                    'url': string,
+                                },]
+                }
+"""
 
 
 def create_message(current):
@@ -83,17 +104,7 @@ def show_channel(current):
                  'is_online': bool,
                  'avatar_url': string,
                 }],
-            'last_messages': [
-                {'content': string,
-                 'title': string,
-                 'time': datetime,
-                 'channel_key': key,
-                 'sender_name': string,
-                 'sender_key': key,
-                 'type': int,
-                 'key': key,
-                 'actions':[('name_string', 'cmd_string'),]
-                }]
+            'last_messages': [MSG_DICT_FORMAT]
             }
     """
     ch = Channel(current).objects.get(current.input['channel_key'])
@@ -131,8 +142,8 @@ def last_seen_msg(current):
             }
     """
     Subscriber(current).objects.filter(channel_id=current.input['channel_key'],
-                              user_id=current.user_id
-                              ).update(last_seen_msg_time=current.input['timestamp'])
+                                       user_id=current.user_id
+                                       ).update(last_seen_msg_time=current.input['timestamp'])
 
 
 def list_channels(current):
@@ -160,7 +171,7 @@ def list_channels(current):
                 }
         """
     current.output['channels'] = [
-        {'name': sbs.channel.name,
+        {'name': sbs.channel.name or ('Notifications' if sbs.channel.is_private() else ''),
          'key': sbs.channel.key,
          'type': sbs.channel.typ,
          'actions': sbs.channel.get_actions_for(current.user),
@@ -223,7 +234,7 @@ def add_members(current):
     newly_added, existing = [], []
     for member_key in current.input['members']:
         sb, new = Subscriber(current).objects.get_or_create(user_id=member_key,
-                                                   channel_id=current.input['channel_key'])
+                                                            channel_id=current.input['channel_key'])
         if new:
             newly_added.append(member_key)
         else:
@@ -258,9 +269,9 @@ def add_unit_to_channel(current):
                 }
     """
     newly_added, existing = [], []
-    for member_key in current.input['members']:
+    for member_key in UnitModel.get_user_keys(current, current.input['unit_key']):
         sb, new = Subscriber(current).objects.get_or_create(user_id=member_key,
-                                                   channel_id=current.input['channel_key'])
+                                                            channel_id=current.input['channel_key'])
         if new:
             newly_added.append(member_key)
         else:
@@ -272,6 +283,7 @@ def add_unit_to_channel(current):
         'status': 'OK',
         'code': 201
     }
+
 
 def search_user(current):
     """
@@ -299,8 +311,9 @@ def search_user(current):
         'code': 201
     }
     for user in UserModel(current).objects.search_on(settings.MESSAGING_USER_SEARCH_FIELDS,
-                                contains=current.input['query']):
+                                                     contains=current.input['query']):
         current.input['results'].append((user.full_name, user.key, user.avatar))
+
 
 def search_unit(current):
     """
@@ -327,10 +340,8 @@ def search_unit(current):
         'code': 201
     }
     for user in UnitModel(current).objects.search_on(settings.MESSAGING_UNIT_SEARCH_FIELDS,
-                                contains=current.input['query']):
+                                                     contains=current.input['query']):
         current.input['results'].append((user.name, user.key))
-
-
 
 
 def create_direct_channel(current):
@@ -362,7 +373,36 @@ def create_direct_channel(current):
 
 
 def find_message(current):
-    pass
+    """
+        Search in messages. If "channel_key" given, search will be limited in that channel.
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_search_unit,
+                'channel_key': key,
+                'query': string,
+                }
+
+            #  response:
+                {
+                'results': [MSG_DICT_FORMAT, ],
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    current.output = {
+        'results': [],
+        'status': 'OK',
+        'code': 201
+    }
+    query_set = Message(current).objects.search_on(['msg_title', 'body', 'url'],
+                                                   contains=current.input['query'])
+    if current.input['channel_key']:
+        query_set = query_set.filter(channel_id=current.input['channel_key'])
+    for msg in query_set:
+        current.input['results'].append(msg.serialize_for(current.user))
 
 
 def delete_message(current):
