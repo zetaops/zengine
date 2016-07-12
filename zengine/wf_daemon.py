@@ -122,7 +122,7 @@ class Worker(object):
     def handle_message(self, ch, method, properties, body):
         """
         this is a pika.basic_consumer callback
-        handles client inputs, runs appropriate workflows
+        handles client inputs, runs appropriate workflows and views
 
         Args:
             ch: amqp channel

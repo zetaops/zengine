@@ -246,7 +246,7 @@ def create_channel(current):
 
             #  request:
                 {
-                'view':'_zops_create_public_channel',
+                'view':'_zops_create_channel',
                 'name': string,
                 'description': string,
                 }
@@ -279,6 +279,8 @@ def add_members(current):
                 {
                 'view':'_zops_add_members',
                 'channel_key': key,
+                'read_only': True, # True if this is a Broadcast channel,
+                                   # False if it's a normal chat room
                 'members': [key, key],
                 }
 
@@ -291,8 +293,10 @@ def add_members(current):
                 }
     """
     newly_added, existing = [], []
+    read_only = current.input['read_only']
     for member_key in current.input['members']:
         sb, new = Subscriber(current).objects.get_or_create(user_id=member_key,
+                                                            read_only=read_only,
                                                             channel_id=current.input['channel_key'])
         if new:
             newly_added.append(member_key)

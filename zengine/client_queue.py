@@ -49,12 +49,30 @@ class ClientQueue(object):
         return self.channel
 
     def send_to_default_exchange(self, sess_id, message=None):
+        """
+        Send messages through RabbitMQ's default exchange,
+        which will be delivered through routing_key (sess_id).
+
+        This method only used for un-authenticated users, i.e. login process.
+
+        Args:
+            sess_id string: Session id
+            message dict: Message object.
+        """
         msg = json.dumps(message)
         log.debug("Sending following message to %s queue through default exchange:\n%s" % (
             sess_id, msg))
         self.get_channel().publish(exchange='', routing_key=sess_id, body=msg)
 
     def send_to_prv_exchange(self, user_id, message=None):
+        """
+        Send messages through logged in users private exchange.
+
+        Args:
+            user_id string: User key
+            message dict: Message object
+
+        """
         exchange = 'prv_%s' % user_id.lower()
         msg = json.dumps(message)
         log.debug("Sending following users \"%s\" exchange:\n%s " % (exchange, msg))

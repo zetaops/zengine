@@ -150,6 +150,9 @@ class Subscriber(Model):
     Permission model
     """
 
+    mq_channel = None
+    mq_connection = None
+
     channel = Channel()
     user = UserModel(reverse_name='subscriptions')
     is_muted = field.Boolean("Mute the channel", default=False)
@@ -163,9 +166,9 @@ class Subscriber(Model):
 
     @classmethod
     def _connect_mq(cls):
-        if cls.connection is None or cls.connection.is_closed:
-            cls.connection, cls.channel = get_mq_connection()
-        return cls.channel
+        if cls.mq_connection is None or cls.mq_connection.is_closed:
+            cls.mq_connection, cls.mq_channel = get_mq_connection()
+        return cls.mq_channel
 
     def unread_count(self):
         # FIXME: track and return actual unread message count
@@ -196,7 +199,7 @@ class Subscriber(Model):
         Automatically called at creation of subscription record.
         """
         channel = self._connect_mq()
-        channel.exchange_bind(source=self.channel.code_name, destination=self.user.key)
+        channel.exchange_bind(source=self.channel.code_name, destination=self.user.prv_exchange)
 
     def post_creation(self):
         self.create_exchange()
