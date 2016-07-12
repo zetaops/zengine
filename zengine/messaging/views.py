@@ -7,7 +7,9 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.conf import settings
+from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
+from zengine.lib.exceptions import HTTPError
 from zengine.messaging.model import Channel, Attachment, Subscriber, Message
 from zengine.views.base import BaseView
 
@@ -18,7 +20,7 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
 
 .. code-block:: python
 
-    MSG_DICT_FORMAT = {'content': string,
+    MSG_DICT = {'content': string,
                  'title': string,
                  'time': datetime,
                  'channel_key': key,
@@ -104,7 +106,7 @@ def show_channel(current):
                  'is_online': bool,
                  'avatar_url': string,
                 }],
-            'last_messages': [MSG_DICT_FORMAT]
+            'last_messages': [MSG_DICT]
             }
     """
     ch = Channel(current).objects.get(current.input['channel_key'])
@@ -187,7 +189,7 @@ def create_channel(current):
 
             #  request:
                 {
-                'view':'_zops_create_public_channel,
+                'view':'_zops_create_public_channel',
                 'name': string,
                 'description': string,
                 }
@@ -218,7 +220,7 @@ def add_members(current):
 
             #  request:
                 {
-                'view':'_zops_add_members,
+                'view':'_zops_add_members',
                 'channel_key': key,
                 'members': [key, key],
                 }
@@ -256,7 +258,7 @@ def add_unit_to_channel(current):
 
             #  request:
                 {
-                'view':'_zops_add_unit_to_channel,
+                'view':'_zops_add_unit_to_channel',
                 'unit_key': key,
                 }
 
@@ -294,7 +296,7 @@ def search_user(current):
 
             #  request:
                 {
-                'view':'_zops_search_user,
+                'view':'_zops_search_user',
                 'query': string,
                 }
 
@@ -312,7 +314,7 @@ def search_user(current):
     }
     for user in UserModel(current).objects.search_on(settings.MESSAGING_USER_SEARCH_FIELDS,
                                                      contains=current.input['query']):
-        current.input['results'].append((user.full_name, user.key, user.avatar))
+        current.output['results'].append((user.full_name, user.key, user.avatar))
 
 
 def search_unit(current):
@@ -323,7 +325,7 @@ def search_unit(current):
 
             #  request:
                 {
-                'view':'_zops_search_unit,
+                'view':'_zops_search_unit',
                 'query': string,
                 }
 
@@ -341,7 +343,7 @@ def search_unit(current):
     }
     for user in UnitModel(current).objects.search_on(settings.MESSAGING_UNIT_SEARCH_FIELDS,
                                                      contains=current.input['query']):
-        current.input['results'].append((user.name, user.key))
+        current.output['results'].append((user.name, user.key))
 
 
 def create_direct_channel(current):
@@ -353,7 +355,7 @@ def create_direct_channel(current):
 
         #  request:
             {
-            'view':'_zops_create_direct_channel,
+            'view':'_zops_create_direct_channel',
             'user_key': key,
             }
 
@@ -372,9 +374,37 @@ def create_direct_channel(current):
     }
 
 
+def _paginate(self, current_page, query_set, per_page=10):
+    """
+    Handles pagination of object listings.
+
+    Args:
+        current_page int:
+            Current page number
+        query_set (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+            Object listing queryset.
+        per_page int:
+            Objects per page.
+
+    Returns:
+        QuerySet object, pagination data dict as a tuple
+    """
+    total_objects = query_set.count()
+    total_pages = int(total_objects / per_page or 1)
+    # add orphans to last page
+    current_per_page = per_page + (
+        total_objects % per_page if current_page == total_pages else 0)
+    pagination_data = dict(page=current_page,
+                                     total_pages=total_pages,
+                                     total_objects=total_objects,
+                                     per_page=current_per_page)
+    query_set = query_set.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
+    return query_set, pagination_data
+
 def find_message(current):
     """
-        Search in messages. If "channel_key" given, search will be limited in that channel.
+        Search in messages. If "channel_key" given, search will be limited to that channel,
+        otherwise search will be performed on all of user's subscribed channels.
 
         .. code-block:: python
 
@@ -383,11 +413,18 @@ def find_message(current):
                 'view':'_zops_search_unit,
                 'channel_key': key,
                 'query': string,
+                'page': int,
                 }
 
             #  response:
                 {
-                'results': [MSG_DICT_FORMAT, ],
+                'results': [MSG_DICT, ],
+                'pagination': {
+                    'page': int, # current page
+                    'total_pages': int,
+                    'total_objects': int,
+                    'per_page': int, # object per page
+                    },
                 'status': 'OK',
                 'code': 200
                 }
@@ -401,13 +438,66 @@ def find_message(current):
                                                    contains=current.input['query'])
     if current.input['channel_key']:
         query_set = query_set.filter(channel_id=current.input['channel_key'])
+    else:
+        subscribed_channels = Subscriber.objects.filter(user_id=current.user_id).values_list(
+            "channel_id", flatten=True)
+        query_set = query_set.filter(channel_id__in=subscribed_channels)
+
+    query_set, pagination_data = _paginate(current_page=current.input['page'], query_set=query_set)
+    current.output['pagination'] = pagination_data
     for msg in query_set:
-        current.input['results'].append(msg.serialize_for(current.user))
+        current.output['results'].append(msg.serialize_for(current.user))
 
 
 def delete_message(current):
-    pass
+    """
+        Delete a message
 
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_delete_message,
+                'message_key': key,
+                }
+
+            #  response:
+                {
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    try:
+        Message(current).objects.get(sender_id=current.user_id, key=current.input['message_key']).delete()
+        current.output = {
+            'status': 'OK',
+            'code': 201
+        }
+    except ObjectDoesNotExist:
+        raise HTTPError(404, "")
 
 def edit_message(current):
-    pass
+    """
+    Edit a message a user own.
+
+    .. code-block:: python
+
+        # request:
+        {
+            'view':'_zops_edit_message',
+            'message': {
+                'body': string,     # message text
+                'key': key
+                }
+        }
+        # response:
+            {
+            'status': string,   # 'OK' for success
+            'code': int,        # 201 for success
+            }
+
+    """
+    msg = current.input['message']
+    if not Message(current).objects.filter(sender_id=current.user_id,
+                                  key=msg['key']).update(body=msg['body']):
+        raise HTTPError(404, "")
