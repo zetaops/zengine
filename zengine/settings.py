@@ -123,6 +123,22 @@ VIEW_URLS = {
     '_zops_create_message': 'zengine.messaging.views.create_message',
     '_zops_show_channel': 'zengine.messaging.views.show_channel',
     '_zops_list_channels': 'zengine.messaging.views.list_channels',
+    '_zops_channel_history': 'zengine.messaging.views.channel_history',
+    '_zops_last_seen_msg': 'zengine.messaging.views.last_seen_msg',
+    '_zops_create_channel': 'zengine.messaging.views.create_channel',
+    '_zops_add_members': 'zengine.messaging.views.add_members',
+    '_zops_add_unit_to_channel': 'zengine.messaging.views.add_unit_to_channel',
+    '_zops_search_user': 'zengine.messaging.views.search_user',
+    '_zops_search_unit': 'zengine.messaging.views.search_unit',
+    '_zops_create_direct_channel': 'zengine.messaging.views.create_direct_channel',
+    '_zops_find_message': 'zengine.messaging.views.find_message',
+    '_zops_delete_message': 'zengine.messaging.views.delete_message',
+    '_zops_edit_message': 'zengine.messaging.views.edit_message',
+    '_zops_get_message_actions': 'zengine.messaging.views.get_message_actions',
+    '_zops_add_to_favorites': 'zengine.messaging.views.add_to_favorites',
+    '_zops_remove_from_favorites': 'zengine.messaging.views.remove_from_favorites',
+    '_zops_list_favorites': 'zengine.messaging.views.list_favorites',
+    # '_zops_': 'zengine.messaging.views.',
 }
 
 if DEBUG:

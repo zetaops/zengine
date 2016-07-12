@@ -15,7 +15,7 @@ from zengine.messaging.lib import BaseUser
 class Unit(Model):
     """Unit model
 
-    Can be used do group users according to their physical or organizational position
+    Can be used to group users according to their physical or organizational position
 
     """
     name = field.String("İsim", index=True)

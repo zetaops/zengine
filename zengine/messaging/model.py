@@ -30,8 +30,6 @@ def get_mq_connection():
 CHANNEL_TYPES = (
     # users private message hub
     (5, "Private"),
-    # system notifications of user
-    # (10, "Notify"),
     #  a One-To-One communication between 2 user
     (10, "Direct"),
     # public chat rooms

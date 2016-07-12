@@ -36,6 +36,38 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
                 }
 """
 
+def _dedect_file_type(name, content):
+    # FIXME: Implement attachment type detection
+    return 1  # Return as Document for now
+
+
+def _paginate(self, current_page, query_set, per_page=10):
+    """
+    Handles pagination of object listings.
+
+    Args:
+        current_page int:
+            Current page number
+        query_set (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
+            Object listing queryset.
+        per_page int:
+            Objects per page.
+
+    Returns:
+        QuerySet object, pagination data dict as a tuple
+    """
+    total_objects = query_set.count()
+    total_pages = int(total_objects / per_page or 1)
+    # add orphans to last page
+    current_per_page = per_page + (
+        total_objects % per_page if current_page == total_pages else 0)
+    pagination_data = dict(page=current_page,
+                           total_pages=total_pages,
+                           total_objects=total_objects,
+                           per_page=current_per_page)
+    query_set = query_set.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
+    return query_set, pagination_data
+
 
 def create_message(current):
     """
@@ -75,10 +107,6 @@ def create_message(current):
             Attachment(channel=ch, msg=msg_obj, name=atch['name'], file=atch['content'],
                        description=atch['description'], typ=typ).save()
 
-
-def _dedect_file_type(name, content):
-    # FIXME: Implement attachment type detection
-    return 1  # Return as Document for now
 
 
 def show_channel(current):
@@ -144,9 +172,10 @@ def channel_history(current):
     current.output = {
         'status': 'OK',
         'code': 201,
-        'messages': [msg.serialize_for(current.user)
-                     for msg in Message.objects.filter(channel_id=current.input['channel_key'],
-                                                       timestamp__lt=current.input['timestamp'])[:20]]
+        'messages': [
+            msg.serialize_for(current.user)
+            for msg in Message.objects.filter(channel_id=current.input['channel_key'],
+                                              timestamp__lt=current.input['timestamp'])[:20]]
     }
 
 
@@ -404,33 +433,6 @@ def create_direct_channel(current):
     }
 
 
-def _paginate(self, current_page, query_set, per_page=10):
-    """
-    Handles pagination of object listings.
-
-    Args:
-        current_page int:
-            Current page number
-        query_set (:class:`QuerySet<pyoko:pyoko.db.queryset.QuerySet>`):
-            Object listing queryset.
-        per_page int:
-            Objects per page.
-
-    Returns:
-        QuerySet object, pagination data dict as a tuple
-    """
-    total_objects = query_set.count()
-    total_pages = int(total_objects / per_page or 1)
-    # add orphans to last page
-    current_per_page = per_page + (
-        total_objects % per_page if current_page == total_pages else 0)
-    pagination_data = dict(page=current_page,
-                           total_pages=total_pages,
-                           total_objects=total_objects,
-                           per_page=current_per_page)
-    query_set = query_set.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
-    return query_set, pagination_data
-
 
 def find_message(current):
     """
@@ -532,6 +534,31 @@ def edit_message(current):
     if not Message(current).objects.filter(sender_id=current.user_id,
                                            key=msg['key']).update(body=msg['body']):
         raise HTTPError(404, "")
+
+
+def get_message_actions(current):
+    """
+    Returns applicable actions for current user for given message key
+
+    .. code-block:: python
+
+        # request:
+        {
+            'view':'_zops_get_message_actions',
+            'message_key': key,
+        }
+        # response:
+            {
+            'actions':[('name_string', 'cmd_string'),]
+            'status': string,   # 'OK' for success
+            'code': int,        # 200 for success
+            }
+
+    """
+    current.output = {'status': 'OK',
+                      'code': 200,
+                      'actions': Message.objects.get(
+                          current.input['message_key']).get_actions_for(current.user)}
 
 
 def add_to_favorites(current):
