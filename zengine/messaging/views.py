@@ -10,8 +10,7 @@ from pyoko.conf import settings
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
 from zengine.lib.exceptions import HTTPError
-from zengine.messaging.model import Channel, Attachment, Subscriber, Message
-from zengine.views.base import BaseView
+from zengine.messaging.model import Channel, Attachment, Subscriber, Message, Favorite
 
 UserModel = get_object_from_path(settings.USER_MODEL)
 UnitModel = get_object_from_path(settings.UNIT_MODEL)
@@ -122,6 +121,35 @@ def show_channel(current):
                       }
 
 
+def channel_history(current):
+    """
+        Get old messages for a channel. 20 messages per request
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_channel_history,
+                'channel_key': key,
+                'timestamp': datetime, # timestamp data of oldest shown message
+                }
+
+            #  response:
+                {
+                'messages': [MSG_DICT, ],
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    current.output = {
+        'status': 'OK',
+        'code': 201,
+        'messages': [msg.serialize_for(current.user)
+                     for msg in Message.objects.filter(channel_id=current.input['channel_key'],
+                                                       timestamp__lt=current.input['timestamp'])[:20]]
+    }
+
+
 def last_seen_msg(current):
     """
     Push timestamp of last seen message for a channel
@@ -214,7 +242,7 @@ def create_channel(current):
 
 def add_members(current):
     """
-        Add member(s) to a channel
+        Subscribe member(s) to a channel
 
         .. code-block:: python
 
@@ -252,23 +280,25 @@ def add_members(current):
 
 def add_unit_to_channel(current):
     """
-        Subscribe users of a given unit to a channel
+        Subscribe users of a given unit to given channel
 
-        .. code-block:: python
+        JSON API:
+            .. code-block:: python
 
-            #  request:
-                {
-                'view':'_zops_add_unit_to_channel',
-                'unit_key': key,
-                }
+                #  request:
+                    {
+                    'view':'_zops_add_unit_to_channel',
+                    'unit_key': key,
+                    'channel_key': key,
+                    }
 
-            #  response:
-                {
-                'existing': [key,], # existing members
-                'newly_added': [key,], # newly added members
-                'status': 'Created',
-                'code': 201
-                }
+                #  response:
+                    {
+                    'existing': [key,], # existing members
+                    'newly_added': [key,], # newly added members
+                    'status': 'Created',
+                    'code': 201
+                    }
     """
     newly_added, existing = [], []
     for member_key in UnitModel.get_user_keys(current, current.input['unit_key']):
@@ -289,7 +319,7 @@ def add_unit_to_channel(current):
 
 def search_user(current):
     """
-        Search users for adding to a public rooms
+        Search users for adding to a public room
         or creating one to one direct messaging
 
         .. code-block:: python
@@ -319,7 +349,7 @@ def search_user(current):
 
 def search_unit(current):
     """
-        Search units for subscribing it's users to a channel
+        Search on units for subscribing it's users to a channel
 
         .. code-block:: python
 
@@ -395,11 +425,12 @@ def _paginate(self, current_page, query_set, per_page=10):
     current_per_page = per_page + (
         total_objects % per_page if current_page == total_pages else 0)
     pagination_data = dict(page=current_page,
-                                     total_pages=total_pages,
-                                     total_objects=total_objects,
-                                     per_page=current_per_page)
+                           total_pages=total_pages,
+                           total_objects=total_objects,
+                           per_page=current_per_page)
     query_set = query_set.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
     return query_set, pagination_data
+
 
 def find_message(current):
     """
@@ -468,13 +499,12 @@ def delete_message(current):
                 }
     """
     try:
-        Message(current).objects.get(sender_id=current.user_id, key=current.input['message_key']).delete()
-        current.output = {
-            'status': 'OK',
-            'code': 201
-        }
+        Message(current).objects.get(sender_id=current.user_id,
+                                     key=current.input['message_key']).delete()
+        current.output = {'status': 'Deleted', 'code': 200}
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
+
 
 def edit_message(current):
     """
@@ -493,11 +523,103 @@ def edit_message(current):
         # response:
             {
             'status': string,   # 'OK' for success
-            'code': int,        # 201 for success
+            'code': int,        # 200 for success
             }
 
     """
+    current.output = {'status': 'OK', 'code': 200}
     msg = current.input['message']
     if not Message(current).objects.filter(sender_id=current.user_id,
-                                  key=msg['key']).update(body=msg['body']):
+                                           key=msg['key']).update(body=msg['body']):
         raise HTTPError(404, "")
+
+
+def add_to_favorites(current):
+    """
+    Favorite a message
+
+    .. code-block:: python
+
+        #  request:
+            {
+            'view':'_zops_add_to_favorites,
+            'message_key': key,
+            }
+
+        #  response:
+            {
+            'status': 'Created',
+            'code': 201
+            'favorite_key': key
+            }
+
+    """
+    msg = Message.objects.get(current.input['message_key'])
+    current.output = {'status': 'Created', 'code': 201}
+    fav, new = Favorite.objects.get_or_create(user_id=current.user_id, message=msg['key'])
+    current.output['favorite_key'] = fav.key
+
+
+def remove_from_favorites(current):
+    """
+    Remove a message from favorites
+
+    .. code-block:: python
+
+        #  request:
+            {
+            'view':'_zops_remove_from_favorites,
+            'message_key': key,
+            }
+
+        #  response:
+            {
+            'status': 'Deleted',
+            'code': 200
+            }
+
+    """
+    try:
+        current.output = {'status': 'Deleted', 'code': 200}
+        Favorite(current).objects.get(user_id=current.user_id,
+                                      key=current.input['message_key']).delete()
+    except ObjectDoesNotExist:
+        raise HTTPError(404, "")
+
+
+def list_favorites(current):
+    """
+    List user's favorites. If "channel_key" given, will return favorites belong to that channel.
+
+    .. code-block:: python
+
+        #  request:
+            {
+            'view':'_zops_list_favorites,
+            'channel_key': key,
+            }
+
+        #  response:
+            {
+            'status': 'OK',
+            'code': 200
+            'favorites':[{'key': key,
+                        'channel_key': key,
+                        'message_key': key,
+                        'message_summary': string, # max 60 char
+                        'channel_name': string,
+                        },]
+            }
+
+    """
+    current.output = {'status': 'OK', 'code': 200, 'favorites': []}
+    query_set = Favorite(current).objects.filter(user_id=current.user_id)
+    if current.input['channel_key']:
+        query_set = query_set.filter(channel_id=current.input['channel_key'])
+    current.output['favorites'] = [{
+                                       'key': fav.key,
+                                       'channel_key': fav.channel.key,
+                                       'message_key': fav.message.key,
+                                       'message_summary': fav.summary,
+                                       'channel_name': fav.channel_name
+                                   } for fav in query_set]

@@ -7,6 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
+from uuid import uuid4
 
 import pika
 
@@ -56,6 +57,7 @@ class Channel(Model):
     code_name = field.String("Internal name")
     description = field.String("Description")
     owner = UserModel(reverse_name='created_channels', null=True)
+
     #
     # class Managers(ListNode):
     #     user = UserModel()
@@ -88,13 +90,14 @@ class Channel(Model):
             return channel
 
     @classmethod
-    def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2,
-                    receiver=None):
+    def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2, receiver=None):
         mq_channel = cls._connect_mq()
-        mq_msg = json.dumps(dict(sender=sender, body=body, msg_title=title, url=url, typ=typ))
-        mq_channel.basic_publish(exchange=channel_key, routing_key='', body=mq_msg)
-        return Message(sender=sender, body=body, msg_title=title, url=url,
-                       typ=typ, channel_id=channel_key, receiver=receiver).save()
+        msg_object = Message(sender=sender, body=body, msg_title=title, url=url,
+                             typ=typ, channel_id=channel_key, receiver=receiver, key=uuid4().hex)
+        mq_channel.basic_publish(exchange=channel_key,
+                                 routing_key='',
+                                 body=json.dumps(msg_object.serialize_for()))
+        return msg_object.save()
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
@@ -250,12 +253,12 @@ class Message(Model):
                 ('Delete', 'zops_delete_message'),
                 ('Edit', 'zops_edit_message')
             ])
-        else:
+        elif user:
             actions.extend([
                 ('Flag', 'flag_message')
             ])
 
-    def serialize_for(self, user):
+    def serialize_for(self, user=None):
         return {
             'content': self.body,
             'type': self.typ,
@@ -311,3 +314,11 @@ class Favorite(Model):
     channel = Channel()
     user = UserModel()
     message = Message()
+    summary = field.String("Message Summary")
+    channel_name = field.String("Channel Name")
+
+    def pre_creation(self):
+        if not self.channel:
+            self.channel = self.message.channel
+        self.summary = self.message.body[:60]
+        self.channel_name = self.channel.name
