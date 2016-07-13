@@ -22,7 +22,10 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
 
     MSG_DICT = {'content': string,
                  'title': string,
-                 'time': datetime,
+                 'timestamp': datetime,
+                 'updated_at': datetime,
+                 'is_update': boolean, # false for new messages
+                                       # true if this is an updated message
                  'channel_key': key,
                  'sender_name': string,
                  'sender_key': key,
@@ -90,7 +93,6 @@ def create_message(current):
             'view':'_zops_create_message',
             'message': {
                 'channel': key,     # of channel
-                'receiver': key,    # of receiver. Should be set only for direct messages,
                 'body': string,     # message text.,
                 'type': int,        # zengine.messaging.model.MSG_TYPES,
                 'attachments': [{
@@ -100,8 +102,8 @@ def create_message(current):
                     }]}
         # response:
             {
-            'status': string,   # 'OK' for success
-            'code': int,        # 201 for success
+            'status': 'Created',
+            'code': 201,
             'msg_key': key,     # key of the message object,
             }
 
@@ -143,6 +145,8 @@ def show_channel(current):
                  'avatar_url': string,
                 }],
             'last_messages': [MSG_DICT]
+            'status': 'OK',
+            'code': 200
             }
     """
     ch = Channel(current).objects.get(current.input['channel_key'])
@@ -153,7 +157,7 @@ def show_channel(current):
                                        'is_online': sb.user.is_online(),
                                        'avatar_url': sb.user.get_avatar_url()
                                        } for sb in ch.subscriber_set],
-                      'last_messages': [msg.serialize_for(current.user)
+                      'last_messages': [msg.serialize(current.user)
                                         for msg in ch.get_last_messages()]
                       }
 
@@ -182,15 +186,19 @@ def channel_history(current):
         'status': 'OK',
         'code': 201,
         'messages': [
-            msg.serialize_for(current.user)
+            msg.serialize(current.user)
             for msg in Message.objects.filter(channel_id=current.input['channel_key'],
                                               timestamp__lt=current.input['timestamp'])[:20]]
     }
 
 
-def last_seen_msg(current):
+def report_last_seen_message(current):
     """
-    Push timestamp of last seen message for a channel
+    Push timestamp of latest message of an ACTIVE channel.
+
+    This view should be called with timestamp of latest message;
+    - When user opens (clicks on) a channel.
+    - Periodically (eg: setInterval for 15secs) while user staying in a channel.
 
 
     .. code-block:: python
@@ -236,7 +244,7 @@ def list_channels(current):
                                      # 15: public channels (chat room/broadcast channel distinction
                                                          comes from "read_only" flag)
                                      # 10: direct channels
-                                     # 5: one and only private channel can be "Notifications".
+                                     # 5: one and only private channel which can be "Notifications"
                      'read_only': boolean,
                                      # true if this is a read-only subscription to a broadcast channel
                                      # false if it's a public chat room
@@ -258,6 +266,8 @@ def list_channels(current):
 def create_channel(current):
     """
         Create a public channel. Can be a broadcast channel or normal chat room.
+
+        Chat room and broadcast distinction will be made at user subscription phase.
 
         .. code-block:: python
 
@@ -297,7 +307,7 @@ def add_members(current):
                 'view':'_zops_add_members',
                 'channel_key': key,
                 'read_only': boolean, # true if this is a Broadcast channel,
-                                   # false if it's a normal chat room
+                                      # false if it's a normal chat room
                 'members': [key, key],
                 }
 
@@ -504,7 +514,7 @@ def find_message(current):
     query_set, pagination_data = _paginate(current_page=current.input['page'], query_set=query_set)
     current.output['pagination'] = pagination_data
     for msg in query_set:
-        current.output['results'].append(msg.serialize_for(current.user))
+        current.output['results'].append(msg.serialize(current.user))
 
 
 def delete_channel(current):
@@ -638,8 +648,11 @@ def edit_message(current):
     """
     current.output = {'status': 'OK', 'code': 200}
     msg = current.input['message']
-    if not Message(current).objects.filter(sender_id=current.user_id,
-                                           key=msg['key']).update(body=msg['body']):
+    try:
+        msg = Message(current).objects.get(sender_id=current.user_id, key=msg['key'])
+        msg.body = msg['body']
+        msg.save()
+    except ObjectDoesNotExist:
         raise HTTPError(404, "")
 
 

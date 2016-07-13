@@ -88,13 +88,14 @@ class Channel(Model):
             return channel
 
     @classmethod
-    def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2, receiver=None):
+    def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2,
+                    receiver=None):
         mq_channel = cls._connect_mq()
         msg_object = Message(sender=sender, body=body, msg_title=title, url=url,
                              typ=typ, channel_id=channel_key, receiver=receiver, key=uuid4().hex)
         mq_channel.basic_publish(exchange=channel_key,
                                  routing_key='',
-                                 body=json.dumps(msg_object.serialize_for()))
+                                 body=json.dumps(msg_object.serialize()))
         return msg_object.save()
 
     def get_last_messages(self):
@@ -116,8 +117,6 @@ class Channel(Model):
         mq_channel.exchange_declare(exchange=self.code_name,
                                     exchange_type='fanout',
                                     durable=True)
-
-
 
     def pre_creation(self):
         if not self.code_name:
@@ -167,12 +166,14 @@ class Subscriber(Model):
 
     def get_actions(self):
         actions = [
-            ('Pin', 'pin_channel')
+            ('Pin', '_zops_pin_channel')
         ]
-        if self.channel.owner == self.user:
+        if self.channel.owner == self.user or self.can_manage:
             actions.extend([
                 ('Delete', '_zops_delete_channel'),
                 ('Edit', '_zops_edit_channel')
+                ('Add Users', '_zops_add_members')
+                ('Add Unit', '_zops_add_unit_to_channel')
             ])
 
     def unread_count(self):
@@ -264,11 +265,25 @@ class Message(Model):
                 ('Flag', '_zops_flag_message')
             ])
 
-    def serialize_for(self, user=None):
+    def serialize(self, user=None):
+        """
+        Serializes message for given user.
+
+        Note:
+            Should be called before first save(). Otherwise "is_update" will get wrong value.
+
+        Args:
+            user: User object
+
+        Returns:
+            Dict. JSON serialization ready dictionary object
+        """
         return {
             'content': self.body,
             'type': self.typ,
-            'time': self.updated_at,
+            'updated_at': self.updated_at,
+            'timestamp': self.timestamp,
+            'is_update': self.exist,
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
             'sender_name': self.sender.full_name,
@@ -280,6 +295,18 @@ class Message(Model):
     def __unicode__(self):
         content = self.msg_title or self.body
         return "%s%s" % (content[:30], '...' if len(content) > 30 else '')
+
+    def _republish(self):
+        """
+        Re-publishes updated message
+        """
+        mq_channel = self.channel._connect_mq()
+        mq_channel.basic_publish(exchange=self.channel.key, routing_key='',
+                                 body=json.dumps(self.serialize()))
+
+    def pre_save(self):
+        if self.exist:
+            self._republish()
 
 
 ATTACHMENT_TYPES = (

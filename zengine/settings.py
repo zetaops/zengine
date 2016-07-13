@@ -124,7 +124,7 @@ VIEW_URLS = {
     '_zops_show_channel': 'zengine.messaging.views.show_channel',
     '_zops_list_channels': 'zengine.messaging.views.list_channels',
     '_zops_channel_history': 'zengine.messaging.views.channel_history',
-    '_zops_last_seen_msg': 'zengine.messaging.views.last_seen_msg',
+    '_zops_report_last_seen_message': 'zengine.messaging.views.report_last_seen_message',
     '_zops_create_channel': 'zengine.messaging.views.create_channel',
     '_zops_add_members': 'zengine.messaging.views.add_members',
     '_zops_add_unit_to_channel': 'zengine.messaging.views.add_unit_to_channel',
