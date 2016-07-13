@@ -27,7 +27,15 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
                  'sender_key': key,
                  'type': int,
                  'key': key,
-                 'actions':[('name_string', 'cmd_string'),]
+                 'actions':[('action name', 'view name'),
+                            ('Add to Favorite', '_zops_add_to_favorites'), # applicable to everyone
+
+                            # Additional actions should be retrieved
+                            # from "_zops_get_message_actions" view.
+                            ('Edit', '_zops_edit_message'),
+                            ('Delete', '_zops_delete_message'),
+
+                 ]
                  'attachments': [{
                                     'description': string,
                                     'file_name': string,
@@ -35,6 +43,7 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
                                 },]
                 }
 """
+
 
 def _dedect_file_type(name, content):
     # FIXME: Implement attachment type detection
@@ -106,7 +115,6 @@ def create_message(current):
             typ = current._dedect_file_type(atch['name'], atch['content'])
             Attachment(channel=ch, msg=msg_obj, name=atch['name'], file=atch['content'],
                        description=atch['description'], typ=typ).save()
-
 
 
 def show_channel(current):
@@ -220,12 +228,19 @@ def list_channels(current):
             #  response:
                 {
                 'channels': [
-                    {'name': string,
-                     'key': key,
-                     'unread': int,
-                     'type': int,
-                     'key': key,
-                     'actions':[('name_string', 'cmd_string'),]
+                    {'name': string, # name of channel
+                     'key': key,     # key of channel
+                     'unread': int,  # unread message count
+                     'type': int,    # channel type,
+                                     # 15: public channels (chat room/broadcast channel distinction
+                                                         comes from "read_only" flag)
+                                     # 10: direct channels
+                                     # 5: one and only private channel can be "Notifications".
+                     'read_only': boolean,
+                                     # true if this is a read-only subscription to a broadcast channel
+                                     # false if it's a public chat room
+
+                     'actions':[('action name', 'view name'),]
                     },]
                 }
         """
@@ -233,7 +248,8 @@ def list_channels(current):
         {'name': sbs.channel.name or ('Notifications' if sbs.channel.is_private() else ''),
          'key': sbs.channel.key,
          'type': sbs.channel.typ,
-         'actions': sbs.channel.get_actions_for(current.user),
+         'read_only': sbs.read_only,
+         'actions': sbs.get_actions(),
          'unread': sbs.unread_count()} for sbs in
         current.user.subscriptions if sbs.is_visible]
 
@@ -279,8 +295,8 @@ def add_members(current):
                 {
                 'view':'_zops_add_members',
                 'channel_key': key,
-                'read_only': True, # True if this is a Broadcast channel,
-                                   # False if it's a normal chat room
+                'read_only': boolean, # true if this is a Broadcast channel,
+                                   # false if it's a normal chat room
                 'members': [key, key],
                 }
 
@@ -323,6 +339,9 @@ def add_unit_to_channel(current):
                     'view':'_zops_add_unit_to_channel',
                     'unit_key': key,
                     'channel_key': key,
+                    'read_only': boolean, # true if this is a Broadcast channel,
+                                          # false if it's a normal chat room
+
                     }
 
                 #  response:
@@ -333,9 +352,11 @@ def add_unit_to_channel(current):
                     'code': 201
                     }
     """
+    read_only = current.input['read_only']
     newly_added, existing = [], []
     for member_key in UnitModel.get_user_keys(current, current.input['unit_key']):
         sb, new = Subscriber(current).objects.get_or_create(user_id=member_key,
+                                                            read_only=read_only,
                                                             channel_id=current.input['channel_key'])
         if new:
             newly_added.append(member_key)
@@ -437,7 +458,6 @@ def create_direct_channel(current):
     }
 
 
-
 def find_message(current):
     """
         Search in messages. If "channel_key" given, search will be limited to that channel,
@@ -484,6 +504,88 @@ def find_message(current):
     current.output['pagination'] = pagination_data
     for msg in query_set:
         current.output['results'].append(msg.serialize_for(current.user))
+
+
+def delete_channel(current):
+    """
+        Delete a channel
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_delete_channel,
+                'channel_key': key,
+                }
+
+            #  response:
+                {
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    try:
+        Channel(current).objects.get(owner_id=current.user_id,
+                                     key=current.input['channel_key']).delete()
+        current.output = {'status': 'Deleted', 'code': 200}
+    except ObjectDoesNotExist:
+        raise HTTPError(404, "")
+
+
+def edit_channel(current):
+    """
+        Update channel name or description
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_edit_channel,
+                'channel_key': key,
+                'name': string,
+                'description': string,
+                }
+
+            #  response:
+                {
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    try:
+        Channel(current).objects.filter(owner_id=current.user_id,
+                                        key=current.input['channel_key']
+                                        ).update(name=current.input['name'],
+                                                 description=current.input['description'])
+        current.output = {'status': 'OK', 'code': 200}
+    except ObjectDoesNotExist:
+        raise HTTPError(404, "")
+
+
+def pin_channel(current):
+    """
+        Pin a channel to top of channel list
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_pin_channel,
+                'channel_key': key,
+                }
+
+            #  response:
+                {
+                'status': 'OK',
+                'code': 200
+                }
+    """
+    try:
+        Subscriber(current).objects.get(user_id=current.user_id,
+                                        channel_id=current.input['channel_key']).update(pinned=True)
+        current.output = {'status': 'OK', 'code': 200}
+    except ObjectDoesNotExist:
+        raise HTTPError(404, "")
 
 
 def delete_message(current):

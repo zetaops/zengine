@@ -138,6 +138,9 @@ VIEW_URLS = {
     '_zops_add_to_favorites': 'zengine.messaging.views.add_to_favorites',
     '_zops_remove_from_favorites': 'zengine.messaging.views.remove_from_favorites',
     '_zops_list_favorites': 'zengine.messaging.views.list_favorites',
+    '_zops_edit_channel': 'zengine.messaging.views.edit_channel',
+    '_zops_delete_channel': 'zengine.messaging.views.delete_channel',
+    '_zops_pin_channel': 'zengine.messaging.views.pin_channel',
     # '_zops_': 'zengine.messaging.views.',
 }
 

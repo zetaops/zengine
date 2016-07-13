@@ -117,15 +117,7 @@ class Channel(Model):
                                     exchange_type='fanout',
                                     durable=True)
 
-    def get_actions_for(self, user):
-        actions = [
-            ('Pin', 'pin_channel')
-        ]
-        if self.sender == user:
-            actions.extend([
-                ('Delete', 'zops_delete_channel'),
-                ('Edit', 'zops_edit_channel')
-            ])
+
 
     def pre_creation(self):
         if not self.code_name:
@@ -156,7 +148,10 @@ class Subscriber(Model):
     channel = Channel()
     user = UserModel(reverse_name='subscriptions')
     is_muted = field.Boolean("Mute the channel", default=False)
+    pinned = field.Boolean("Pin channel to top", default=False)
     inform_me = field.Boolean("Inform when I'm mentioned", default=True)
+    read_only = field.Boolean("This is a read-only subscription (to a broadcast channel)",
+                              default=False)
     is_visible = field.Boolean("Show under user's channel list", default=True)
     can_manage = field.Boolean("Can manage this channel", default=False)
     can_leave = field.Boolean("Membership is not obligatory", default=True)
@@ -169,6 +164,16 @@ class Subscriber(Model):
         if cls.mq_connection is None or cls.mq_connection.is_closed:
             cls.mq_connection, cls.mq_channel = get_mq_connection()
         return cls.mq_channel
+
+    def get_actions(self):
+        actions = [
+            ('Pin', 'pin_channel')
+        ]
+        if self.channel.owner == self.user:
+            actions.extend([
+                ('Delete', '_zops_delete_channel'),
+                ('Edit', '_zops_edit_channel')
+            ])
 
     def unread_count(self):
         # FIXME: track and return actual unread message count

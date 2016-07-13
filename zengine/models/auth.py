@@ -30,9 +30,13 @@ class Unit(Model):
     def __unicode__(self):
         return '%s' % self.name
 
+
     @classmethod
-    def get_user_keys(cls, current, unit_key):
-        return User(current).objects.filter(unit_id=unit_key).values_list('key', flatten=True)
+    def get_user_keys(cls, unit_key):
+        stack = User.objects.filter(unit_id=unit_key).values_list('key', flatten=True)
+        for unit_key in cls.objects.filter(parent_id=unit_key).values_list('key', flatten=True):
+            stack.extend(cls.get_user_keys(unit_key))
+        return stack
 
 
 

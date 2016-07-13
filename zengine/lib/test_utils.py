@@ -12,6 +12,7 @@ from pprint import pprint
 from zengine.lib.cache import ClearCache
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
+from zengine.tornado_server.ws_to_queue import BlockingConnectionForHTTP
 from zengine.wf_daemon import Worker
 
 from zengine.models import User
@@ -60,7 +61,7 @@ class ResponseWrapper(object):
             pprint(self.content)
 
 
-class TestClient(Worker):
+class BaseTestClient(Worker):
     """
     TestClient to simplify writing API tests for Zengine based apps.
     """
@@ -71,7 +72,7 @@ class TestClient(Worker):
 
         :param str path: Request uri
         """
-        super(TestClient, self).__init__(*args, **kwargs)
+        super(BaseTestClient, self).__init__(*args, **kwargs)
         self.test_client_sessid = None
         self.response_wrapper = None
         self.set_path(path, None)
@@ -93,7 +94,7 @@ class TestClient(Worker):
         self.path = path
         self.token = token
 
-    def post(self, **data):
+    def _prepare_post(self, **data):
         """
         by default data dict encoded as json and
         content type set as application/json
@@ -119,13 +120,32 @@ class TestClient(Worker):
         post_data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
         log.info("PostData : %s" % post_data)
         print("PostData : %s" % post_data)
-        post_data = json.dumps(post_data)
+        return post_data
+
+    def post(self, **data):
+        post_data = json.dumps(self._prepare_post(data))
         fake_method = type('FakeMethod', (object,), {'routing_key': self.sess_id})
         self.handle_message(None, fake_method, None, post_data)
         # update client token from response
         self.token = self.response_wrapper.token
         return self.response_wrapper
 
+
+class AMQPTestClient(BaseTestClient):
+    def apost(self, **data):
+        """
+        AMQP based post method
+        Args:
+            **data: Post data
+
+        Returns:
+
+        """
+        post_data = self._prepare_post(data)
+        BlockingConnectionForHTTP().send_message(self.sess_id, post_data)
+
+
+class TestClient(BaseTestClient):
     def send_output(self, output):
         self.response_wrapper = ResponseWrapper(output)
 
@@ -168,7 +188,7 @@ class BaseTestCase:
                     sleep(2)
                 else:
                     print(
-                    "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+                        "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
 
         else:
             print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
