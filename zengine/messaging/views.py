@@ -10,7 +10,8 @@ from pyoko.conf import settings
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
 from zengine.lib.exceptions import HTTPError
-from zengine.messaging.model import Channel, Attachment, Subscriber, Message, Favorite
+from zengine.messaging.model import Channel, Attachment, Subscriber, Message, Favorite, \
+    FlaggedMessage
 
 UserModel = get_object_from_path(settings.USER_MODEL)
 UnitModel = get_object_from_path(settings.UNIT_MODEL)
@@ -640,6 +641,39 @@ def edit_message(current):
     if not Message(current).objects.filter(sender_id=current.user_id,
                                            key=msg['key']).update(body=msg['body']):
         raise HTTPError(404, "")
+
+
+def flag_message(current):
+    """
+    Flag inappropriate messages
+
+    .. code-block:: python
+
+        # request:
+        {
+            'view':'_zops_flag_message',
+            'message': {
+                'key': key
+                'flag': boolean, # true for flagging
+                                 # false for unflagging
+                }
+        }
+        # response:
+            {
+            '
+            'status': string,   # 'OK' for success
+            'code': int,        # 200 for success
+            }
+
+    """
+    current.output = {'status': 'OK', 'code': 200}
+    if current.input['flag']:
+        FlaggedMessage.objects.get_or_create(current,
+                                             user_id=current.user_id,
+                                             message_id=current.input['key'])
+    else:
+        FlaggedMessage(current).objects.filter(user_id=current.user_id,
+                                               message_id=current.input['key']).delete()
 
 
 def get_message_actions(current):

@@ -252,16 +252,16 @@ class Message(Model):
 
     def get_actions_for(self, user):
         actions = [
-            ('Favorite', 'favorite_message')
+            ('Favorite', '_zops_favorite_message')
         ]
         if self.sender == user:
             actions.extend([
-                ('Delete', 'zops_delete_message'),
-                ('Edit', 'zops_edit_message')
+                ('Delete', '_zops_delete_message'),
+                ('Edit', '_zops_edit_message')
             ])
         elif user:
             actions.extend([
-                ('Flag', 'flag_message')
+                ('Flag', '_zops_flag_message')
             ])
 
     def serialize_for(self, user=None):
@@ -328,3 +328,15 @@ class Favorite(Model):
             self.channel = self.message.channel
         self.summary = self.message.body[:60]
         self.channel_name = self.channel.name
+
+
+class FlaggedMessage(Model):
+    """
+    A model to store users bookmarked messages
+    """
+    channel = Channel()
+    user = UserModel()
+    message = Message()
+
+    def pre_creation(self):
+        self.channel = self.message.channel
