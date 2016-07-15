@@ -244,7 +244,7 @@ def list_channels(current):
                                      # 15: public channels (chat room/broadcast channel distinction
                                                          comes from "read_only" flag)
                                      # 10: direct channels
-                                     # 5: one and only private channel which can be "Notifications"
+                                     # 5: one and only private channel which is "Notifications"
                      'read_only': boolean,
                                      # true if this is a read-only subscription to a broadcast channel
                                      # false if it's a public chat room
@@ -260,7 +260,7 @@ def list_channels(current):
          'read_only': sbs.read_only,
          'actions': sbs.get_actions(),
          'unread': sbs.unread_count()} for sbs in
-        current.user.subscriptions if sbs.is_visible]
+        current.user.subscriptions.objects.filter(is_visible=True)]
 
 
 def create_channel(current):

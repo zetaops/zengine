@@ -124,7 +124,7 @@ class QueueManager(object):
     """
     INPUT_QUEUE_NAME = 'in_queue'
 
-    def __init__(self, io_loop):
+    def __init__(self, io_loop=None):
         log.info('PikaClient: __init__')
         self.io_loop = io_loop
         self.connected = False
@@ -134,7 +134,7 @@ class QueueManager(object):
         self.out_channels = {}
         self.out_channel = None
         self.websockets = {}
-        self.connect()
+        # self.connect()
 
     def connect(self):
         """
@@ -148,6 +148,8 @@ class QueueManager(object):
         self.connecting = True
 
         self.connection = TornadoConnection(NON_BLOCKING_MQ_PARAMS,
+                                            stop_ioloop_on_close=False,
+                                            custom_ioloop=self.io_loop,
                                             on_open_callback=self.on_connected)
 
     def on_connected(self, connection):
@@ -160,10 +162,9 @@ class QueueManager(object):
         """
         log.info('PikaClient: connected to RabbitMQ')
         self.connected = True
-        self.connection = connection
-        self.in_channel = self.connection.channel(self.on_conn_open)
+        self.in_channel = self.connection.channel(self.on_channel_open)
 
-    def on_conn_open(self, channel):
+    def on_channel_open(self, channel):
         """
         Input channel creation callback
         Queue declaration done here
@@ -265,6 +266,7 @@ class QueueManager(object):
         user_id = method.exchange[4:]
         log.debug("WS RPLY for %s: %s" % (user_id, body))
         if user_id in self.websockets:
+            log.info("write msg to client")
             self.websockets[user_id].write_message(body)
             channel.basic_ack(delivery_tag=method.delivery_tag)
         elif 'sessid_to_userid' in body:

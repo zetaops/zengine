@@ -24,6 +24,8 @@ UserModel = get_object_from_path(settings.USER_MODEL)
 def get_mq_connection():
     connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
     channel = connection.channel()
+    if not channel.is_open:
+        channel.open()
     return connection, channel
 
 
@@ -55,6 +57,9 @@ class Channel(Model):
     code_name = field.String("Internal name")
     description = field.String("Description")
     owner = UserModel(reverse_name='created_channels', null=True)
+
+    def __unicode__(self):
+        return "%s (%s's %s channel)" % (self.name or '', self.owner.__unicode__(), self.get_typ_display())
 
     #
     # class Managers(ListNode):
@@ -132,7 +137,7 @@ class Channel(Model):
         else:
             self.key = self.code_name
 
-    def post_creation(self):
+    def post_save(self):
         self.create_exchange()
 
 
@@ -158,6 +163,9 @@ class Subscriber(Model):
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 
+    def __unicode__(self):
+        return "%s >> %s" % (self.user.full_name, self.channel.__unicode__())
+
     @classmethod
     def _connect_mq(cls):
         if cls.mq_connection is None or cls.mq_connection.is_closed:
@@ -171,15 +179,17 @@ class Subscriber(Model):
         if self.channel.owner == self.user or self.can_manage:
             actions.extend([
                 ('Delete', '_zops_delete_channel'),
-                ('Edit', '_zops_edit_channel')
-                ('Add Users', '_zops_add_members')
+                ('Edit', '_zops_edit_channel'),
+                ('Add Users', '_zops_add_members'),
                 ('Add Unit', '_zops_add_unit_to_channel')
             ])
 
     def unread_count(self):
         # FIXME: track and return actual unread message count
-        return self.channel.message_set.objects.filter(
-            timestamp__lt=self.last_seen_msg_time).count()
+        if self.last_seen_msg_time:
+            return self.channel.message_set.objects.filter(timestamp__lt=self.last_seen_msg_time).count()
+        else:
+            self.channel.message_set.objects.filter().count()
 
     def create_exchange(self):
         """
@@ -211,8 +221,6 @@ class Subscriber(Model):
         self.create_exchange()
         self.bind_to_channel()
 
-    def __unicode__(self):
-        return "%s in %s" % (self.user, self.channel.name)
 
 
 MSG_TYPES = (
