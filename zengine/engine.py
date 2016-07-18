@@ -1,267 +1,119 @@
 # -*-  coding: utf-8 -*-
+"""
+Zengine's engine!
+"""
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from __future__ import print_function, absolute_import, division
 from __future__ import division
+from __future__ import print_function, absolute_import, division
 
 import importlib
-import traceback
-from io import BytesIO
 import os
-from uuid import uuid4
+import sys
+import traceback
+from copy import deepcopy
+
+import lazy_object_proxy
+from SpiffWorkflow import Task
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
 from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
 from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
     CompactWorkflowSerializer
-from SpiffWorkflow import Task
 from SpiffWorkflow.specs import WorkflowSpec
-from SpiffWorkflow.bpmn.storage.Packager import Packager
-from beaker.session import Session
-from falcon import Request, Response
-import falcon
-import lazy_object_proxy
-from zengine.notifications import Notify
 
-from zengine import signals
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
+from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.config import settings
-from zengine.lib.cache import WFCache
-from zengine.lib.camunda_parser import CamundaBMPNParser
-from zengine.lib.exceptions import ZengineError
+from zengine.current import WFCurrent
+from zengine.lib.camunda_parser import InMemoryPackager
+from zengine.lib.exceptions import HTTPError
 from zengine.log import log
-from zengine.auth.permissions import NO_PERM_TASKS_TYPES
-# from zengine.views.crud import CrudView
 
-DEFAULT_LANE_CHANGE_MSG = {
-    'title': settings.MESSAGES['lane_change_message_title'],
-    'body': settings.MESSAGES['lane_change_message_body'],
-}
 
 # crud_view = CrudView()
 
 
-class InMemoryPackager(Packager):
-    PARSER_CLASS = CamundaBMPNParser
-
-    @classmethod
-    def package_in_memory(cls, workflow_name, workflow_files):
-        s = BytesIO()
-        p = cls(s, workflow_name, meta_data=[])
-        p.add_bpmn_files_by_glob(workflow_files)
-        p.create_package()
-        return s.getvalue()
-
-
-class Current(object):
-    """
-    This object holds the whole state of the app for passing to view methods (views/tasks)
-
-    :type response: Response | None
-    :type request: Request | None
-    :type spec: WorkflowSpec | None
-    :type session: Session | None
-    """
-
-    def __init__(self, **kwargs):
-
-        self.task_data = {'cmd': None}
-        self.request = kwargs.pop('request', {})
-        self.response = kwargs.pop('response', {})
-        try:
-            self.session = self.request.env['session']
-            self.input = self.request.context['data']
-            self.output = self.request.context['result']
-            self.user_id = self.session.get('user_id')
-            self.role_id = self.session.get('role_id')
-        except AttributeError:
-            # when we want to use engine functions independently,
-            # we need to create a fake current object
-            self.session = {}
-            self.input = {}
-            self.output = {}
-            self.user_id = None
-            self.role_id = None
-
-        self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
-        self.log = log
-        self.pool = {}
-        AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
-        self.auth = lazy_object_proxy.Proxy(lambda: AuthBackend(self))
-        self.user = lazy_object_proxy.Proxy(lambda: self.auth.get_user())
-        self.role = lazy_object_proxy.Proxy(lambda: self.auth.get_role())
-
-        self.msg_cache = Notify(self.user_id)
-        log.debug("\n\nINPUT DATA: %s" % self.input)
-        self.permissions = []
-
-    def set_message(self, title, msg, typ, url=None):
-        return self.msg_cache.set_message(title=title, msg=msg, typ=typ, url=url)
-
-    @property
-    def is_auth(self):
-        if self.user_id is None:
-            self.user_id = self.session.get('user_id', '')
-        return bool(self.user_id)
-
-    def has_permission(self, perm):
-        return self.user.superuser or self.auth.has_permission(perm)
-
-    def get_permissions(self):
-        return self.auth.get_permissions()
-
-    def msg_box(self, msg, title=None, typ='info'):
-        """
-        Create a message box
-
-        :param str msg:
-        :param str title:
-        :param str typ: 'info', 'error', 'warning'
-        """
-        self.output['msgbox'] = {'type': typ, "title": title or msg[:20],
-                                 "msg": msg}
-
-
-class WFCurrent(Current):
-    """
-    Workflow specific version of Current object
-    """
-
-    def __init__(self, **kwargs):
-        super(WFCurrent, self).__init__(**kwargs)
-        self.workflow_name = kwargs.pop('workflow_name', '')
-        self.spec = None
-        self.workflow = None
-        self.task_type = ''
-        self.task = None
-        self.pool = {}
-        self.task_name = ''
-        self.activity = ''
-        self.lane_permissions = []
-        self.lane_relations = ''
-        self.old_lane = ''
-        self.lane_owners = None
-        self.lane_name = ''
-
-        if 'token' in self.input:
-            self.token = self.input['token']
-            log.info("TOKEN iNCOMiNG: %s " % self.token)
-            self.new_token = False
-        else:
-            self.token = uuid4().hex
-            self.new_token = True
-            log.info("TOKEN NEW: %s " % self.token)
-
-        self.wfcache = WFCache(self.token)
-        log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
-        self.set_client_cmds()
-
-    def _set_lane_data(self):
-        # TODO: Cache lane_data in process
-        if 'lane_data' in self.spec.data:
-            self.lane_name = self.spec.lane
-            lane_data = self.spec.data['lane_data']
-            if 'permissions' in lane_data:
-                self.lane_permissions = lane_data['permissions'].split(',')
-            if 'relations' in lane_data:
-                self.lane_relations = lane_data['relations']
-            if 'owners' in lane_data:
-                self.lane_owners = lane_data['owners']
-
-    def get_wf_url(self):
-        return "#/%s/%s" % (self.workflow_name, self.token)
-
-    def _update_task(self, task):
-        """
-        assigns current task step to self.task
-        then updates the task's data with self.task_data
-        """
-        self.task = task
-        self.task.data.update(self.task_data)
-        self.task_type = task.task_spec.__class__.__name__
-        self.spec = task.task_spec
-        self.task_name = task.get_name()
-        self.activity = getattr(self.spec, 'service_class', '')
-        self._set_lane_data()
-
-    def set_client_cmds(self):
-        """
-        This is method automatically called on each request and
-        updates "object_id", "cmd" and "flow"  client variables
-        from current.input.
-
-        "flow" and "object_id" variables will always exists in the
-        task_data so app developers can safely check for their
-        values in workflows.
-        Their values will be reset to None if they not exists
-        in the current input data set.
-
-        On the other side, if there isn't a "cmd" in the current.input
-        cmd will be removed from task_data.
-
-        """
-        self.task_data['cmd'] = self.input.get('cmd')
-
-        self.task_data['flow'] = self.input.get('flow')
-
-        filters = self.input.get('filters', {})
-
-        try:
-            if isinstance(filters, dict):
-                # this is the new form, others will be removed when ui be ready
-                self.task_data['object_id'] = filters.get('object_id')['values'][0]
-            elif filters[0]['field'] == 'object_id':
-                self.task_data['object_id'] = filters[0]['values'][0]
-        except:
-            self.task_data['object_id'] = self.input.get('object_id')
-
-
 class ZEngine(object):
+    """
+    Workflow Engine Class
+
+    This object handles following jobs;
+
+    - Loading of BPMN workflow diagrams,
+    - Iteration of task steps,
+    - Importing and calling view and service tasks of task steps.
+    - Caching and reloading of workflow states between steps.
+
+    .. code-block:: python
+
+        wf_engine = ZEngine()
+        wf_engine.start_engine(request=request_object,
+                               response=response_object,
+                               workflow_name=wf_name)
+        wf_engine.run()
+
+    """
+
     def __init__(self):
         self.use_compact_serializer = True
         # self.current = None
         self.wf_activities = {}
+        self.wf_cache = {'in_external': False}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
         self.user_model = get_object_from_path(settings.USER_MODEL)
+        self.permission_model = get_object_from_path(settings.PERMISSION_MODEL)
         self.role_model = get_object_from_path(settings.ROLE_MODEL)
 
-    def save_workflow_to_cache(self, wf_name, serialized_wf_instance):
+    def are_we_in_subprocess(self):
+        are_we = False
+        if self.current.task:
+            are_we = self.current.task.workflow.name != self.current.workflow.name
+        self.current.log.debug("Are We in subprocess: %s" % are_we)
+        return are_we
+
+    def save_workflow_to_cache(self, serialized_wf_instance):
         """
-        if we aren't come to the end of the wf,
+        If we aren't come to the end of the wf,
         saves the wf state and task_data to cache
 
-        task_data items that starts with underscore "_" are treated as
-         local and does not passed to following task steps.
+        Task_data items that starts with underscore "_" are treated as
+         local and does not passed to subsequent task steps.
         """
-        if self.current.task_name.startswith('End'):
-            self.current.wfcache.delete()
-            self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
-                                                             self.current.token))
-        else:
-            # self.current.task_data['flow'] = None
-            task_data = self.current.task_data.copy()
-            for k, v in list(task_data.items()):
-                if k.startswith('_'):
-                    del task_data[k]
-            if 'cmd' in task_data:
-                del task_data['cmd']
-            wf_cache = {'wf_state': serialized_wf_instance, 'data': task_data, }
-            if self.current.lane_name:
-                self.current.pool[self.current.lane_name] = self.current.role_id
-            wf_cache['pool'] = self.current.pool
-            self.current.wfcache.set(wf_cache)
+        # self.current.task_data['flow'] = None
+        task_data = self.current.task_data.copy()
+        for k, v in list(task_data.items()):
+            if k.startswith('_'):
+                del task_data[k]
+        if 'cmd' in task_data:
+            del task_data['cmd']
+        self.wf_cache.update({'wf_state': serialized_wf_instance,
+                              'data': task_data,
+                              'wf_name': self.current.workflow_name,
+                              })
+        if self.current.lane_name:
+            self.current.pool[self.current.lane_name] = self.current.role.key
+        self.wf_cache['pool'] = self.current.pool
+        self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
+        self.current.wfcache.set(self.wf_cache)
 
     def get_pool_context(self):
         # TODO: Add in-process caching
-        context = {self.current.lane_name: self.current.user, 'self': self.current.user}
+        """
+        Builds context for the WF pool.
+
+        Returns:
+            Context dict.
+        """
+        context = {self.current.lane_name: self.current.role, 'self': self.current.role}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
-            context[model_name] = model_registry.get_model(model_name).objects
+            context[model_name] = model_registry.get_model(model_name)
         for lane_name, role_id in self.current.pool.items():
             if role_id:
                 context[lane_name] = lazy_object_proxy.Proxy(
@@ -274,30 +126,48 @@ class ZEngine(object):
         updates the self.current.task_data
         """
         if not self.current.new_token:
-            wf_cache = self.current.wfcache.get()
-            self.current.task_data = wf_cache['data']
+            self.wf_cache = self.current.wfcache.get(self.wf_cache)
+            self.current.task_data = self.wf_cache['data']
             self.current.set_client_cmds()
-            self.current.pool = wf_cache['pool']
-            return wf_cache['wf_state']
+            self.current.pool = self.wf_cache['pool']
+            return self.wf_cache['wf_state']
 
     def _load_workflow(self):
-        """
-        gets the serialized wf data from cache and deserializes it
-        """
+        # gets the serialized wf data from cache and deserializes it
         serialized_wf = self.load_workflow_from_cache()
         if serialized_wf:
             return self.deserialize_workflow(serialized_wf)
 
     def deserialize_workflow(self, serialized_wf):
+        """
+        Creates WF object instance from given state data.
+
+        Args:
+            serialized_wf: WF state data.
+
+        Returns:
+            BpmnWorkflow instance.
+        """
         return CompactWorkflowSerializer().deserialize_workflow(serialized_wf,
                                                                 workflow_spec=self.workflow_spec)
 
     def serialize_workflow(self):
+        """
+        Serializes the current WF.
+
+        Returns:
+            WF state data.
+        """
         self.workflow.refresh_waiting_tasks()
         return CompactWorkflowSerializer().serialize_workflow(self.workflow,
                                                               include_spec=False)
 
     def create_workflow(self):
+        """
+        Creates WF instance for current WF spec.
+        Returns:
+            BpmnWorkflow
+        """
         return BpmnWorkflow(self.workflow_spec)
 
     def load_or_create_workflow(self):
@@ -311,9 +181,11 @@ class ZEngine(object):
 
     def find_workflow_path(self):
         """
-        tries to find the path of the workflow diagram file
-        in WORKFLOW_PACKAGES_PATHS
-        :return: path of the workflow spec file (BPMN diagram)
+        Tries to find the path of the workflow diagram file
+        in `WORKFLOW_PACKAGES_PATHS`.
+
+        Returns:
+            Path of the workflow spec file (BPMN diagram)
         """
         for pth in settings.WORKFLOW_PACKAGES_PATHS:
             path = "%s/%s.bpmn" % (pth, self.current.workflow_name)
@@ -323,15 +195,13 @@ class ZEngine(object):
         log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    def get_task_specs(self):
-        return self.workflow.spec.task_specs
-
     def get_worfklow_spec(self):
         """
-        generates and caches the workflow spec package from
-        bpmn diagrams that read from disk
+        Generates and caches the workflow spec package from
+        BPMN diagrams that read from disk
 
-        :return: workflow spec package
+        Returns:
+            SpiffWorkflow Spec object.
         """
         # TODO: convert from in-process to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
@@ -341,30 +211,50 @@ class ZEngine(object):
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
-    def _save_workflow(self):
+    def _save_or_delete_workflow(self):
         """
-        calls the real save method if we pass the beggining of the wf
+        Calls the real save method if we pass the beggining of the wf
         """
         if not self.current.task_type.startswith('Start'):
-            self.save_workflow_to_cache(self.current.workflow_name, self.serialize_workflow())
+            if self.current.task_name.startswith('End') and not self.are_we_in_subprocess():
+                self.current.wfcache.delete()
+                self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
+                                                                 self.current.token))
+            else:
+                self.save_workflow_to_cache(self.serialize_workflow())
 
     def start_engine(self, **kwargs):
+        """
+        Initializes the workflow with given request, response objects and diagram name.
+
+        Args:
+            request: Falcon Request object.
+            response: Falcon Response object.
+            workflow_name (str): Name of workflow diagram without ".bpmn" suffix.
+             File must be placed under one of configured :py:attr:`~zengine.settings.WORKFLOW_PACKAGES_PATHS`
+
+        """
         self.current = WFCurrent(**kwargs)
+        if not self.current.new_token:
+            self.wf_cache = self.current.wfcache.get(self.wf_cache)
+            self.current.workflow_name = self.wf_cache['wf_name']
         self.check_for_authentication()
         self.check_for_permission()
         self.workflow = self.load_or_create_workflow()
-        log.debug("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
-                  "\tWF: %s (Possible) TASK:%s\n"
-                  "\tCMD:%s\n"
-                  "\tSUBCMD:%s" % (
-                      self.workflow.name,
-                      self.workflow.get_tasks(Task.READY),
-                      self.current.input.get('cmd'), self.current.input.get('subcmd')))
+        log_msg = ("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
+                   "\tWF: %s (Possible) TASK:%s\n"
+                   "\tCMD:%s\n"
+                   "\tSUBCMD:%s" % (
+                       self.workflow.name,
+                       self.workflow.get_tasks(Task.READY),
+                       self.current.input.get('cmd'), self.current.input.get('subcmd')))
+        log.debug(log_msg)
+        sys._zops_wf_state_log = log_msg
         self.current.workflow = self.workflow
 
-    def log_wf_state(self):
+    def generate_wf_state_log(self):
         """
-        logging the state of the workflow and data
+        Logs the state of workflow and content of task_data.
         """
         output = '\n- - - - - -\n'
         output += "WORKFLOW: %s ( %s )" % (self.current.workflow_name.upper(),
@@ -378,30 +268,88 @@ class ZEngine(object):
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
         output += "\n\tPOOL: %s" % self.current.pool
+        output += "\n\tIN EXTERNAL: %s" % self.wf_cache['in_external']
+        output += "\n\tLANE: %s" % self.current.lane_name
         output += "\n\tTOKEN: %s" % self.current.token
-        log.debug(output + "\n= = = = = =\n")
+        sys._zops_wf_state_log = output
+        return output
+
+    def log_wf_state(self):
+        log.debug(self.generate_wf_state_log() + "\n= = = = = =\n")
+
+    def switch_from_external_to_main_wf(self):
+        if self.wf_cache['in_external'] and self.current.task_type == 'Simple' and self.current.task_name == 'End':
+            main_wf = self.wf_cache['main_wf']
+            self.current.workflow_name = main_wf['wf_name']
+            self.workflow_spec = self.get_worfklow_spec()
+            self.workflow = self.deserialize_workflow(main_wf['wf_state'])
+            self.current.workflow = self.workflow
+            self.wf_cache['in_external'] = False
+            self.wf_cache['pool'] = main_wf['pool']
+            self.current.pool = self.wf_cache['pool']
+            self.current.task_name = None
+            self.current.task_type = None
+            self.current.task = None
+            self.run()
+
+    def switch_to_external_wf(self):
+        if (self.current.task_type == 'ServiceTask' and
+                    self.current.task.task_spec.type == 'external'):
+            log.debug("Entering to EXTERNAL WF")
+            main_wf = self.wf_cache.copy()
+            external_wf_name = self.current.task.task_spec.topic
+            self.current.workflow_name = external_wf_name
+            self.workflow_spec = self.get_worfklow_spec()
+            self.workflow = self.create_workflow()
+            self.current.workflow = self.workflow
+            self.check_for_authentication()
+            self.check_for_permission()
+
+            self.wf_cache = {'main_wf': main_wf, 'in_external': True}
+
+    def _should_we_run(self):
+        not_a_user_task = self.current.task_type != 'UserTask'
+        wf_not_finished = not (self.current.task_name == 'End' and self.current.task_type == 'Simple')
+        if not wf_not_finished and self.are_we_in_subprocess():
+            wf_not_finished = True
+        return self.current.flow_enabled and not_a_user_task and wf_not_finished
 
     def run(self):
         """
         Main loop of the workflow engine
-        Activates all READY tasks, calls their diagrams, saves wf state,
-        Stops if current task is a UserTask or EndTask
+
+        - Updates ::class:`~WFCurrent` object.
+        - Checks for Permissions.
+        - Activates all READY tasks.
+        - Runs referenced activities (method calls).
+        - Saves WF states.
+        - Stops if current task is a UserTask or EndTask.
+        - Deletes state object if we finish the WF.
 
         """
         # FIXME: raise if first task after line change isn't a UserTask
+        # FIXME: raise if last task of a workflow is a UserTask
         # actually this check should be done at parser
-        while (self.current.task_type != 'UserTask' and
-                   not self.current.task_type.startswith('End')):
+        is_lane_changed = False
+
+        while self._should_we_run():
+            task = None
             for task in self.workflow.get_tasks(state=Task.READY):
+                self.current.old_lane = self.current.lane_name
                 self.current._update_task(task)
+                if self.catch_lane_change():
+                    return
                 self.check_for_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
                 self.run_activity()
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
-                self._save_workflow()
-                self.catch_lane_change()
+                self._save_or_delete_workflow()
+                self.switch_to_external_wf()
+            if task is None:
+                break
+        self.switch_from_external_to_main_wf()
         self.current.output['token'] = self.current.token
 
         # look for incoming ready task(s)
@@ -419,56 +367,55 @@ class ZEngine(object):
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_name not in self.current.pool or
-                            self.current.pool[self.current.lane_name] != self.current.user_id):
-                    self.sendoff_current_user()
-                    self.invite_other_party()
-            self.current.old_lane = self.current.lane_name
-
-    def sendoff_current_user(self):
-        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
-        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
-
-    def set_job_goes_bg(self):
-        msgs = self.current.task_data.get('LANE_CHANGE_MSG', DEFAULT_LANE_CHANGE_MSG)
-        self.current.msg_box(title=msgs['title'], msg=msgs['body'])
-
-    def invite_other_party(self):
-        possible_owners = eval(self.current.lane_owners, self.get_pool_context())
-        signals.lane_user_change.send(sender=self,
-                                      current=self.current,
-                                      old_lane=self.current.old_lane,
-                                      possible_owners=possible_owners
-                                      )
+                            self.current.pool[self.current.lane_name] != self.current.role_id):
+                    self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
+                                                                      self.current.lane_name))
+                    if self.current.lane_auto_sendoff:
+                        self.current.sendoff_current_user()
+                    self.current.flow_enabled = False
+                    if self.current.lane_auto_invite:
+                        self.current.invite_other_parties(self._get_possible_lane_owners())
+                    return True
+                    # self.current.old_lane = self.current.lane_name
 
     def parse_workflow_messages(self):
         """
-        transmits client message that defined in
+        Transmits client message that defined in
         a workflow task's inputOutput extension
 
-         <bpmn2:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="client_message">
+       .. code-block:: xml
+
+            <bpmn2:extensionElements>
+            <camunda:inputOutput>
+            <camunda:inputParameter name="client_message">
             <camunda:map>
               <camunda:entry key="title">Teşekkürler</camunda:entry>
               <camunda:entry key="body">İşlem Başarılı</camunda:entry>
               <camunda:entry key="type">info</camunda:entry>
             </camunda:map>
-          </camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn2:extensionElements>
+            </camunda:inputParameter>
+            </camunda:inputOutput>
+            </bpmn2:extensionElements>
 
-        :return:
         """
         if 'client_message' in self.current.spec.data:
             m = self.current.spec.data['client_message']
             self.current.msg_box(title=m.get('title'),
-                                     msg=m.get('body'),
-                                     typ=m.get('type', 'info'))
+                                 msg=m.get('body'),
+                                 typ=m.get('type', 'info'))
 
+    def _get_possible_lane_owners(self):
+        if self.current.lane_owners:
+            return eval(self.current.lane_owners, self.get_pool_context())
+        else:
+            users = set()
+            for perm in self.current.lane_permissions:
+                users.update(self.permission_model.objects.get(perm).get_permitted_users())
+            return list(users)
 
     def run_activity(self):
         """
-        imports, caches and calls the associated activity of the current task
+        runs the method that referenced from current task
         """
         activity = self.current.activity
         if activity:
@@ -478,23 +425,32 @@ class ZEngine(object):
                 "Calling Activity %s from %s" % (activity, self.wf_activities[activity]))
             self.wf_activities[self.current.activity](self.current)
 
-    def _import_object(self, path, look4kls_method):
-        last_nth = 2 if look4kls_method else 1
+    def _import_object(self, path, look_for_cls_method):
+        """
+        Imports the module that contains the referenced method.
+
+        Args:
+            path: python path of class/function
+            look_for_cls_method (bool): If True, treat the last part of path as class method.
+
+        Returns:
+            Tuple. (class object, class name, method to be called)
+
+        """
+        last_nth = 2 if look_for_cls_method else 1
         path = path.split('.')
         module_path = '.'.join(path[:-last_nth])
         class_name = path[-last_nth]
         module = importlib.import_module(module_path)
-        if look4kls_method and path[-last_nth:][0] == path[-last_nth]:
+        if look_for_cls_method and path[-last_nth:][0] == path[-last_nth]:
             class_method = path[-last_nth:][1]
         else:
             class_method = None
         return getattr(module, class_name), class_name, class_method
 
-
-
     def _load_activity(self, activity):
         """
-        imports, caches and calls the associated activity of the current task
+        Iterates trough the all enabled `~zengine.settings.ACTIVITY_MODULES_IMPORT_PATHS` to find the given path.
         """
         fpths = []
         full_path = ''
@@ -522,7 +478,8 @@ class ZEngine(object):
                                   "\n========================================================>\n\n"
                                   "%s" % (full_path, traceback.format_exc()))
                     assert index_no != number_of_paths - 1, errmsg.format(activity=activity,
-                                                                          paths='\n >>> '.join(set(fpths)),
+                                                                          paths='\n >>> '.join(
+                                                                              set(fpths)),
                                                                           errors='\n\n'.join(errors)
                                                                           )
                 except:
@@ -530,22 +487,28 @@ class ZEngine(object):
 
     def check_for_authentication(self):
         """
-        Checks current workflow against anonymous_workflows list,
-        raises HTTPUnauthorized error when WF needs an authenticated user
-        and current user isn't.
+        Checks current workflow against :py:data:`~zengine.settings.ANONYMOUS_WORKFLOWS` list.
+
+        Raises:
+            HTTPUnauthorized: if WF needs an authenticated user and current user isn't.
         """
         auth_required = self.current.workflow_name not in settings.ANONYMOUS_WORKFLOWS
         if auth_required and not self.current.is_auth:
             self.current.log.debug("LOGIN REQUIRED:::: %s" % self.current.workflow_name)
-            raise falcon.HTTPUnauthorized("Login required", "")
+            raise HTTPError(401, "Login required for %s" % self.current.workflow_name)
 
     def check_for_lane_permission(self):
         """
-        One or more permissions can be associated with a lane of a workflow.
-        In a similar way, a lane can be restricted with relation to other lanes of the workflow.
+        One or more permissions can be associated with a lane
+        of a workflow. In a similar way, a lane can be
+        restricted with relation to other lanes of the workflow.
 
-        When this method called on lane changes, it checks if the current user has the required
-         permissions and proper relations. Raises a HTTPForbidden error if it is not.
+        This method called on lane changes and checks user has
+        required permissions and relations.
+
+        Raises:
+             HTTPForbidden: if the current user hasn't got the
+              required permissions and proper relations
 
         """
         # TODO: Cache lane_data in app memory
@@ -553,32 +516,49 @@ class ZEngine(object):
             log.debug("HAS LANE PERMS: %s" % self.current.lane_permissions)
             for perm in self.current.lane_permissions:
                 if not self.current.has_permission(perm):
-                    raise falcon.HTTPForbidden("Permission denied",
-                                               "You don't have required lane permission: %s" % perm)
+                    raise HTTPError(403, "You don't have required lane permission: %s" % perm)
+
         if self.current.lane_relations:
             context = self.get_pool_context()
             log.debug("HAS LANE RELS: %s" % self.current.lane_relations)
-            if not eval(self.current.lane_relations, context):
+            try:
+                cond_result = eval(self.current.lane_relations, context)
+            except:
+                log.exception("CONDITION EVAL ERROR : %s || %s" % (
+                    self.current.lane_relations, context))
+                raise
+            if not cond_result:
                 log.debug("LANE RELATION ERR: %s %s" % (self.current.lane_relations, context))
-                raise falcon.HTTPForbidden(
-                    "Permission denied",
-                    "You aren't qualified for this lane: %s" % self.current.lane_relations)
+                raise HTTPError(403, "You aren't qualified for this lane: %s" %
+                                self.current.lane_relations)
 
     def check_for_permission(self):
         # TODO: Works but not beautiful, needs review!
+        """
+        Checks if current user (or role) has the required permission
+        for current workflow step.
+
+        Raises:
+            HTTPError: if user doesn't have required permissions.
+        """
         if self.current.task:
             permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
-        if (self.current.task_type in NO_PERM_TASKS_TYPES or
-                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS))):
+        if (self.current.task_type not in PERM_REQ_TASK_TYPES or
+                permission.startswith(
+                    tuple(settings.ANONYMOUS_WORKFLOWS))):  # FIXME:needs hardening
             return
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
-            raise falcon.HTTPForbidden("Permission denied",
-                                       "You don't have required permission: %s" % permission)
+            raise HTTPError(403, "You don't have required permission: %s" % permission)
 
     def handle_wf_finalization(self):
-        if self.current.task_type.startswith('End') and 'token' in self.current.output:
+        """
+        Removes the ``token`` key from ``current.output`` if WF is over.
+        """
+        if ((not self.current.flow_enabled or (
+            self.current.task_type.startswith('End') and not self.are_we_in_subprocess())) and
+                    'token' in self.current.output):
             del self.current.output['token']

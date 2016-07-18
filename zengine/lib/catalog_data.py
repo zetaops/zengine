@@ -1,6 +1,6 @@
 # -*-  coding: utf-8 -*-
 """
-
+Catalog Data module.
 """
 
 # Copyright (C) 2015 ZetaOps Inc.
@@ -16,6 +16,10 @@ from zengine.lib.cache import Cache, CatalogCache
 
 
 class CatalogData(object):
+    """
+    Manager object for the user updatable multi language texts
+    """
+
     # this will be set by langua_support middleware
     CURRENT_LANG_CODE = None
 
@@ -30,12 +34,12 @@ class CatalogData(object):
     def _get_lang(self):
         return self.CURRENT_LANG_CODE or settings.DEFAULT_LANG
 
-    def get_from_db(self, cat):
+    def _get_from_db(self, cat):
         from pyoko.db.connection import client
         data = client.bucket_type('catalog').bucket('ulakbus_settings_fixtures').get(cat).data
-        return self.parse_db_data(data, cat)
+        return self._parse_db_data(data, cat)
 
-    def parse_db_data(self, data, cat):
+    def _parse_db_data(self, data, cat):
         assert data, "Catalog Data is not set for %s" % cat
         lang_dict = defaultdict(list)
         for k, v in data.items():
@@ -59,17 +63,17 @@ class CatalogData(object):
         :param cat: cat of catalog data
         :return:
         """
-        return self.get_from_local_cache(cat) or self.get_from_cache(cat) or self.get_from_db(cat)
+        return self._get_from_local_cache(cat) or self._get_from_cache(cat) or self._get_from_db(cat)
 
-    def get_from_cache(self, cat):
+    def _get_from_cache(self, cat):
         lang = self._get_lang()
         self.CACHE[lang][cat] = CatalogCache(self._get_lang(), cat).get()
         return self.CACHE[lang][cat]
 
-    def get_from_local_cache(self, cat):
+    def _get_from_local_cache(self, cat):
         return self.CACHE[self._get_lang()].get(cat)
 
-    def fill_get_item_cache(self, catalog, key):
+    def _fill_get_item_cache(self, catalog, key):
         """
         get from redis, cache locally then return
 
@@ -82,15 +86,15 @@ class CatalogData(object):
         self.ITEM_CACHE[lang][catalog] = dict([(i['value'],  i['name']) for i in keylist])
         return self.ITEM_CACHE[lang][catalog].get(key)
 
-    def get_from_static_tuple(self, catalog, key):
+    def _get_from_static_tuple(self, catalog, key):
         dct = dict(catalog)
         return dct.get(key)
 
     def __call__(self, catalog, key):
         if isinstance(catalog, six.string_types):
-            return self.ITEM_CACHE.get(catalog, {}).get(key) or self.fill_get_item_cache(catalog, key)
+            return self.ITEM_CACHE.get(catalog, {}).get(key) or self._fill_get_item_cache(catalog, key)
         else:
-            return self.get_from_static_tuple(catalog, key)
+            return self._get_from_static_tuple(catalog, key)
 
 catalog_data_manager = CatalogData()
 
@@ -98,10 +102,28 @@ CATALOG_DATA = []
 
 
 def gettxt(source_text):
+    """
+    Fake gettext object.
+
+    Args:
+        source_text: original text
+
+    Returns:
+        Translated text.
+    """
     CATALOG_DATA.append(source_text)
     return source_text
 
 
 def lazy_gettxt(source_text):
+    """
+    Lazy version of :attr:`gettxt()`
+
+    Args:
+        source_text: Original text
+
+    Returns:
+        Translated text
+    """
     CATALOG_DATA.append(source_text)
     return source_text

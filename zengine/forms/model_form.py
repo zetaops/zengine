@@ -37,34 +37,69 @@ class FormMeta(type):
 
 @six.add_metaclass(FormMeta)
 class ModelForm(object):
+    """
+    Serializes / Deserializes pyoko models.
+
+    """
+
     class Meta:
         """
-        attribute customisation:
-        attributes = {
-           # field_name    attrib_name   value(s)
-            'kadro_id': [('filters', {'durum': 1}), ]
-        }
+        ModelForm Meta class holds config data that modifies the behaviour of form objects.
+
+        Attributes:
+            `~ModelForm.Meta.title` (str): Title text to be shown top of the form.
+
+            `~ModelForm.Meta.help_text` (str): Help text to be shown under the title.
+
+            `~ModelForm.Meta.customize_types` (dict): Override field types.
+                A dict that maps fields names with desired field types.
+
+                >>> customize_types={"user_password": "password"}
+
+            `~ModelForm.Meta.include` ([]): List of field names to be included.
+             If given, all other fields will be excluded.
+
+            `~ModelForm.Meta.exclude` ([]): List of field names to be excluded.
+             If given, all other fields will be included.
+
+            `~ModelForm.Meta.constraints` (dict): Form constraints to be enforced by
+             both client side and backend form processors.
+
+             See `Ulakbus-UI API`_ docs for possible constraints.
+
+             .. code-block:: python
+
+                constraints = [
+                            {
+                                'cons': [{'id': 'field2_id', 'cond': 'exists'}],
+                                'do': 'change_fields', 'fields': [{'field2_id': None}]
+                            },
+                            {
+                                'cons': [{'id': 'field2_id', 'cond': 'exists'}],
+                                'do': 'change_fields', 'fields': [{'field1_id': None}]
+                            }
+                        ]
+
+        .. _Ulakbus-UI API: http://www.ulakbus.org/wiki/ulakbus-api-ui-iliskisi.html
         """
         customize_types = {}
         help_text = None
         title = None
         include = []
         exclude = []
-        grouping = {}
+        grouping = []
         constraints = {}
-        # attributes = defaultdict(list)
 
     def __init__(self, model=None, exclude=None, include=None, types=None, title=None, **kwargs):
         """
-        A serializer / deserializer for models and custom
-        forms that built with pyoko.fields
 
         .. note:: *include* and *exclude* does not support fields that placed in nodes.
 
-        :param pyoko.Model model: A pyoko model instance, may be empty
-        :param list exclude: list of fields to be excluded from serialization
-        :param list include: list of fields to be included into serialization
-        :param dict types: override type of fields
+        Args:
+            model: A pyoko model instance, may be empty
+            exclude ([]): list of fields to be excluded from serialization
+            include ([]): list of fields to be included into serialization
+            types (dict): override type of fields
         """
         self._model = model or self
         self._config = {'fields': True, 'nodes': True, 'models': True, 'list_nodes': True}
@@ -81,16 +116,20 @@ class ModelForm(object):
     def get_verbose_name(self):
         return getattr(self._model.Meta, 'verbose_name', self._model.__class__.__name__)
 
-    def deserialize(self, data):
+    def _deserialize(self, data):
         """
-        returns the model loaded with received form data.
+        Creates a model instance with given form data.
 
-        :param dict data: received form data from client
+        Args:
+            data (dict): Form data in key / value form.
+
+        Returns:
+            Un-saved model instance.
         """
         # FIXME: investigate and integrate necessary security precautions on received data
         # ie: received keys should  be defined in the form
         # compare with output of self._serialize()
-        self._prepare_fields()
+        self.process_form()
         new_instance = self._model
         new_instance.key = self._model.key
         for key, val in data.items():
@@ -99,9 +138,10 @@ class ModelForm(object):
             if key.endswith('_id') and val:  # linked model
                 name = key[:-3]
                 linked_model = self._model.get_link(field=name)['mdl']
-                linked_model_instance = linked_model(self._model.context).objects.get(val)
+                linked_model_instance = linked_model(self._model._context).objects.get(val)
                 setattr(new_instance, name, linked_model_instance)
-            elif isinstance(val, (six.string_types, bool, int, float)):  # field
+            elif (isinstance(val, (six.string_types, bool, int, float)) and
+                  key in new_instance._fields):  # field
                 setattr(new_instance, key, val)
             elif val and isinstance(new_instance.get_field(key), File):  # File field
                 _val = {
@@ -125,7 +165,7 @@ class ModelForm(object):
                         if k.endswith('_id'):  # linked model in a ListNode
                             name = k[:-3]
                             kwargs[name] = getattr(list_node, name).__class__(
-                                    self._model.context).objects.get(ln_item_data[k])
+                                    self._model._context).objects.get(ln_item_data[k])
                         else:
                             kwargs[k] = ln_item_data[k]
                     list_node(**kwargs)
@@ -133,14 +173,53 @@ class ModelForm(object):
 
     def _serialize(self, readable=False):
         """
-        returns serialized version of all parts of the model or form
+        Converts model/form data into a serialization ready dictionary format.
 
-        :type readable: create human readable output
-            ie: use get_field_name_display()
-        :return: list of serialized model fields
-        :rtype: list
+        Args:
+            readable (bool): creates human readable output.
+                *e.g.* Instead of raw values, uses get_field_name_display() when available.
+
+        Returns:
+            List of dicts.
+
+        Example:
+
+            .. code-block:: python
+
+                In [1]: from zengine.forms.model_form import ModelForm
+
+                In [2]: from zengine.models import User
+
+                In [3]: user = User.objects.get(username='test_user')
+
+                In [4]: ModelForm(user)._serialize()
+                Out[4]:
+                [{'choices': None,
+                  'default': None,
+                  'kwargs': {},
+                  'name': 'username',
+                  'required': True,
+                  'title': 'Username',
+                  'type': 'string',
+                  'value': 'test_user'},
+                 {'choices': None,
+                  'default': None,
+                  'kwargs': {},
+                  'name': 'password',
+                  'required': True,
+                  'title': 'Password',
+                  'type': 'string',
+                  'value': '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITH...'},
+                 {'choices': None,
+                  'default': False,
+                  'kwargs': {},
+                  'name': 'superuser',
+                  'required': False,
+                  'title': 'Super user',
+                  'type': 'boolean',
+                  'value': True}]
         """
-        self._prepare_fields()
+        self.process_form()
         self.readable = readable
         result = []
         if self._config['fields']:
@@ -236,7 +315,8 @@ class ModelForm(object):
     def _get_fields(self, result, model_obj):
         for name, field in model_obj._ordered_fields:
             if not isinstance(field, Button) and (
-                            name in ['deleted', 'timestamp'] or self._filter_out(name)):
+                            name in ['deleted', 'timestamp', 'deleted_at', 'updated_at'
+                                     ] or self._filter_out(name)):
                 continue
             if self.readable:
                 val = model_obj.get_humane_value(name)
@@ -266,7 +346,9 @@ class ModelForm(object):
                            'type': 'model',
                            'title': model_instance.Meta.verbose_name,
                            'required': None,})
-        for name, field in node._fields.items():
+        for name, field in node._ordered_fields:
+            if field.kwargs.get('hidden'):
+                continue
             choices =  getattr(field, 'choices', None)
             typ = 'select' if choices else self.customize_types.get(name, field.solr_type)
             data = {
@@ -303,8 +385,19 @@ class ModelForm(object):
         else:
             return self._choices_cache.get(id(choices), self.convert_choices(choices))
 
-    def _prepare_fields(self):
+    def process_form(self):
         pass
+
+    def set_choices_of(self, field, choices):
+        """
+        Can be used to dynamically set/modify choices of fields.
+
+        Args:
+            field str: Name of field.
+            choices tuple: (('name', 'value'), ('name2', 'value2'),...)
+        """
+
+        self._fields[field].choices = choices
 
     def _node_data(self, nodes, parent_name):
         results = []

@@ -1,77 +1,99 @@
 # -*-  coding: utf-8 -*-
-import os
+from uuid import uuid4
 from time import sleep
-import falcon
-from falcon import errors
-from werkzeug.test import Client
-
-from pyoko.lib.utils import pprnt
-from zengine.server import app
-from pprint import pprint
 import json
-from zengine.models import User, Permission
+import os
+
+from pyoko.conf import settings
+from pyoko.manage import FlushDB, LoadData
+from pyoko.lib.utils import pprnt
+from pprint import pprint
+
+from zengine.lib.cache import ClearCache
+from zengine.lib.exceptions import HTTPError
 from zengine.log import log
-from pyoko.model import super_context
+from zengine.wf_daemon import Worker
 
-CODE_EXCEPTION = {
-    falcon.HTTP_400: errors.HTTPBadRequest,
-    falcon.HTTP_401: errors.HTTPUnauthorized,
-    falcon.HTTP_403: errors.HTTPForbidden,
-    falcon.HTTP_404: errors.HTTPNotFound,
-    falcon.HTTP_406: errors.HTTPNotAcceptable,
-    falcon.HTTP_500: errors.HTTPInternalServerError,
-    falcon.HTTP_503: errors.HTTPServiceUnavailable,
-}
+from zengine.models import User
+from zengine.notifications.model import NotificationMessage
 
 
-class RWrapper(object):
-    def __init__(self, *args):
-        self.content = list(args[0])
-        self.code = args[1]
-        self.headers = list(args[2])
+class ResponseWrapper(object):
+    """
+    Wrapper object for test client's response
+    """
+
+    def __init__(self, output):
+        self.content = output
+
         try:
-            self.json = json.loads(self.content[0].decode('utf-8'))
+            self.json = output
+            print(self.json)
         except:
             log.exception('ERROR at RWrapper JSON load')
             self.json = {}
 
-        self.token = self.json.get('token')
+        self.code = self.json.get('code', None)
 
-        if int(self.code[:3]) >= 400:
+        self.token = self.json.get('token')
+        self.form_data = self.json['forms']['model'] if 'forms' in self.json else {}
+
+        if 'object_key' in self.form_data:
+            self.object_key = self.form_data['object_key']
+        else:
+            self.object_key = self.json.get('object_id', None)
+
+        if self.code and int(self.code) >= 400:
             self.raw()
-            if self.code in CODE_EXCEPTION:
-                raise CODE_EXCEPTION[self.code](title=self.json.get('title'),
-                                                description=self.json.get('description'))
-            else:
-                raise falcon.HTTPError(title=self.json.get('title'),
-                                       description=self.json.get('description'))
+            raise HTTPError(self.code,
+                            (self.json.get('title', '') +
+                             self.json.get('description', '') +
+                             self.json.get('error', '')))
 
     def raw(self):
+        """
+        Pretty prints the response
+        """
         pprint(self.code)
         pprnt(self.json)
-        pprint(self.headers)
         if not self.json:
             pprint(self.content)
 
 
+class TestClient(Worker):
+    """
+    TestClient to simplify writing API tests for Zengine based apps.
+    """
 
-class TestClient(object):
-    def __init__(self, path):
+    def __init__(self, path, *args, **kwargs):
         """
-        this is a wsgi test client based on werkzeug.test.Client
+        this is a wsgi test client based on zengine.worker
 
         :param str path: Request uri
         """
+        super(TestClient, self).__init__(*args, **kwargs)
+        self.test_client_sessid = None
+        self.response_wrapper = None
         self.set_path(path, None)
-        self._client = Client(app, response_wrapper=RWrapper)
         self.user = None
+        self.username = None
         self.path = ''
+        self.sess_id = uuid4().hex
+        import sys
+        sys._called_from_test = True
 
     def set_path(self, path, token=''):
+        """
+        Change the path (workflow)
+
+        Args:
+            path: New path (or wf name)
+            token: WF token.
+        """
         self.path = path
         self.token = token
 
-    def post(self, conf=None, **data):
+    def post(self, **data):
         """
         by default data dict encoded as json and
         content type set as application/json
@@ -80,19 +102,32 @@ class TestClient(object):
                           pass "no_json" in conf dict to prevent json encoding
         :param data: post data,
         :return: RWrapper response object
-        :rtype: RWrapper
+        :rtype: ResponseWrapper
         """
-        conf = conf or {}
-        make_json = not conf.pop('no_json', False)
-        if make_json:
-            conf['content_type'] = 'application/json'
-            if 'token' not in data and self.token:
-                data['token'] = self.token
-            data = json.dumps(data)
-        response_wrapper = self._client.post(self.path, data=data, **conf)
+        if 'token' not in data and self.token:
+            data['token'] = self.token
+        if self.response_wrapper:
+            form_data = self.response_wrapper.form_data.copy()
+        else:
+            form_data = {}
+        data['path'] = self.path.replace('/', '')
+        if 'form' in data:
+            form_data.update(data['form'])
+
+        data['form'] = form_data
+
+        post_data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
+        log.info("PostData : %s" % post_data)
+        print("PostData : %s" % post_data)
+        post_data = json.dumps(post_data)
+        fake_method = type('FakeMethod', (object,), {'routing_key': self.sess_id})
+        self.handle_message(None, fake_method, None, post_data)
         # update client token from response
-        self.token = response_wrapper.token
-        return response_wrapper
+        self.token = self.response_wrapper.token
+        return self.response_wrapper
+
+    def send_output(self, output, sessid):
+        self.response_wrapper = ResponseWrapper(output)
 
 
 # encrypted form of test password (123)
@@ -102,50 +137,67 @@ user_pass = '$pbkdf2-sha512$10000$nTMGwBjDWCslpA$iRDbnITHME58h1/eVolNmPsHVq' \
 username = 'test_user'
 import sys
 
-sys.TEST_MODELS_RESET = False
+sys.LOADED_FIXTURES = []
 
 
 class BaseTestCase:
+    """
+    Base test case.
+    """
     client = None
 
-    @staticmethod
-    def cleanup():
-        if not sys.TEST_MODELS_RESET:
-            for mdl in [User, Permission]:
-                mdl(super_context).objects._clear_bucket()
-            sys.TEST_MODELS_RESET = True
-
-    @classmethod
-    def create_user(cls):
-        cls.cleanup()
-        cls.client.user, new = User(super_context).objects.get_or_create({"password": user_pass,
-                                                                          "superuser": True},
-                                                                         username=username)
-        if new:
-            for perm in Permission(super_context).objects.raw("*:*"):
-                cls.client.user.Permissions(permission=perm)
-            cls.client.user.save()
-            sleep(2)
-
-    @classmethod
-    def prepare_client(cls, path, reset=False, user=None, login=None, token=''):
+    def setup_method(self, method):
         """
-        setups the path, logs in if necessary
+        Creates a new user and Role with all Permissions.
+        """
 
-        :param path: change or set path
-        :param reset: create a new client
-        :param login: login to system
-        :return:
+        if not '--ignore=fixture' in sys.argv:
+            if hasattr(self, 'fixture'):
+                print("\nREPORT:: Running test cases own fixture() method")
+                self.fixture()
+                sleep(2)
+
+            else:
+                fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
+                if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
+                    sys.LOADED_FIXTURES.append(fixture_guess)
+                    FlushDB(model='all', wait_sync=True,
+                            exclude=settings.TEST_FLUSHING_EXCLUDES).run()
+                    print("\nREPORT:: Test fixture will be loaded: %s" % fixture_guess)
+                    LoadData(path=fixture_guess, update=True).run()
+                    sleep(2)
+                else:
+                    print(
+                    "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+
+        else:
+            print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
+        # clear all caches
+        if not hasattr(sys, 'cache_cleared'):
+            sys.cache_cleared = True
+            print ClearCache.flush()
+            print("\nREPORT:: Cache cleared")
+
+    @classmethod
+    def prepare_client(cls, path, reset=False, user=None, login=None, token='', username=None):
+        """
+        Setups the path, logs in if necessary
+
+        Args:
+            path: change or set path
+            reset: Create a new client
+            login: Login to system
+            token: Set token
         """
 
         if not cls.client or reset or user:
             cls.client = TestClient(path)
             login = True if login is None else login
 
-        if not (cls.client.user or user):
-            cls.create_user()
-            login = True if login is None else login
-        elif user:
+        if username:
+            cls.client.username = username
+
+        if user:
             cls.client.user = user
             login = True if login is None else login
 
@@ -157,16 +209,21 @@ class BaseTestCase:
     @classmethod
     def _do_login(self):
         """
-        logs in the test user
-
+        logs in the "test_user"
         """
+        self.client.sess_id = uuid4().hex
         self.client.set_path("/login/")
         resp = self.client.post()
         assert resp.json['forms']['schema']['title'] == 'LoginForm'
         req_fields = resp.json['forms']['schema']['required']
         assert all([(field in req_fields) for field in ('username', 'password')])
-        assert not resp.json['is_login']
-        resp = self.client.post(username=self.client.user.username,
+        resp = self.client.post(username=self.client.username or self.client.user.username,
                                 password="123", cmd="do")
-        assert resp.json['is_login']
-        # assert resp.json['msg'] == 'Success'
+        assert resp.json['cmd'] == 'upgrade'
+
+    @staticmethod
+    def get_user_token(username):
+        user = User.objects.get(username=username)
+        msg = NotificationMessage.objects.filter(receiver=user)[0]
+        token = msg.url.split('/')[-1]
+        return token, user

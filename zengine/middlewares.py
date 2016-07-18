@@ -1,3 +1,11 @@
+# -*-  coding: utf-8 -*-
+"""
+Middlewares for request / response handling.
+"""
+# Copyright (C) 2015 ZetaOps Inc.
+#
+# This file is licensed under the GNU General Public License v3
+# (GPLv3).  See LICENSE.txt for details.
 import json
 import falcon
 import sys
@@ -7,10 +15,18 @@ from zengine.log import log
 
 class CORS(object):
     """
-    allow origins
+    Sets required headers to allow origins for the hosts listed in
+    :attr:`~zengine.settings.ALLOWED_ORIGINS`
+
+    Note:
+        When :attr:`~zengine.settings.DEBUG` set to ``True``
+        all hosts are allowed
     """
 
     def process_response(self, request, response, resource):
+        """
+        Do response processing
+        """
         origin = request.get_header('Origin')
         if not settings.DEBUG:
             if origin in settings.ALLOWED_ORIGINS or not origin:
@@ -19,7 +35,7 @@ class CORS(object):
                 log.debug("CORS ERROR: %s not allowed, allowed hosts: %s" % (origin,
                                                                              settings.ALLOWED_ORIGINS))
                 raise falcon.HTTPForbidden("Denied", "Origin not in ALLOWED_ORIGINS: %s" % origin)
-                response.status = falcon.HTTP_403
+                # response.status = falcon.HTTP_403
         else:
             response.set_header('Access-Control-Allow-Origin', origin or '*')
 
@@ -30,7 +46,13 @@ class CORS(object):
 
 
 class RequireJSON(object):
+    """
+    Restrict only to JSON payloads.
+    """
     def process_request(self, req, resp):
+        """
+        Do response processing
+        """
         if not req.client_accepts_json:
             raise falcon.HTTPNotAcceptable(
                 'This API only supports responses encoded as JSON.',
@@ -45,7 +67,13 @@ class RequireJSON(object):
 
 
 class JSONTranslator(object):
+    """
+    Deserializes JSON payload into ``request.context['data']``
+    """
     def process_request(self, req, resp):
+        """
+        Do response processing
+        """
         # req.stream corresponds to the WSGI wsgi.input environ variable,
         # and allows you to read bytes from the request body.
         #
@@ -78,6 +106,13 @@ class JSONTranslator(object):
                                    'UTF-8.')
 
     def process_response(self, req, resp, resource):
+        """
+        Serializes ``req.context['result']`` to resp.body as JSON.
+
+        If :attr:`~zengine.settings.DEBUG` is True,
+        ``sys._debug_db_queries`` (set by pyoko) added to response.
+
+        """
         if 'result' not in req.context:
             return
         req.context['result']['is_login'] = 'user_id' in req.env['session']

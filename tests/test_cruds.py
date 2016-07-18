@@ -7,15 +7,44 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from time import sleep
+
+import pytest
+
+from zengine.lib.exceptions import FormValidationError
 from zengine.lib.test_utils import BaseTestCase, username
 
 RESPONSES = {}
 
 
 class TestCase(BaseTestCase):
+    def test_sequential_cruds(self):
+        """
+        tests proper handling of sequential crudviews.
+        if first view's form's "object_key" should not
+        broke the latter form
+        """
+        self.prepare_client('/sequential_cruds/', username='super_user')
+        resp = self.client.post()
+        object_key = resp.json['forms']['model']['object_key']
+        resp = self.client.post(object_id=object_key)
+        assert resp.json['msgbox']['title'] == 'object_id:HjgPuHelltHC9USbj8wqd286vbS'
+        assert resp.json['msgbox']['msg'] == 'test_ok'
+
+    def test_form_validation(self):
+        """
+        tests form validation with addition of extra field.
+        """
+        self.prepare_client('/crud/', username='super_user')
+        resp = self.client.post(model='User',
+                                cmd='add_edit_form')
+        with pytest.raises(FormValidationError):
+            self.client.post(model='User',
+                             form=dict(foo="bar"),
+                             cmd='save::show')
+
     def test_list_search_add_delete_with_user_model(self):
         # setup workflow
-        self.prepare_client('/crud/')
+        self.prepare_client('/crud/', username='super_user')
 
         # calling the crud view without any model should list available models
         # resp = self.client.post()
@@ -24,41 +53,33 @@ class TestCase(BaseTestCase):
         #                                model_registry.get_base_models()]
         model_name = 'User'
         # calling with just model name (without any cmd) equals to cmd="list"
-        resp = self.client.post(model=model_name, filters={"username": username})
+        resp = self.client.post(model=model_name, filters={"username": {"values": [username]}})
         assert 'objects' in resp.json
-        assert resp.json['objects'][1][1] == username
+        assert resp.json['objects'][1]['fields'][0] == username
 
         resp = self.client.post(model=model_name, cmd='list')
         # count number of records
         num_of_objects = len(resp.json['objects']) - 1
 
         # add a new employee record, then go to list view (do_list subcmd)
-        self.client.post(model=model_name, cmd='add')
+        self.client.post(model=model_name, cmd='add_edit_form')
         resp = self.client.post(model=model_name,
-                                cmd='add',
-                                subcmd="do_show",
+                                cmd='save::show',
                                 form=dict(username="fake_user", password="123"))
-        assert resp.json['object']['username'] == 'fake_user'
+        assert resp.json['object']['Username'] == 'fake_user'
 
         # we should have 1 more object relative to previous listing
         # assert num_of_objects + 1 == len(resp.json['objects']) - 1
         # since we are searching for a just created record, we have to wait
-        sleep(1)
+        # sleep(1)
         # resp = self.client.post(model=model_name, filters={"username": "fake_user"})
 
         # delete the first object then go to list view
-        resp = self.client.post(model=model_name,
-                                cmd='delete',
-                                subcmd="do_list",
-                                object_id=resp.json['object']['key'])
-
+        print("Delete this %s" % resp.json['object_key'])
+        resp = self.client.post(model=model_name, cmd='delete', object_id=resp.json['object_key'])
         # resp = self.client.post(model=model_name, cmd='list')
         # number of objects should be equal to starting point
-        assert num_of_objects == len(resp.json['objects']) - 1
-
-    def test_list_form(self):
-        self.prepare_client('/extended_crud/')
-        resp = self.client.post()
-        assert sorted(resp.json["client_cmd"]) == sorted(["list", "form"])
-
+        # sleep(1)
+        resp = self.client.post(model=model_name, cmd='list')
         resp.raw()
+        assert num_of_objects == len(resp.json['objects']) - 1

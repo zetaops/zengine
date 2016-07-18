@@ -8,6 +8,8 @@
 # (GPLv3).  See LICENSE.txt for details.
 import glob
 import os
+from SpiffWorkflow.bpmn.specs.UserTask import UserTask
+from SpiffWorkflow.bpmn.specs.ServiceTask import ServiceTask
 
 
 class CustomPermission(object):
@@ -34,13 +36,17 @@ class CustomPermission(object):
 
     @classmethod
     def get_permissions(cls):
+        """
+        Returns:
+            Permission list.
+        """
         return list(cls.registry.values())
 
 # skip permmission checking for this taks types
-NO_PERM_TASKS_TYPES = ('StartTask', 'StartEvent', 'EndEvent', 'EndTask', 'ExclusiveGateway')
+PERM_REQ_TASK_TYPES = ('UserTask', 'ServiceTask')
 
 
-def get_workflows():
+def _get_workflows():
     from zengine.config import settings
     from zengine.engine import ZEngine, WFCurrent
     workflows = []
@@ -54,15 +60,16 @@ def get_workflows():
 
 
 
-def get_workflow_permissions(permission_list=None):
+def _get_workflow_permissions(permission_list=None):
     # [('code_name', 'name', 'description'),...]
     permissions = permission_list or []
-    for wf in get_workflows():
+    for wf in _get_workflows():
         wf_name = wf.spec.name
         permissions.append((wf_name, wf_name, ""))
         for name, task_spec in wf.spec.task_specs.items():
-            if task_spec.__class__.__name__ in NO_PERM_TASKS_TYPES:
+            if not isinstance(task_spec, (UserTask, ServiceTask)):
                 continue
+            _get_lane_permissions(permissions, task_spec)
             permissions.append(("%s.%s" % (wf_name, name),
                                 "%s %s of %s" % (name,
                                                  task_spec.__class__.__name__,
@@ -70,15 +77,44 @@ def get_workflow_permissions(permission_list=None):
                                 ""))
     return permissions
 
+def _get_lane_permissions(permissions, task_spec):
+    if (task_spec.data
+        and 'lane_data' in task_spec.data
+        and 'permissions' in task_spec.data['lane_data']):
+        perm_codes = task_spec.data['lane_data']['permissions'].replace(' ', '').split(',')
+        for code in perm_codes:
+            permissions.append((code, "%s of %s" % (code, task_spec.__class__.__name__), ""))
+    return permissions
 
-def get_model_permissions(permission_list=None):
+def _get_object_menu_models():
+    """
+    we need to create basic permissions
+    for only CRUD enabled models
+    """
+    from pyoko.conf import settings
+    enabled_models = []
+    for entry in settings.OBJECT_MENU.values():
+        for mdl in entry:
+            if 'wf' not in mdl:
+                enabled_models.append(mdl['name'])
+    return enabled_models
+
+def _get_model_permissions(permission_list=None):
     from pyoko.model import model_registry
     from zengine.views.crud import CrudView
     generic_commands = CrudView().VIEW_METHODS.keys()
     permissions = permission_list or []
+    enabled_models = _get_object_menu_models()
     for model in model_registry.get_base_models():
         model_name = model.__name__
         permissions.append((model_name, model_name, ""))
+        if model_name not in enabled_models:
+            # no matter if it's available as CRUD or not,
+            # we may need a ListBox for any model
+            permissions.append(("%s.select_list" % model_name, "Listbox for %s" % model_name, ""))
+            continue
+
+
         for cmd in generic_commands:
             if cmd in ['do']:
                 continue
@@ -90,8 +126,14 @@ def get_model_permissions(permission_list=None):
 
 
 def get_all_permissions():
-    permissions = get_workflow_permissions()
-    get_model_permissions(permissions)
+    """
+    Default permission provider
+
+    Returns:
+        List of  permissions
+    """
+    permissions = _get_workflow_permissions()
+    _get_model_permissions(permissions)
     return permissions + CustomPermission.get_permissions()
 
 CustomPermission.add_multi(

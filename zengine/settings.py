@@ -1,68 +1,106 @@
 # -*-  coding: utf-8 -*-
-"""project settings"""
+"""
+Zengine Default Project Settings
+"""
 
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-
+from pyoko.settings import *
 import os.path
 
+#: Default lang
+#: Multi-language support not implemented yet.
 DEFAULT_LANG = 'en'
 
+#: Project base
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-# path of the activity modules which will be invoked by workflow tasks
+#: Path of the activity modules which will be invoked by workflow tasks
 ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.views']
-# absolute path to the workflow packages
+
+#: Absolute path to the workflow packages
 WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'diagrams')]
 
+#: Authentication backend
 AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
+#: Permissions model
 PERMISSION_MODEL = 'zengine.models.Permission'
-USER_MODEL = 'zengine.models.User'
-ROLE_MODEL = 'zengine.models.User'
-# left blank to use StreamHandler aka stderr
-# set 'file' for logging 'LOG_FILE'
-LOG_HANDLER = os.environ.get('LOG_HANDLER')
 
+#: User model
+USER_MODEL = 'zengine.models.User'
+
+#: Role model
+ROLE_MODEL = 'zengine.models.Role'
+
+MQ_HOST = os.getenv('MQ_HOST', 'localhost')
+MQ_PORT = int(os.getenv('MQ_PORT', '5672'))
+MQ_USER = os.getenv('MQ_USER', 'guest')
+MQ_PASS = os.getenv('MQ_PASS', 'guest')
+MQ_VHOST = os.getenv('MQ_VHOST', '/')
+
+#: Logging Settings
+#:
+#: Left blank to use StreamHandler aka stderr
+#:
+#: Set to 'file' for logging 'LOG_FILE'
+LOG_HANDLER = os.environ.get('LOG_HANDLER', 'file')
+
+#: Logging Level. Can be one INFO or DEBUG.
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'DEBUG')
 
-# logging dir for file handler
-# LOG_DIR = os.environ.get('LOG_DIR', '/tmp/')
+#: Log file path.
+LOG_FILE = os.environ.get('LOG_FILE', './zengine.log')
 
-# log file
-LOG_FILE = os.environ.get('LOG_FILE', '/tmp/zengine.log')
+#: Default cache expire time in seconds
+DEFAULT_CACHE_EXPIRE_TIME = 99999999
 
-DEFAULT_CACHE_EXPIRE_TIME = 99999999  # seconds
+#: Workflows that dosen't require logged in user.
+ANONYMOUS_WORKFLOWS = ['login', 'reset_cache', 'login.']
 
-# workflows that dosen't require logged in user
-ANONYMOUS_WORKFLOWS = ['login', 'login.']
-
-# currently only affects logging level
+#: Currently only affects logging level
 DEBUG = bool(int(os.environ.get('DEBUG', 0)))
 
-
-# PYOKO SETTINGS
+#: Pyoko (DB) Settings
+#:
+#: Bucket Type
 DEFAULT_BUCKET_TYPE = os.environ.get('DEFAULT_BUCKET_TYPE', 'zengine_models')
+
+#: RIAK Server address
 RIAK_SERVER = os.environ.get('RIAK_SERVER', 'localhost')
+
+#: Riak access protocol. Can be 'http' or 'pbc'
 RIAK_PROTOCOL = os.environ.get('RIAK_PROTOCOL', 'http')
+
+#: Riak port. By default 8098 for http, 8087 for pbc.
 RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
 
+#: Redis address and port.
 REDIS_SERVER = os.environ.get('REDIS_SERVER', '127.0.0.1:6379')
 
+#: Redis password (password).
+REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD', None)
+
+#: Riak port. By default 8098 for http, 8087 for pbc.
+RIAK_PORT = os.environ.get('RIAK_PORT', 8098)
+
+#: Allowed origins for serving client from a different host.
 ALLOWED_ORIGINS = [
                       'http://127.0.0.1:8080',
                       'http://127.0.0.1:9001',
                   ] + os.environ.get('ALLOWED_ORIGINS', '').split(',')
 
+#: Enabled middlewares.
 ENABLED_MIDDLEWARES = [
     'zengine.middlewares.CORS',
     'zengine.middlewares.RequireJSON',
     'zengine.middlewares.JSONTranslator',
 ]
 
+#: Beaker session options.
 SESSION_OPTIONS = {
     'session.cookie_expires': True,
     'session.type': 'redis',
@@ -71,32 +109,82 @@ SESSION_OPTIONS = {
     'session.path': '/',
 }
 
-VIEW_URLS = [
-    # ('falcon URI template', 'python path to view method/class'),
-    ('/menu', 'zengine.views.system.Menu'),
-]
+#: View URL list for non-workflow views.
+#:
+#: ('falcon URI template', 'python path to view method/class'),
+VIEW_URLS = {
+    'dashboard': 'zengine.views.menu.Menu',
+    'ping': 'zengine.views.dev_utils.Ping',
+}
 
+if DEBUG:
+    VIEW_URLS.update({
+        'session_fixture': 'zengine.views.dev_utils.SessionFixture',
+        'db_stats': 'zengine.views.dev_utils.DBStats',
+        'reset_cache': 'zengine.views.dev_utils.ResetCache'
+    })
+
+#: Relation focused CRUD menus with category support.
+#:
+#: >>> 'object_type': [{ 'name':'ModelName',
+#: >>>                  'field':'field_name',
+#: >>>                  'verbose_name': 'verbose_name',
+#: >>>                  'category': 'Genel'
+#: >>>                  'wf':'crud'}]
+#:
+#: Entries can be listed under custom categories.
+#:
+#: object_type is common relation for a group of models.
+#:
+#: e.g.: ``Teacher`` can be an object_type (grouper) for ``Student``
+#: and ``Lecture`` models.
+#:
+#: 'field' defaults to 'object_type'
+#:
+#: verbose_name can be specified to override the model's verbose_name_plural
+OBJECT_MENU = {}
+
+#: List of menu entries for Dashoboard Quick Menu.
+QUICK_MENU = []
+
+#: System Messages
 MESSAGES = {
     'lane_change_invite_title': 'System needs you!',
     'lane_change_invite_body': 'Some workflow reached a state that needs your action, '
-                                'please follow the link bellow',
-    'lane_change_message_title': '',
-    'lane_change_message_body': 'Some workflow reached a state that needs your action, '
-                                'please follow the link bellow',
+                               'please follow the link bellow',
+    'lane_change_message_title': 'Thank you!',
+    'lane_change_message_body': 'You have completed your part on this workflow. '
+                                'Interested parties are notified to join and take over the job.',
 
 }
 
+#: A manager object for DB stored catalog data.
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
 
-OBJECT_MENU = {}
-ADMIN_MENUS = []
+#: Default category for un-categorized workflows.
 DEFAULT_WF_CATEGORY_NAME = 'General Workflows'
-DEFAULT_OBJECT_CATEGORY_NAME = 'Object Tasks'
 
-DATE_DEFAULT_FORMAT = "%d.%m.%Y"
-DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%s"
-
-
+#: Enable auto generated CRUD menu for all models.
 ENABLE_SIMPLE_CRUD_MENU = True
 
+#: Category name for auto generated CRUD items.
+DEFAULT_OBJECT_CATEGORY_NAME = 'Object Tasks'
+
+#: Default date format
+DATE_DEFAULT_FORMAT = "%d.%m.%Y"
+
+#: Default datetime format
+DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%S"
+
+#: Permission provider.
+#: UpdatePermissions command uses this object to get available permmissions
 PERMISSION_PROVIDER = 'zengine.auth.permissions.get_all_permissions'
+
+#: Max number of items for non-filtered dropdown boxes.
+MAX_NUM_DROPDOWN_LINKED_MODELS = 20
+
+#: Internal Server Error message description
+ERROR_MESSAGE_500 = 'Internal Server Error'
+
+#: These models will not flushed when running tests
+TEST_FLUSHING_EXCLUDES = 'Permission,User,Role'
