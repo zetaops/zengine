@@ -11,12 +11,12 @@ setup(
     author_email='info@zetaops.io',
     description='BPMN workflow based web service framework with advanced '
                 'permissions and extensible CRUD features',
-    install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions',
-                      'redis', 'SpiffWorkflow', 'pyoko', 'tornado', 'pika'],
+    install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions', 'lazy_object_proxy'
+                      'redis', 'enum34', 'werkzeug', 'celery', 'SpiffWorkflow', 'pyoko',
+                      'tornado', 'pika'],
     dependency_links=[
         'git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions',
         'git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow',
-        #'git+https://github.com/zetaops/pyoko.git#egg=pyoko',
     ],
     package_data={
         'zengine': ['diagrams/*.bpmn'],
@@ -25,3 +25,11 @@ setup(
               'json', 'bpmn', 'workflow', 'web service',
               'orm', 'nosql', 'bpmn 2', 'crud', 'scaffolding'],
 )
+
+
+
+
+
+
+
+
