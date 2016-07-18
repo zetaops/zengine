@@ -407,7 +407,7 @@ def search_user(current):
         'status': 'OK',
         'code': 201
     }
-    for user in UserModel(current).objects.search_on(settings.MESSAGING_USER_SEARCH_FIELDS,
+    for user in UserModel(current).objects.search_on(*settings.MESSAGING_USER_SEARCH_FIELDS,
                                                      contains=current.input['query']):
         current.output['results'].append((user.full_name, user.key, user.avatar))
 

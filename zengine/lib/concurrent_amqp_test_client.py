@@ -61,7 +61,6 @@ class TestQueueManager(QueueManager):
     def __init__(self, *args, **kwargs):
         super(TestQueueManager, self).__init__(*args, **kwargs)
         log.info("queue manager init")
-        print("foo")
         self.test_class = lambda qm: 1
 
     def conn_err(self, *args, **kwargs):
@@ -113,7 +112,6 @@ class TestWebSocket(object):
         except KeyError:
             self.message_stack[body['callbackID']] = body
         log.info("WRITE MESSAGE TO CLIENT:\n%s" % (body,))
-        print(body)
 
     def client_to_backend(self, message, callback):
         """
@@ -133,19 +131,31 @@ class ConcurrentTestCase(object):
 
         self.ws1 = TestWebSocket(self.queue_manager, 'ulakbus')
         self.ws2 = TestWebSocket(self.queue_manager, 'ogrenci_isleri_1')
-        self.test_messaging_channel_list()
+        self.run_tests()
+
+    def run_tests(self):
+        for name in sorted(self.__class__.__dict__):
+            if name.startswith("test_"):
+                try:
+                    getattr(self, name)()
+                    print("%s succesfully passed" % name)
+                except:
+                    print("%s FAIL" % name)
 
     def success_test_callback(self, response, request=None):
-        print(response)
+        # print(response)
         assert response['code'] in (200, 201), "Process response not successful: \n %s \n %s" % (
             response, request
         )
 
-    def test_messaging_channel_list(self):
+    def test_channel_list(self):
+        self.ws1.client_to_backend({"view": "_zops_list_channels"},
+                                   self.success_test_callback)
 
-
-
-        self.ws1.client_to_backend({"view": "_zops_list_channels"}, self.success_test_callback)
+    def test_search_user(self):
+        self.ws1.client_to_backend({"view": "_zops_search_user",
+                                    "query":"x"},
+                                   self.success_test_callback)
 
 
 class AMQPLoop(object):
