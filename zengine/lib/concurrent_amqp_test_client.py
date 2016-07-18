@@ -99,9 +99,6 @@ class TestWebSocket(object):
         current.auth.set_user(self.user)
         Login(current)._do_upgrade()
 
-    def _get_sess_id(self):
-        return self.sess_id
-
     def backend_to_client(self, body):
         """
         from backend to client
@@ -120,8 +117,8 @@ class TestWebSocket(object):
         cbid = uuid.uuid4().hex
         self.message_callbacks[cbid] = callback
         message = json_encode({"callbackID": cbid, "data": message})
-        log.info("GOT MESSAGE FOR BACKEND %s: %s" % (self._get_sess_id(), message))
-        self.queue_manager.redirect_incoming_message(self._get_sess_id(), message, self.request)
+        log.info("GOT MESSAGE FOR BACKEND %s: %s" % (self.sess_id, message))
+        self.queue_manager.redirect_incoming_message(self.sess_id, message, self.request)
 
 
 class ConcurrentTestCase(object):
