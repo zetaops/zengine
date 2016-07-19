@@ -88,7 +88,7 @@ class Channel(Model):
             return existing[0], receiver_name
         else:
             channel_name = '%s_%s' % (initiator_key, receiver_key)
-            channel = cls(is_direct=True, code_name=channel_name).save()
+            channel = cls(is_direct=True, code_name=channel_name, typ=10).save()
             Subscriber(channel=channel,
                        user_id=initiator_key,
                        name=receiver_name).save()
@@ -189,6 +189,13 @@ class Subscriber(Model):
                 ('Add Users', '_zops_add_members'),
                 ('Add Unit', '_zops_add_unit_to_channel')
             ])
+        return actions
+
+    def is_online(self):
+        # TODO: Cache this method
+        if self.channel.typ == 10:
+            return self.channel.subscriber_set.objects.exclude(user=self.user).get().user.is_online()
+
 
     def unread_count(self):
         # FIXME: track and return actual unread message count

@@ -258,6 +258,7 @@ def list_channels(current):
          'key': sbs.channel.key,
          'type': sbs.channel.typ,
          'read_only': sbs.read_only,
+         'is_online': sbs.is_online(),
          'actions': sbs.get_actions(),
          'unread': sbs.unread_count()} for sbs in
         current.user.subscriptions.objects.filter(is_visible=True)]

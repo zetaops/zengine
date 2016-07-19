@@ -65,11 +65,9 @@ class BaseUser(object):
 
     def is_online(self, status=None):
         if status is None:
-            return ConnectionStatus(self.key).get()
+            return ConnectionStatus(self.key).get() or False
         ConnectionStatus(self.key).set(status)
-        if status == False:
-            pass
-            # TODO: do
+
 
     def encrypt_password(self):
         """ encrypt password if not already encrypted """
