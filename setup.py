@@ -11,7 +11,7 @@ setup(
     author_email='info@zetaops.io',
     description='BPMN workflow based web service framework with advanced '
                 'permissions and extensible CRUD features',
-    install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions', 'lazy_object_proxy'
+    install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions', 'lazy_object_proxy',
                       'redis', 'enum34', 'werkzeug', 'celery', 'SpiffWorkflow', 'pyoko',
                       'tornado', 'pika'],
     dependency_links=[
