@@ -30,6 +30,7 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
                  'sender_name': string,
                  'sender_key': key,
                  'type': int,
+                 'avatar_url': string,
                  'key': key,
                  'actions':[('action name', 'view name'),
                             ('Add to Favorite', '_zops_add_to_favorites'), # applicable to everyone

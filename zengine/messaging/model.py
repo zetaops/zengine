@@ -312,6 +312,7 @@ class Message(Model):
             'title': self.msg_title,
             'sender_name': self.sender.full_name,
             'sender_key': self.sender.key,
+            'avatar_url': self.sender.avatar,
             'key': self.key,
             'actions': self.get_actions_for(user),
         }
