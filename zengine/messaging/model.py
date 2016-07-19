@@ -78,19 +78,24 @@ class Channel(Model):
             receiver: User, other party
 
         Returns:
-            Channel
+            (Channel, receiver_name)
         """
         existing = cls.objects.OR().filter(
             code_name='%s_%s' % (initiator_key, receiver_key)).filter(
             code_name='%s_%s' % (receiver_key, initiator_key))
+        receiver_name = UserModel.objects.get(receiver_key).full_name
         if existing:
-            return existing[0]
+            return existing[0], receiver_name
         else:
             channel_name = '%s_%s' % (initiator_key, receiver_key)
             channel = cls(is_direct=True, code_name=channel_name).save()
-            Subscriber(channel=channel, user_id=initiator_key).save()
-            Subscriber(channel=channel, user_id=receiver_key).save()
-            return channel
+            Subscriber(channel=channel,
+                       user_id=initiator_key,
+                       name=receiver_name).save()
+            Subscriber(channel=channel,
+                       user_id=receiver_key,
+                       name=UserModel.objects.get(initiator_key).full_name).save()
+            return channel, receiver_name
 
     @classmethod
     def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2,
@@ -150,6 +155,7 @@ class Subscriber(Model):
     mq_connection = None
 
     channel = Channel()
+    name = field.String("Subscription Name")
     user = UserModel(reverse_name='subscriptions')
     is_muted = field.Boolean("Mute the channel", default=False)
     pinned = field.Boolean("Pin channel to top", default=False)
@@ -220,6 +226,9 @@ class Subscriber(Model):
     def post_creation(self):
         self.create_exchange()
         self.bind_to_channel()
+
+        if not self.name:
+            self.name = self.channel.name
 
 
 

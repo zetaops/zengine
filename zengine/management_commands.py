@@ -207,7 +207,10 @@ class PrepareMQ(Command):
                 ch, new = Channel.objects.get_or_create(owner=usr, typ=5)
                 print("%s exchange: %s" % ('created' if new else 'existing', ch.code_name))
                 # create notification subscription to private exchange
-                sb, new = Subscriber.objects.get_or_create(channel=ch, user=usr, read_only=True)
+                sb, new = Subscriber.objects.get_or_create(channel=ch,
+                                                           user=usr,
+                                                           read_only=True,
+                                                           name='Notifications')
                 print("%s notify sub: %s" % ('created' if new else 'existing', ch.code_name))
 
 

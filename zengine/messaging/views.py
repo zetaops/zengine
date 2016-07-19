@@ -254,7 +254,7 @@ def list_channels(current):
                 }
         """
     current.output['channels'] = [
-        {'name': sbs.channel.name or ('Notifications' if sbs.channel.is_private() else ''),
+        {'name': sbs.name,
          'key': sbs.channel.key,
          'type': sbs.channel.typ,
          'read_only': sbs.read_only,
@@ -459,11 +459,13 @@ def create_direct_channel(current):
             'status': 'Created',
             'code': 201,
             'channel_key': key, # of just created channel
+            'name': string, # name of subscribed channel
             }
     """
-    channel = Channel.get_or_create_direct_channel(current.user_id, current.input['user_key'])
+    channel, sub_name = Channel.get_or_create_direct_channel(current.user_id, current.input['user_key'])
     current.output = {
         'channel_key': channel.key,
+        'name': sub_name,
         'status': 'OK',
         'code': 201
     }
