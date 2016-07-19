@@ -157,7 +157,7 @@ def show_channel(current):
                       'member_list': [{'name': sb.user.full_name,
                                        'is_online': sb.user.is_online(),
                                        'avatar_url': sb.user.get_avatar_url()
-                                       } for sb in ch.subscriber_set],
+                                       } for sb in ch.subscriber_set.objects.filter()],
                       'last_messages': [msg.serialize(current.user)
                                         for msg in ch.get_last_messages()]
                       }
@@ -411,7 +411,7 @@ def search_user(current):
     }
     for user in UserModel(current).objects.search_on(*settings.MESSAGING_USER_SEARCH_FIELDS,
                                                      contains=current.input['query']):
-        current.output['results'].append((user.full_name, user.key, user.avatar))
+        current.output['results'].append((user.full_name, user.key, user.get_avatar_url()))
 
 
 def search_unit(current):
