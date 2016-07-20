@@ -13,7 +13,11 @@ Because of this, we need to fully simulate 2 online users to test real time chat
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from __future__ import print_function
+
+import inspect
 import uuid
+from pprint import pprint
 
 import pika
 from tornado.escape import json_encode, json_decode
@@ -29,6 +33,7 @@ import sys
 from zengine.views.auth import Login
 
 sys.sessid_to_userid = {}
+sys.test_method_names = {}
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
@@ -70,7 +75,6 @@ class TestWSClient(object):
 
         self.request = type('MockWSRequestObject', (object,), {'remote_ip': '127.0.0.1'})
         self.queue_manager = queue_manager
-        # order is important!
         self.sess_id = sess_id or uuid.uuid4().hex
         sys.sessid_to_userid[self.sess_id] = self.user.key.lower()
         self.queue_manager.register_websocket(self.sess_id, self)
@@ -96,13 +100,17 @@ class TestWSClient(object):
             self.message_stack[body['callbackID']] = body
         log.info("WRITE MESSAGE TO CLIENT:\n%s" % (body,))
 
-    def client_to_backend(self, message, callback):
+    def client_to_backend(self, message, callback, caller_fn_name):
         """
         from client to backend
         """
         cbid = uuid.uuid4().hex
-        self.message_callbacks[cbid] = callback
         message = json_encode({"callbackID": cbid, "data": message})
+        def cb(res):
+            print("Testing: %s :: " % caller_fn_name, end='')
+            callback(res, message)
+        # self.message_callbacks[cbid] = lambda res: callable(res, message)
+        self.message_callbacks[cbid] = cb
         log.info("GOT MESSAGE FOR BACKEND %s: %s" % (self.sess_id, message))
         self.queue_manager.redirect_incoming_message(self.sess_id, message, self.request)
 
@@ -116,18 +124,14 @@ class ConcurrentTestCase(object):
     """
 
     def __init__(self, queue_manager):
-        from tornado import ioloop
         log.info("ConcurrentTestCase class init with %s" % queue_manager)
-        ioloop = ioloop.IOLoop.instance()
-        self.ws1 = self.get_client('ulakbus')
-        self.ws2 = self.get_client('ogrenci_isleri_1')
-        self.queue_manager = TestQueueManager(io_loop=ioloop)
-        # initiate amqp manager
-        self.queue_manager.set_test_class(self.run_tests)
-        self.queue_manager.connect()
-        ioloop.start()
+        self.queue_manager = queue_manager
+        self.clients = {}
+        self.make_client('ulakbus')
+        self.test_fn_name = ''
+        self.run_tests()
 
-    def get_client(self, username):
+    def make_client(self, username):
         """
         Args:
             username: username for this client instance
@@ -135,28 +139,70 @@ class ConcurrentTestCase(object):
         Returns:
             Logged in TestWSClient instance for given username
         """
-        return TestWSClient(self.queue_manager, username)
+        self.clients[username] = TestWSClient(self.queue_manager, username)
+
+
+
+    def post(self, username, data, callback=None):
+        if username not in self.clients:
+            self.make_client(username)
+        callback = callback or self.stc
+        self.clients[username].client_to_backend(data, callback, self.test_fn_name)
 
     def run_tests(self):
         for name in sorted(self.__class__.__dict__):
             if name.startswith("test_"):
-                try:
-                    getattr(self, name)()
-                    print("%s succesfully passed" % name)
-                except:
-                    print("%s FAIL" % name)
+                self.test_fn_name = name[5:]
+                getattr(self, name)()
 
-    def success_test_callback(self, response, request=None):
-        # print(response)
-        assert response['code'] in (200, 201), "Process response not successful: \n %s \n %s" % (
-            response, request
-        )
+    def process_error_reponse(self, resp):
+        if 'error' in resp:
+            print(resp['error'].replace('\\n','\n').replace('u\\', ''))
+            return True
 
-    def test_channel_list(self):
-        self.ws1.client_to_backend({"view": "_zops_list_channels"},
-                                   self.success_test_callback)
+    def stc(self, response, request=None):
+        """
+        STC means Success Test Callback. Looks for 200 or 201 codes in response code.
 
-    def test_search_user(self):
-        self.ws1.client_to_backend({"view": "_zops_search_user",
-                                    "query": "x"},
-                                   self.success_test_callback)
+        Args:
+            response:
+            request:
+        """
+        if not response['code'] in (200, 201):
+            print("FAILED: Response not successful: \n")
+            if not self.process_error_reponse(response):
+                print("\nRESP:\n%s")
+            print("\nREQ:\n %s" % (response, request))
+        else:
+            print("PASS!\n")
+
+    def pstc(self, response, request=None):
+        """
+        Same as self.stc() (success request callback) but printing response/request
+        for debugging purposes
+
+        Args:
+            response:
+            request:
+
+        """
+        self.stc(response, request)
+        print("\n\n=================\n\nRESPONSE: %s \n\nREQUEST: %s\n" % (response, request))
+
+
+
+def main():
+    from tornado import ioloop
+    # initiate amqp manager
+    ioloop = ioloop.IOLoop.instance()
+    qm = TestQueueManager(io_loop=ioloop)
+
+    # initiate test case
+    qm.set_test_class(ConcurrentTestCase)
+
+    qm.connect()
+    ioloop.start()
+
+
+if __name__ == '__main__':
+    main()

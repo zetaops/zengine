@@ -268,13 +268,13 @@ class QueueManager(object):
         if user_id in self.websockets:
             log.info("write msg to client")
             self.websockets[user_id].write_message(body)
-            # channel.basic_ack(delivery_tag=method.delivery_tag)
+            channel.basic_ack(delivery_tag=method.delivery_tag)
         elif 'sessid_to_userid' in body:
             reply = json_decode(body)
             sys.sessid_to_userid[reply['sess_id']] = reply['user_id']
             self.websockets[reply['user_id']] = self.websockets[reply['sess_id']]
             del self.websockets[reply['sess_id']]
-        channel.basic_ack(delivery_tag=method.delivery_tag)
+            channel.basic_ack(delivery_tag=method.delivery_tag)
 
             # else:
             #     channel.basic_reject(delivery_tag=method.delivery_tag)

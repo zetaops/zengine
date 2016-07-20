@@ -110,15 +110,13 @@ def create_message(current):
 
     """
     msg = current.input['message']
-    ch = Channel(current).objects.get(msg['channel'])
-    msg_obj = ch.add_message(body=msg['body'], typ=msg['typ'], sender=current.user,
+    msg_obj = Channel.add_message(msg['channel'], body=msg['body'], typ=msg['type'], sender=current.user,
                              title=msg['title'], receiver=msg['receiver'] or None)
     if 'attachment' in msg:
         for atch in msg['attachments']:
-            # TODO: Attachment type detection
             typ = current._dedect_file_type(atch['name'], atch['content'])
-            Attachment(channel=ch, msg=msg_obj, name=atch['name'], file=atch['content'],
-                       description=atch['description'], typ=typ).save()
+            Attachment(channel_id=msg['channel'], msg=msg_obj, name=atch['name'],
+                       file=atch['content'], description=atch['description'], typ=typ).save()
 
 
 def show_channel(current):

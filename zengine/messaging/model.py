@@ -14,6 +14,7 @@ import pika
 from pyoko import Model, field, ListNode
 from pyoko.conf import settings
 from pyoko.exceptions import IntegrityError
+from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
 from zengine.client_queue import BLOCKING_MQ_PARAMS
 from zengine.lib.utils import to_safe_str
@@ -276,18 +277,15 @@ class Message(Model):
     url = field.String("URL")
 
     def get_actions_for(self, user):
-        actions = [
-            ('Favorite', '_zops_favorite_message')
-        ]
-        if self.sender == user:
-            actions.extend([
-                ('Delete', '_zops_delete_message'),
-                ('Edit', '_zops_edit_message')
-            ])
-        elif user:
-            actions.extend([
-                ('Flag', '_zops_flag_message')
-            ])
+        actions = [('Favorite', '_zops_favorite_message')]
+        if user:
+            actions.extend([('Flag', '_zops_flag_message')])
+            if self.sender == user:
+                actions.extend([
+                    ('Delete', '_zops_delete_message'),
+                    ('Edit', '_zops_edit_message')
+                ])
+
 
     def serialize(self, user=None):
         """
@@ -305,8 +303,8 @@ class Message(Model):
         return {
             'content': self.body,
             'type': self.typ,
-            'updated_at': self.updated_at,
-            'timestamp': self.timestamp,
+            'updated_at': self.updated_at.strftime(DATE_TIME_FORMAT) if self.updated_at else None,
+            'timestamp': self.timestamp.strftime(DATE_TIME_FORMAT),
             'is_update': self.exist,
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
