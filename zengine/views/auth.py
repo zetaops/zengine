@@ -61,9 +61,8 @@ class Login(SimpleView):
         self.current.output['cmd'] = 'upgrade'
         self.current.output['user_id'] = self.current.user_id
         self.current.user.is_online(True)
-        self.current.user.bind_private_channel(self.current.session.sess_id)
-        user_sess = UserSessionID(self.current.user_id)
-        user_sess.set(self.current.session.sess_id)
+        self.current.user.bind_channels_to_session_queue(self.current.session.sess_id)
+        UserSessionID(self.current.user_id).set(self.current.session.sess_id)
 
     def do_view(self):
         """
@@ -82,12 +81,6 @@ class Login(SimpleView):
                 self.current.task_data['login_successful'] = auth_result
                 if auth_result:
                     self._do_upgrade()
-
-                    # old_sess_id = user_sess.get()
-                    # notify = Notify(self.current.user_id)
-                    # notify.cache_to_queue()
-                    # if old_sess_id:
-                    #     notify.old_to_new_queue(old_sess_id)
             except:
                 raise
                 self.current.log.exception("Wrong username or another error occurred")

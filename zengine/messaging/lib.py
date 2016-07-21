@@ -74,7 +74,8 @@ class BaseUser(object):
         if self.password and not self.password.startswith('$pbkdf2'):
             self.set_password(self.password)
 
-    def prepare_channels(self):
+    def prepare_user_channel(self):
+        """should be called from User.post_creation hook"""
         from zengine.messaging.model import Channel, Subscriber
         # create private channel of user
         ch, new = Channel.objects.get_or_create(owner=self, typ=5)
@@ -117,12 +118,13 @@ class BaseUser(object):
     def prv_exchange(self):
         return 'prv_%s' % str(self.key).lower()
 
-    def bind_private_channel(self, sess_id):
+    def bind_channels_to_session_queue(self, sess_id):
         mq_channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS).channel()
         mq_channel.queue_declare(queue=sess_id, arguments={'x-expires': 40000})
         log.debug("Binding private exchange to client queue: Q:%s --> E:%s" % (sess_id,
                                                                                self.prv_exchange))
-        mq_channel.queue_bind(exchange=self.prv_exchange, queue=sess_id)
+        for sbs in self.subscriptions.objects.filter():
+            mq_channel.queue_bind(exchange=sbs.channel.code_name, queue=sess_id)
 
     def send_notification(self, title, message, typ=1, url=None):
         """
