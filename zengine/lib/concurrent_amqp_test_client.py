@@ -17,7 +17,7 @@ from __future__ import print_function
 
 import inspect
 import uuid
-from pprint import pprint
+from pprint import pprint, pformat
 
 import pika
 from tornado.escape import json_encode, json_decode
@@ -93,13 +93,9 @@ class TestWSClient(object):
         from backend to client
         """
         body = json_decode(body)
-        try:
-            self.message_callbacks[body['callbackID']](body)
-        except KeyError:
-            print("No cb for %s" % body['callbackID'])
-            print("CB HELL %s" % self.message_callbacks)
-            self.message_stack[body['callbackID']] = body
-        log.info("WRITE MESSAGE TO CLIENT:\n%s" % (body,))
+        self.message_stack[body['callbackID']] = body
+        self.message_callbacks[body['callbackID']](body)
+        log.info("WRITE MESSAGE TO CLIENT:\n%s" % (pformat(body),))
 
     def client_to_backend(self, message, callback, caller_fn_name):
         """
@@ -112,7 +108,6 @@ class TestWSClient(object):
             print("API Request: %s :: %s\n" % (caller_fn_name, 'PASS' if result else 'FAIL!'))
         # self.message_callbacks[cbid] = lambda res: callable(res, message)
         self.message_callbacks[cbid] = cb
-        print(caller_fn_name, self.message_callbacks)
         log.info("GOT MESSAGE FOR BACKEND %s: %s" % (self.sess_id, message))
         self.queue_manager.redirect_incoming_message(self.sess_id, message, self.request)
 
@@ -169,13 +164,17 @@ class ConcurrentTestCase(object):
             response:
             request:
         """
-        if not response['code'] in (200, 201):
-            print("FAILED: Response not successful: \n")
-            if not self.process_error_reponse(response):
-                print("\nRESP:\n%s")
-            print("\nREQ:\n %s" % (response, request))
-        else:
-            return True
+        try:
+            if not response['code'] in (200, 201):
+                print("FAILED: Response not successful: \n")
+                if not self.process_error_reponse(response):
+                    print("\nRESP:\n%s")
+                print("\nREQ:\n %s" % (response, request))
+            else:
+                return True
+        except Exception as e:
+            log.exception("\n===========>\nFAILED API REQUEST\n<===========\n%s\n" % e)
+            log.info("Response: \n%s\n\n" % response)
 
     def pstc(self, response, request=None):
         """

@@ -117,7 +117,7 @@ def create_message(current):
                                   title=msg['title'], receiver=msg['receiver'] or None)
     current.output = {
         'msg_key': msg_obj.key,
-        'status': 'OK',
+        'status': 'Created',
         'code': 201
     }
     if 'attachment' in msg:
@@ -170,7 +170,9 @@ def show_channel(current, waited=False):
                                        'avatar_url': sb.user.get_avatar_url()
                                        } for sb in ch.subscriber_set.objects.filter()],
                       'last_messages': [msg.serialize(current.user)
-                                        for msg in ch.get_last_messages()]
+                                        for msg in ch.get_last_messages()],
+                      'status': 'OK',
+                      'code': 200
                       }
 
 
@@ -265,15 +267,17 @@ def list_channels(current):
                     },]
                 }
         """
-    current.output['channels'] = [
-        {'name': sbs.name,
-         'key': sbs.channel.key,
-         'type': sbs.channel.typ,
-         'read_only': sbs.read_only,
-         'is_online': sbs.is_online(),
-         'actions': sbs.get_actions(),
-         'unread': sbs.unread_count()} for sbs in
-        current.user.subscriptions.objects.filter(is_visible=True)]
+    current.output = {
+        'status': 'OK',
+        'code': 200,
+        'channels': [{'name': sbs.name,
+                      'key': sbs.channel.key,
+                      'type': sbs.channel.typ,
+                      'read_only': sbs.read_only,
+                      'is_online': sbs.is_online(),
+                      'actions': sbs.get_actions(),
+                      'unread': sbs.unread_count()} for sbs in
+                     current.user.subscriptions.objects.filter(is_visible=True)]}
 
 
 def create_channel(current):

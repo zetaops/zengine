@@ -16,20 +16,20 @@ class TestCase(ConcurrentTestCase):
     def test_search_user(self):
         self.post('ulakbus', {"view": "_zops_search_user", "query": "x"})
 
-    def test_show_channel(self):
-        self.post('ulakbus',
-                  {"view": "_zops_show_channel",
-             'channel_key': 'iG4mvjQrfkvTDvM6Jk56X5ILoJ_CoqwpemOHnknn3hYu1BlAghb3dm'})
-
-    def test_create_message(self):
-        self.post('ulakbus',
-                  {"view": "_zops_create_message",
-             "message": dict(
-                 body='test_body', title='testtitle',
-                 channel='iG4mvjQrfkvTDvM6Jk56X5ILoJ_CoqwpemOHnknn3hYu1BlAghb3dm',
-                 receiver='',
-                 type=2
-             )})
+    # def test_show_channel(self):
+    #     self.post('ulakbus',
+    #               {"view": "_zops_show_channel",
+    #          'channel_key': 'iG4mvjQrfkvTDvM6Jk56X5ILoJ_CoqwpemOHnknn3hYu1BlAghb3dm'})
+    #
+    # def test_create_message(self):
+    #     self.post('ulakbus',
+    #               {"view": "_zops_create_message",
+    #          "message": dict(
+    #              body='test_body', title='testtitle',
+    #              channel='iG4mvjQrfkvTDvM6Jk56X5ILoJ_CoqwpemOHnknn3hYu1BlAghb3dm',
+    #              receiver='',
+    #              type=2
+    #          )})
 
 
 def main():
