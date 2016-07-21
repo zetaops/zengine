@@ -228,8 +228,9 @@ class Subscriber(Model):
         Binds (subscribes) users private exchange to channel exchange
         Automatically called at creation of subscription record.
         """
-        channel = self._connect_mq()
-        channel.exchange_bind(source=self.channel.code_name, destination=self.user.prv_exchange)
+        if self.channel.code_name != self.user.prv_exchange:
+            channel = self._connect_mq()
+            channel.exchange_bind(source=self.channel.code_name, destination=self.user.prv_exchange)
 
     def post_creation(self):
         self.create_exchange()
@@ -303,13 +304,14 @@ class Message(Model):
         return {
             'content': self.body,
             'type': self.typ,
-            'updated_at': self.updated_at.strftime(DATE_TIME_FORMAT) if self.updated_at else None,
+            'updated_at': self.updated_at,
             'timestamp': self.timestamp.strftime(DATE_TIME_FORMAT),
             'is_update': self.exist,
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
             'sender_name': self.sender.full_name,
             'sender_key': self.sender.key,
+            'cmd': 'message',
             'avatar_url': self.sender.avatar,
             'key': self.key,
             'actions': self.get_actions_for(user),

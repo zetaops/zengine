@@ -33,7 +33,6 @@ import sys
 from zengine.views.auth import Login
 
 sys.sessid_to_userid = {}
-sys.test_method_names = {}
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
@@ -97,6 +96,8 @@ class TestWSClient(object):
         try:
             self.message_callbacks[body['callbackID']](body)
         except KeyError:
+            print("No cb for %s" % body['callbackID'])
+            print("CB HELL %s" % self.message_callbacks)
             self.message_stack[body['callbackID']] = body
         log.info("WRITE MESSAGE TO CLIENT:\n%s" % (body,))
 
@@ -107,10 +108,11 @@ class TestWSClient(object):
         cbid = uuid.uuid4().hex
         message = json_encode({"callbackID": cbid, "data": message})
         def cb(res):
-            print("Testing: %s :: " % caller_fn_name, end='')
-            callback(res, message)
+            result = callback(res, message)
+            print("API Request: %s :: %s\n" % (caller_fn_name, 'PASS' if result else 'FAIL!'))
         # self.message_callbacks[cbid] = lambda res: callable(res, message)
         self.message_callbacks[cbid] = cb
+        print(caller_fn_name, self.message_callbacks)
         log.info("GOT MESSAGE FOR BACKEND %s: %s" % (self.sess_id, message))
         self.queue_manager.redirect_incoming_message(self.sess_id, message, self.request)
 
@@ -128,7 +130,6 @@ class ConcurrentTestCase(object):
         self.queue_manager = queue_manager
         self.clients = {}
         self.make_client('ulakbus')
-        self.test_fn_name = ''
         self.run_tests()
 
     def make_client(self, username):
@@ -147,12 +148,12 @@ class ConcurrentTestCase(object):
         if username not in self.clients:
             self.make_client(username)
         callback = callback or self.stc
-        self.clients[username].client_to_backend(data, callback, self.test_fn_name)
+        view_name = data['view'] if 'view' in data else sys._getframe(1).f_code.co_name
+        self.clients[username].client_to_backend(data, callback, view_name)
 
     def run_tests(self):
         for name in sorted(self.__class__.__dict__):
             if name.startswith("test_"):
-                self.test_fn_name = name[5:]
                 getattr(self, name)()
 
     def process_error_reponse(self, resp):
@@ -174,7 +175,7 @@ class ConcurrentTestCase(object):
                 print("\nRESP:\n%s")
             print("\nREQ:\n %s" % (response, request))
         else:
-            print("PASS!\n")
+            return True
 
     def pstc(self, response, request=None):
         """

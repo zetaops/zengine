@@ -32,6 +32,7 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
                  'type': int,
                  'avatar_url': string,
                  'key': key,
+                 'cmd': 'message',
                  'actions':[('action name', 'view name'),
                             ('Add to Favorite', '_zops_add_to_favorites'), # applicable to everyone
 
@@ -112,6 +113,11 @@ def create_message(current):
     msg = current.input['message']
     msg_obj = Channel.add_message(msg['channel'], body=msg['body'], typ=msg['type'], sender=current.user,
                              title=msg['title'], receiver=msg['receiver'] or None)
+    current.output = {
+        'msg_key': msg_obj.key,
+        'status': 'OK',
+        'code': 201
+    }
     if 'attachment' in msg:
         for atch in msg['attachments']:
             typ = current._dedect_file_type(atch['name'], atch['content'])

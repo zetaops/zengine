@@ -14,8 +14,7 @@ class TestCase(ConcurrentTestCase):
         self.post('ulakbus', {"view": "_zops_list_channels"})
 
     def test_search_user(self):
-        self.post('ulakbus', {"view": "_zops_search_user",
-                                    "query": "x"})
+        self.post('ulakbus', {"view": "_zops_search_user", "query": "x"})
 
     def test_show_channel(self):
         self.post('ulakbus',
