@@ -60,7 +60,9 @@ class Channel(Model):
     owner = UserModel(reverse_name='created_channels', null=True)
 
     def __unicode__(self):
-        return "%s (%s's %s channel)" % (self.name or '', self.owner.__unicode__(), self.get_typ_display())
+        return "%s (%s's %s channel)" % (self.name or '',
+                                         self.owner.full_name,
+                                         self.get_typ_display())
 
     #
     # class Managers(ListNode):
@@ -86,17 +88,17 @@ class Channel(Model):
             code_name='%s_%s' % (receiver_key, initiator_key))
         receiver_name = UserModel.objects.get(receiver_key).full_name
         if existing:
-            return existing[0], receiver_name
+            channel = existing[0]
         else:
             channel_name = '%s_%s' % (initiator_key, receiver_key)
             channel = cls(is_direct=True, code_name=channel_name, typ=10).save()
-            Subscriber(channel=channel,
-                       user_id=initiator_key,
-                       name=receiver_name).save()
-            Subscriber(channel=channel,
-                       user_id=receiver_key,
-                       name=UserModel.objects.get(initiator_key).full_name).save()
-            return channel, receiver_name
+        Subscriber.objects.get_or_create(channel=channel,
+                   user_id=initiator_key,
+                   name=receiver_name)
+        Subscriber.objects.get_or_create(channel=channel,
+                   user_id=receiver_key,
+                   name=UserModel.objects.get(initiator_key).full_name)
+        return channel, receiver_name
 
     @classmethod
     def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2,
@@ -104,6 +106,7 @@ class Channel(Model):
         mq_channel = cls._connect_mq()
         msg_object = Message(sender=sender, body=body, msg_title=title, url=url,
                              typ=typ, channel_id=channel_key, receiver=receiver, key=uuid4().hex)
+        msg_object.setattr('unsaved', True)
         mq_channel.basic_publish(exchange=channel_key,
                                  routing_key='',
                                  body=json.dumps(msg_object.serialize()))
@@ -111,7 +114,7 @@ class Channel(Model):
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
-        return self.message_set.objects.filter()[:20]
+        return self.message_set.objects.filter().set_params(sort="timestamp asc")[:20]
 
     @classmethod
     def _connect_mq(cls):
@@ -129,6 +132,12 @@ class Channel(Model):
                                     exchange_type='fanout',
                                     durable=True)
 
+    def subscribe_owner(self):
+        sbs, new = Subscriber.objects.get_or_create(user=self.owner,
+                                                    channel=self,
+                                                    can_manage=True,
+                                                    can_leave=False)
+
     def pre_creation(self):
         if not self.code_name:
             if self.name:
@@ -145,6 +154,7 @@ class Channel(Model):
 
     def post_save(self):
         self.create_exchange()
+        # self.subscribe_owner()
 
 
 class Subscriber(Model):
@@ -171,7 +181,7 @@ class Subscriber(Model):
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 
     def __unicode__(self):
-        return "%s >> %s" % (self.user.full_name, self.channel.__unicode__())
+        return "%s subscription of %s" % (self.name, self.user)
 
     @classmethod
     def _connect_mq(cls):
@@ -195,13 +205,14 @@ class Subscriber(Model):
     def is_online(self):
         # TODO: Cache this method
         if self.channel.typ == 10:
-            return self.channel.subscriber_set.objects.exclude(user=self.user).get().user.is_online()
-
+            return self.channel.subscriber_set.objects.exclude(
+                user=self.user).get().user.is_online()
 
     def unread_count(self):
         # FIXME: track and return actual unread message count
         if self.last_seen_msg_time:
-            return self.channel.message_set.objects.filter(timestamp__lt=self.last_seen_msg_time).count()
+            return self.channel.message_set.objects.filter(
+                timestamp__lt=self.last_seen_msg_time).count()
         else:
             self.channel.message_set.objects.filter().count()
 
@@ -215,7 +226,7 @@ class Subscriber(Model):
         to be safe we always call it before binding to the channel we currently subscribe
         """
         channel = self._connect_mq()
-        channel.exchange_declare(exchange='prv_%s' % self.user.key.lower(),
+        channel.exchange_declare(exchange=self.user.prv_exchange,
                                  exchange_type='fanout',
                                  durable=True)
 
@@ -236,9 +247,9 @@ class Subscriber(Model):
         self.create_exchange()
         self.bind_to_channel()
 
+    def pre_creation(self):
         if not self.name:
             self.name = self.channel.name
-
 
 
 MSG_TYPES = (
@@ -287,7 +298,6 @@ class Message(Model):
                     ('Edit', '_zops_edit_message')
                 ])
 
-
     def serialize(self, user=None):
         """
         Serializes message for given user.
@@ -306,7 +316,7 @@ class Message(Model):
             'type': self.typ,
             'updated_at': self.updated_at,
             'timestamp': self.timestamp.strftime(DATE_TIME_FORMAT),
-            'is_update': self.exist,
+            'is_update': hasattr(self, 'unsaved'),
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
             'sender_name': self.sender.full_name,
@@ -330,7 +340,7 @@ class Message(Model):
                                  body=json.dumps(self.serialize()))
 
     def pre_save(self):
-        if self.exist:
+        if not hasattr(self, 'unsaved'):
             self._republish()
 
 

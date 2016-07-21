@@ -295,6 +295,10 @@ def create_channel(current):
                       description=current.input['description'],
                       owner=current.user,
                       typ=15).save()
+    sbs, new = Subscriber.objects.get_or_create(user=channel.owner,
+                                                channel=channel,
+                                                can_manage=True,
+                                                can_leave=False)
     current.output = {
         'channel_key': channel.key,
         'status': 'OK',
@@ -600,7 +604,7 @@ def pin_channel(current):
                 }
     """
     try:
-        Subscriber(current).objects.get(user_id=current.user_id,
+        Subscriber(current).objects.filter(user_id=current.user_id,
                                         channel_id=current.input['channel_key']).update(pinned=True)
         current.output = {'status': 'OK', 'code': 200}
     except ObjectDoesNotExist:

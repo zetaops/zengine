@@ -210,7 +210,10 @@ class PrepareMQ(Command):
                 sb, new = Subscriber.objects.get_or_create(channel=ch,
                                                            user=usr,
                                                            read_only=True,
-                                                           name='Notifications')
+                                                           name='Notifications',
+                                                           can_manage=True,
+                                                           can_leave=False
+                                                           )
                 print("%s notify sub: %s" % ('created' if new else 'existing', ch.code_name))
 
 

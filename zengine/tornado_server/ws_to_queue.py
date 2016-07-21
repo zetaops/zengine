@@ -235,7 +235,7 @@ class QueueManager(object):
     def create_out_channel(self, sess_id, user_id):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
-                channel.basic_consume(self.on_message, queue=sess_id)
+                channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=user_id)
                 log.debug("BIND QUEUE TO WS Q.%s on Ch.%s WS.%s" % (sess_id,
                                                                     channel.consumer_tags[0],
                                                                     user_id))
@@ -263,7 +263,7 @@ class QueueManager(object):
                                       body=json_encode(message))
 
     def on_message(self, channel, method, header, body):
-        user_id = method.exchange[4:]
+        user_id = method.consumer_tag
         log.debug("WS RPLY for %s: %s" % (user_id, body))
         if user_id in self.websockets:
             log.info("write msg to client")
