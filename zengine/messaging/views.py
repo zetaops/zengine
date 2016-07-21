@@ -151,6 +151,7 @@ def show_channel(current, waited=False):
                  'is_online': bool,
                  'avatar_url': string,
                 }],
+            'name': string,
             'last_messages': [MSG_DICT]
             'status': 'OK',
             'code': 200
@@ -292,6 +293,15 @@ def create_channel(current):
 
             #  response:
                 {
+                'description': string,
+                'name': string,
+                'no_of_members': int,
+                'member_list': [
+                    {'name': string,
+                     'is_online': bool,
+                     'avatar_url': string,
+                    }],
+                'last_messages': [MSG_DICT]
                 'status': 'Created',
                 'code': 201,
                 'channel_key': key, # of just created channel
@@ -479,6 +489,14 @@ def create_direct_channel(current):
 
         #  response:
             {
+            'description': string,
+            'no_of_members': int,
+            'member_list': [
+                {'name': string,
+                 'is_online': bool,
+                 'avatar_url': string,
+                }],
+            'last_messages': [MSG_DICT]
             'status': 'Created',
             'code': 201,
             'channel_key': key, # of just created channel
