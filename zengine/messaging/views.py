@@ -10,6 +10,7 @@ from pyoko.conf import settings
 from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
+from zengine.log import log
 from zengine.lib.exceptions import HTTPError
 from zengine.messaging.model import Channel, Attachment, Subscriber, Message, Favorite, \
     FlaggedMessage
@@ -34,15 +35,6 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
                  'avatar_url': string,
                  'key': key,
                  'cmd': 'message',
-                 'actions':[('action name', 'view name'),
-                            ('Add to Favorite', '_zops_add_to_favorites'), # applicable to everyone
-
-                            # Additional actions should be retrieved
-                            # from "_zops_get_message_actions" view.
-                            ('Edit', '_zops_edit_message'),
-                            ('Delete', '_zops_delete_message'),
-
-                 ]
                  'attachments': [{
                                     'description': string,
                                     'file_name': string,
@@ -169,11 +161,12 @@ def show_channel(current, waited=False):
                                        'is_online': sb.user.is_online(),
                                        'avatar_url': sb.user.get_avatar_url()
                                        } for sb in ch.subscriber_set.objects.filter()],
-                      'last_messages': [msg.serialize(current.user)
-                                        for msg in ch.get_last_messages()],
+                      'last_messages': [],
                       'status': 'OK',
                       'code': 200
                       }
+    for msg in ch.get_last_messages():
+        current.output['last_messages'].insert(0, msg.serialize(current.user))
 
 
 def channel_history(current):
@@ -583,12 +576,18 @@ def delete_channel(current):
                 'code': 200
                 }
     """
+    ch = Channel(current).objects.get(owner_id=current.user_id,
+                                      key=current.input['channel_key'])
+    for sbs in ch.subscriber_set.objects.filter():
+        sbs.delete()
+    for msg in ch.message_set.objects.filter():
+        msg.delete()
     try:
-        Channel(current).objects.get(owner_id=current.user_id,
-                                     key=current.input['channel_key']).delete()
-        current.output = {'status': 'Deleted', 'code': 200}
-    except ObjectDoesNotExist:
-        raise HTTPError(404, "")
+        ch.delete()
+    except:
+        log.exception("fix this!!!!!")
+    current.output = {'status': 'Deleted', 'code': 200}
+
 
 
 def edit_channel(current):
@@ -611,14 +610,15 @@ def edit_channel(current):
                 'code': 200
                 }
     """
-    try:
-        Channel(current).objects.filter(owner_id=current.user_id,
-                                        key=current.input['channel_key']
-                                        ).update(name=current.input['name'],
-                                                 description=current.input['description'])
-        current.output = {'status': 'OK', 'code': 200}
-    except ObjectDoesNotExist:
-        raise HTTPError(404, "")
+    ch = Channel(current).objects.get(owner_id=current.user_id,
+                                      key=current.input['channel_key'])
+    ch.name = current.input['name']
+    ch.description = current.input['description']
+    ch.save()
+    for sbs in ch.subscriber_set.objects.filter():
+        sbs.name = ch.name
+        sbs.save()
+    current.output = {'status': 'OK', 'code': 200}
 
 
 def pin_channel(current):

@@ -125,7 +125,7 @@ class Channel(Model):
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
-        return self.message_set.objects.filter().set_params(sort="timestamp asc")[:20]
+        return self.message_set.objects.filter().set_params(sort="updated_at desc")[:20]
 
     @classmethod
     def _connect_mq(cls):
@@ -297,7 +297,13 @@ class Message(Model):
     url = field.String("URL")
 
     def get_actions_for(self, user):
-        actions = [('Favorite', '_zops_favorite_message')]
+        actions = []
+        if Favorite.objects.filter(user=user,
+                                   channel=self.channel,
+                                   message=self).count():
+            actions.append(('Remove from favorites', '_zops_remove_from_favorites'))
+        else:
+            actions.append(('Add to favorites', '_zops_favorite_message'))
         if user:
             actions.extend([('Flag', '_zops_flag_message')])
             if self.sender == user:
@@ -305,6 +311,7 @@ class Message(Model):
                     ('Delete', '_zops_delete_message'),
                     ('Edit', '_zops_edit_message')
                 ])
+        return actions
 
     def serialize(self, user=None):
         """
@@ -329,10 +336,10 @@ class Message(Model):
             'title': self.msg_title,
             'sender_name': self.sender.full_name,
             'sender_key': self.sender.key,
+            'channel_key': self.channel.key,
             'cmd': 'message',
             'avatar_url': self.sender.avatar,
             'key': self.key,
-            'actions': self.get_actions_for(user),
         }
 
     def __unicode__(self):

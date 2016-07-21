@@ -92,9 +92,18 @@ class TestWSClient(object):
         """
         from backend to client
         """
-        body = json_decode(body)
-        self.message_stack[body['callbackID']] = body
-        self.message_callbacks[body['callbackID']](body)
+        try:
+            body = json_decode(body)
+            if 'callbackID' in body:
+                self.message_stack[body['callbackID']] = body
+                self.message_callbacks[body['callbackID']](body)
+            elif 'cmd' in body:
+                self.message_callbacks[body['cmd']](body)
+        except:
+            import traceback
+            print("\n")
+            traceback.print_exc()
+
         log.info("WRITE MESSAGE TO CLIENT:\n%s" % (pformat(body),))
 
     def client_to_backend(self, message, callback, caller_fn_name):
@@ -104,8 +113,13 @@ class TestWSClient(object):
         cbid = uuid.uuid4().hex
         message = json_encode({"callbackID": cbid, "data": message})
         def cb(res):
+            print("API Request: %s :: " % caller_fn_name, end='')
             result = callback(res, message)
-            print("API Request: %s :: %s\n" % (caller_fn_name, 'PASS' if result else 'FAIL!'))
+            if ConcurrentTestCase.stc == callback and not result:
+                FAIL = 'FAIL'
+            else:
+                FAIL = '--> %s' % callback.__name__
+            print('PASS' if result else FAIL)
         # self.message_callbacks[cbid] = lambda res: callable(res, message)
         self.message_callbacks[cbid] = cb
         log.info("GOT MESSAGE FOR BACKEND %s: %s" % (self.sess_id, message))
@@ -126,6 +140,8 @@ class ConcurrentTestCase(object):
         self.clients = {}
         self.make_client('ulakbus')
         self.run_tests()
+        self.cmds = {}
+        self.register_cmds()
 
     def make_client(self, username):
         """
@@ -142,14 +158,24 @@ class ConcurrentTestCase(object):
     def post(self, username, data, callback=None):
         if username not in self.clients:
             self.make_client(username)
+        self.clients[username].message_callbacks.update(self.cmds)
         callback = callback or self.stc
         view_name = data['view'] if 'view' in data else sys._getframe(1).f_code.co_name
         self.clients[username].client_to_backend(data, callback, view_name)
 
+    def register_cmds(self):
+        for name in sorted(self.__class__.__dict__):
+            if name.startswith("cmd_"):
+                self.cmds[name[4:]] = getattr(self, name)
+
     def run_tests(self):
         for name in sorted(self.__class__.__dict__):
             if name.startswith("test_"):
-                getattr(self, name)()
+                try:
+                    getattr(self, name)()
+                except:
+                    import traceback
+                    traceback.print_exc()
 
     def process_error_reponse(self, resp):
         if 'error' in resp:
