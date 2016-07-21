@@ -7,6 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.conf import settings
+from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
 from zengine.lib.exceptions import HTTPError
@@ -111,8 +112,9 @@ def create_message(current):
 
     """
     msg = current.input['message']
-    msg_obj = Channel.add_message(msg['channel'], body=msg['body'], typ=msg['type'], sender=current.user,
-                             title=msg['title'], receiver=msg['receiver'] or None)
+    msg_obj = Channel.add_message(msg['channel'], body=msg['body'], typ=msg['type'],
+                                  sender=current.user,
+                                  title=msg['title'], receiver=msg['receiver'] or None)
     current.output = {
         'msg_key': msg_obj.key,
         'status': 'OK',
@@ -125,7 +127,7 @@ def create_message(current):
                        file=atch['content'], description=atch['description'], typ=typ).save()
 
 
-def show_channel(current):
+def show_channel(current, waited=False):
     """
     Initial display of channel content.
     Returns channel description, members, no of members, last 20 messages etc.
@@ -155,8 +157,12 @@ def show_channel(current):
             }
     """
     ch = Channel(current).objects.get(current.input['channel_key'])
+    sbs = ch.get_subscription_for_user(current.user_id)
     current.output = {'channel_key': current.input['channel_key'],
                       'description': ch.description,
+                      'name': sbs.name,
+                      'actions': sbs.get_actions(),
+                      'avatar_url': ch.get_avatar(current.user),
                       'no_of_members': len(ch.subscriber_set),
                       'member_list': [{'name': sb.user.full_name,
                                        'is_online': sb.user.is_online(),
@@ -295,15 +301,17 @@ def create_channel(current):
                       description=current.input['description'],
                       owner=current.user,
                       typ=15).save()
-    sbs, new = Subscriber.objects.get_or_create(user=channel.owner,
-                                                channel=channel,
-                                                can_manage=True,
-                                                can_leave=False)
-    current.output = {
-        'channel_key': channel.key,
-        'status': 'OK',
+    with BlockSave(Subscriber):
+        Subscriber.objects.get_or_create(user=channel.owner,
+                                         channel=channel,
+                                         can_manage=True,
+                                         can_leave=False)
+    current.input['channel_key'] = channel.key
+    show_channel(current)
+    current.output.update({
+        'status': 'Created',
         'code': 201
-    }
+    })
 
 
 def add_members(current):
@@ -417,9 +425,14 @@ def search_user(current):
         'status': 'OK',
         'code': 201
     }
-    for user in UserModel(current).objects.search_on(*settings.MESSAGING_USER_SEARCH_FIELDS,
-                                                     contains=current.input['query']):
-        current.output['results'].append((user.full_name, user.key, user.get_avatar_url()))
+    qs = UserModel(current).objects.exclude(key=current.user_id).search_on(
+        *settings.MESSAGING_USER_SEARCH_FIELDS,
+        contains=current.input['query'])
+    # FIXME: somehow exclude(key=current.user_id) not working with search_on()
+
+    for user in qs:
+        if user.key != current.user_id:
+            current.output['results'].append((user.full_name, user.key, user.get_avatar_url()))
 
 
 def search_unit(current):
@@ -446,7 +459,7 @@ def search_unit(current):
         'status': 'OK',
         'code': 201
     }
-    for user in UnitModel(current).objects.search_on(settings.MESSAGING_UNIT_SEARCH_FIELDS,
+    for user in UnitModel(current).objects.search_on(*settings.MESSAGING_UNIT_SEARCH_FIELDS,
                                                      contains=current.input['query']):
         current.output['results'].append((user.name, user.key))
 
@@ -472,13 +485,14 @@ def create_direct_channel(current):
             'name': string, # name of subscribed channel
             }
     """
-    channel, sub_name = Channel.get_or_create_direct_channel(current.user_id, current.input['user_key'])
-    current.output = {
-        'channel_key': channel.key,
-        'name': sub_name,
-        'status': 'OK',
+    channel, sub_name = Channel.get_or_create_direct_channel(current.user_id,
+                                                             current.input['user_key'])
+    current.input['channel_key'] = channel.key
+    show_channel(current)
+    current.output.update({
+        'status': 'Created',
         'code': 201
-    }
+    })
 
 
 def find_message(current):
@@ -605,7 +619,8 @@ def pin_channel(current):
     """
     try:
         Subscriber(current).objects.filter(user_id=current.user_id,
-                                        channel_id=current.input['channel_key']).update(pinned=True)
+                                           channel_id=current.input['channel_key']).update(
+            pinned=True)
         current.output = {'status': 'OK', 'code': 200}
     except ObjectDoesNotExist:
         raise HTTPError(404, "")

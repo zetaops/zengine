@@ -13,6 +13,7 @@ import pika
 
 from pyoko import Model, field, ListNode
 from pyoko.conf import settings
+from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import IntegrityError
 from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
@@ -91,14 +92,21 @@ class Channel(Model):
             channel = existing[0]
         else:
             channel_name = '%s_%s' % (initiator_key, receiver_key)
-            channel = cls(is_direct=True, code_name=channel_name, typ=10).save()
-        Subscriber.objects.get_or_create(channel=channel,
-                   user_id=initiator_key,
-                   name=receiver_name)
-        Subscriber.objects.get_or_create(channel=channel,
-                   user_id=receiver_key,
-                   name=UserModel.objects.get(initiator_key).full_name)
+            channel = cls(is_direct=True, code_name=channel_name, typ=10).blocking_save()
+        with BlockSave(Subscriber):
+            Subscriber.objects.get_or_create(channel=channel,
+                                             user_id=initiator_key,
+                                             name=receiver_name)
+            Subscriber.objects.get_or_create(channel=channel,
+                                             user_id=receiver_key,
+                                             name=UserModel.objects.get(initiator_key).full_name)
         return channel, receiver_name
+
+    def get_avatar(self, user):
+        if self.typ == 10:
+            return self.subscriber_set.objects.exclude(user=user)[0].user.get_avatar_url()
+        else:
+            return None
 
     @classmethod
     def add_message(cls, channel_key, body, title=None, sender=None, url=None, typ=2,
@@ -111,6 +119,9 @@ class Channel(Model):
                                  routing_key='',
                                  body=json.dumps(msg_object.serialize()))
         return msg_object.save()
+
+    def get_subscription_for_user(self, user_id):
+        return self.subscriber_set.objects.get(user_id=user_id)
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
@@ -132,11 +143,6 @@ class Channel(Model):
                                     exchange_type='fanout',
                                     durable=True)
 
-    def subscribe_owner(self):
-        sbs, new = Subscriber.objects.get_or_create(user=self.owner,
-                                                    channel=self,
-                                                    can_manage=True,
-                                                    can_leave=False)
 
     def pre_creation(self):
         if not self.code_name:
@@ -183,6 +189,7 @@ class Subscriber(Model):
     def __unicode__(self):
         return "%s subscription of %s" % (self.name, self.user)
 
+
     @classmethod
     def _connect_mq(cls):
         if cls.mq_connection is None or cls.mq_connection.is_closed:
@@ -191,7 +198,8 @@ class Subscriber(Model):
 
     def get_actions(self):
         actions = [
-            ('Pin', '_zops_pin_channel')
+            ('Pin', '_zops_pin_channel'),
+            # ('Mute', '_zops_mute_channel'),
         ]
         if self.channel.owner == self.user or self.can_manage:
             actions.extend([
