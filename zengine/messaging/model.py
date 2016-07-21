@@ -17,9 +17,8 @@ from pyoko.exceptions import IntegrityError
 from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
 from zengine.client_queue import BLOCKING_MQ_PARAMS
-from zengine.lib.cache import UserSessionID
 from zengine.lib.utils import to_safe_str
-from zengine.log import log
+
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
@@ -106,7 +105,7 @@ class Channel(Model):
         msg_object = Message(sender=sender, body=body, msg_title=title, url=url,
                              typ=typ, channel_id=channel_key, receiver=receiver, key=uuid4().hex)
         mq_channel.basic_publish(exchange=channel_key,
-                                 routing_key='#',
+                                 routing_key='',
                                  body=json.dumps(msg_object.serialize()))
         return msg_object.save()
 
@@ -206,29 +205,35 @@ class Subscriber(Model):
         else:
             self.channel.message_set.objects.filter().count()
 
+    def create_exchange(self):
+        """
+        Creates user's private exchange
+
+        Actually user's private channel needed to be defined only once,
+        and this should be happened when user first created.
+        But since this has a little performance cost,
+        to be safe we always call it before binding to the channel we currently subscribe
+        """
+        channel = self._connect_mq()
+        channel.exchange_declare(exchange='prv_%s' % self.user.key.lower(),
+                                 exchange_type='fanout',
+                                 durable=True)
+
     @classmethod
     def mark_seen(cls, key, datetime_str):
         cls.objects.filter(key=key).update(last_seen=datetime_str)
 
     def bind_to_channel(self):
         """
-        Binds (subscribes) users session queue to channel exchange
+        Binds (subscribes) users private exchange to channel exchange
         Automatically called at creation of subscription record.
-        Same operation done at user login
-        (zengine.messaging.lib.BaseUser#bind_channels_to_session_queue)
         """
-        try:
-            sess_id = UserSessionID(self.user_id).get()
-            mq_channel = self._connect_mq()
-            mq_channel.queue_bind(exchange=self.channel.code_name,
-                                  queue=sess_id)
-        except:
-            log.exception("Cant create subscription  binding for %s : %s" % (self.name,
-                                                                             self.user.full_name))
-
+        if self.channel.code_name != self.user.prv_exchange:
+            channel = self._connect_mq()
+            channel.exchange_bind(source=self.channel.code_name, destination=self.user.prv_exchange)
 
     def post_creation(self):
-        # self.create_exchange()
+        self.create_exchange()
         self.bind_to_channel()
 
         if not self.name:
@@ -324,9 +329,9 @@ class Message(Model):
         mq_channel.basic_publish(exchange=self.channel.key, routing_key='',
                                  body=json.dumps(self.serialize()))
 
-    # def pre_save(self):
-    #     if self.exist:
-    #         self._republish()
+    def pre_save(self):
+        if self.exist:
+            self._republish()
 
 
 ATTACHMENT_TYPES = (
