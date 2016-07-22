@@ -17,18 +17,12 @@ from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import IntegrityError
 from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
-from zengine.client_queue import BLOCKING_MQ_PARAMS
+from zengine.client_queue import BLOCKING_MQ_PARAMS, get_mq_connection
 from zengine.lib.utils import to_safe_str
 
 UserModel = get_object_from_path(settings.USER_MODEL)
 
 
-def get_mq_connection():
-    connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-    channel = connection.channel()
-    if not channel.is_open:
-        channel.open()
-    return connection, channel
 
 
 CHANNEL_TYPES = (
@@ -304,8 +298,13 @@ class Message(Model):
             actions.append(('Remove from favorites', '_zops_remove_from_favorites'))
         else:
             actions.append(('Add to favorites', '_zops_favorite_message'))
+
+
         if user:
-            actions.extend([('Flag', '_zops_flag_message')])
+            if FlaggedMessage.objects.filter(user=user, message=self).count():
+                actions.append(('Remove Flag', '_zops_unflag_message'))
+            else:
+                actions.append(('Flag Message', '_zops_flag_message'))
             if self.sender == user:
                 actions.extend([
                     ('Delete', '_zops_delete_message'),

@@ -22,25 +22,35 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
 
 .. code-block:: python
 
-    MSG_DICT = {'content': string,
-                 'title': string,
-                 'timestamp': datetime,
-                 'updated_at': datetime,
-                 'is_update': boolean, # false for new messages
-                                       # true if this is an updated message
-                 'channel_key': key,
-                 'sender_name': string,
-                 'sender_key': key,
-                 'type': int,
-                 'avatar_url': string,
-                 'key': key,
-                 'cmd': 'message',
-                 'attachments': [{
-                                    'description': string,
-                                    'file_name': string,
-                                    'url': string,
-                                },]
-                }
+    MSG_DICT = {
+        'content': string,
+        'title': string,
+        'timestamp': datetime,
+        'updated_at': datetime,
+        'is_update': boolean, # false for new messages
+                              # true if this is an updated message
+        'channel_key': key,
+        'sender_name': string,
+        'sender_key': key,
+        'type': int,
+        'avatar_url': string,
+        'key': key,
+        'cmd': 'message',
+        'attachments': [{
+                        'description': string,
+                        'file_name': string,
+                        'url': string,
+                    },]
+}
+
+
+    USER_STATUS_UPDATE = {
+        'cmd': 'user_status',
+        'channel_key': key,
+        'channel_name': string,
+        'avatar_url': string,
+        'is_online': boolean,
+    }
 """
 
 
@@ -589,7 +599,6 @@ def delete_channel(current):
     current.output = {'status': 'Deleted', 'code': 200}
 
 
-
 def edit_channel(current):
     """
         Update channel name or description
@@ -714,28 +723,44 @@ def flag_message(current):
         # request:
         {
             'view':'_zops_flag_message',
-            'message': {
-                'key': key
-                'flag': boolean, # true for flagging
-                                 # false for unflagging
-                }
+            'message_key': key,
         }
         # response:
             {
             '
-            'status': string,   # 'OK' for success
-            'code': int,        # 200 for success
+            'status': 'Created',
+            'code': 201,
+            }
+
+    """
+    current.output = {'status': 'Created', 'code': 201}
+    FlaggedMessage.objects.get_or_create(user_id=current.user_id,
+                                         message_id=current.input['key'])
+
+
+def unflag_message(current):
+    """
+    remove flag of a message
+
+    .. code-block:: python
+
+        # request:
+        {
+            'view':'_zops_flag_message',
+            'key': key,
+        }
+        # response:
+            {
+            '
+            'status': 'OK',
+            'code': 200,
             }
 
     """
     current.output = {'status': 'OK', 'code': 200}
-    if current.input['flag']:
-        FlaggedMessage.objects.get_or_create(current,
-                                             user_id=current.user_id,
-                                             message_id=current.input['key'])
-    else:
-        FlaggedMessage(current).objects.filter(user_id=current.user_id,
-                                               message_id=current.input['key']).delete()
+
+    FlaggedMessage(current).objects.filter(user_id=current.user_id,
+                                           message_id=current.input['key']).delete()
 
 
 def get_message_actions(current):
@@ -772,7 +797,7 @@ def add_to_favorites(current):
         #  request:
             {
             'view':'_zops_add_to_favorites,
-            'message_key': key,
+            'key': key,
             }
 
         #  response:
@@ -785,7 +810,7 @@ def add_to_favorites(current):
     """
     msg = Message.objects.get(current.input['message_key'])
     current.output = {'status': 'Created', 'code': 201}
-    fav, new = Favorite.objects.get_or_create(user_id=current.user_id, message=msg['key'])
+    fav, new = Favorite.objects.get_or_create(user_id=current.user_id, message=msg)
     current.output['favorite_key'] = fav.key
 
 
@@ -798,20 +823,20 @@ def remove_from_favorites(current):
         #  request:
             {
             'view':'_zops_remove_from_favorites,
-            'message_key': key,
+            'key': key,
             }
 
         #  response:
             {
-            'status': 'Deleted',
+            'status': 'OK',
             'code': 200
             }
 
     """
     try:
-        current.output = {'status': 'Deleted', 'code': 200}
+        current.output = {'status': 'OK', 'code': 200}
         Favorite(current).objects.get(user_id=current.user_id,
-                                      key=current.input['message_key']).delete()
+                                      key=current.input['key']).delete()
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
 

@@ -12,7 +12,7 @@ import pika
 from passlib.handlers.pbkdf2 import pbkdf2_sha512
 
 from pyoko.conf import settings
-from zengine.client_queue import BLOCKING_MQ_PARAMS
+from zengine.client_queue import BLOCKING_MQ_PARAMS, get_mq_connection
 from zengine.lib.cache import Cache
 from zengine.log import log
 
@@ -37,8 +37,7 @@ class BaseUser(object):
     @classmethod
     def _connect_mq(cls):
         if cls.mq_connection is None or cls.mq_connection.is_closed:
-            cls.mq_connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-            cls.mq_channel = cls.mq_connection.channel()
+            cls.mq_connection, cls.mq_channel = get_mq_connection()
         return cls.mq_channel
 
     def get_avatar_url(self):
@@ -66,7 +65,19 @@ class BaseUser(object):
     def is_online(self, status=None):
         if status is None:
             return ConnectionStatus(self.key).get() or False
-        ConnectionStatus(self.key).set(status)
+        else:
+            mq_channel = self._connect_mq()
+            for sbs in self.subscriptions.objects.filter():
+                mq_channel.basic_publish(exchange=sbs.channel.key,
+                                         routing_key='',
+                                         body=json.dumps({
+                                                 'cmd': 'user_status',
+                                                 'channel_key': sbs.channel.key,
+                                                 'channel_name': sbs.name,
+                                                 'avatar_url': self.get_avatar_url(),
+                                                 'is_online': status,
+                                             }))
+            ConnectionStatus(self.key).set(status)
 
 
     def encrypt_password(self):
@@ -118,7 +129,7 @@ class BaseUser(object):
         return 'prv_%s' % str(self.key).lower()
 
     def bind_private_channel(self, sess_id):
-        mq_channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS).channel()
+        mq_channel = self._connect_mq()
         mq_channel.queue_declare(queue=sess_id, arguments={'x-expires': 40000})
         log.debug("Binding private exchange to client queue: Q:%s --> E:%s" % (sess_id,
                                                                                self.prv_exchange))

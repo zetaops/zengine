@@ -24,6 +24,14 @@ BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 )
 from zengine.log import log
 
+def get_mq_connection():
+    connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+    channel = connection.channel()
+    if not channel.is_open:
+        channel.open()
+    return connection, channel
+
+
 class ClientQueue(object):
     """
     User AMQP queue manager

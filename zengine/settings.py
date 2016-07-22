@@ -142,6 +142,7 @@ VIEW_URLS = {
     '_zops_delete_channel': 'zengine.messaging.views.delete_channel',
     '_zops_pin_channel': 'zengine.messaging.views.pin_channel',
     '_zops_flag_message': 'zengine.messaging.views.flag_message',
+    '_zops_unflag_message': 'zengine.messaging.views.unflag_message',
     # '_zops_': 'zengine.messaging.views.',
 }
 
