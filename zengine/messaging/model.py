@@ -176,7 +176,7 @@ class Subscriber(Model):
     is_visible = field.Boolean("Show under user's channel list", default=True)
     can_manage = field.Boolean("Can manage this channel", default=False)
     can_leave = field.Boolean("Membership is not obligatory", default=True)
-    last_seen_msg_time = field.DateTime("Last seen message's time")
+    last_seen_msg_time = field.TimeStamp("Last seen message's time")
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 

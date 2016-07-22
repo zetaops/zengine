@@ -238,7 +238,9 @@ def report_last_seen_message(current):
     Subscriber(current).objects.filter(channel_id=current.input['channel_key'],
                                        user_id=current.user_id
                                        ).update(last_seen_msg_time=current.input['timestamp'])
-
+    current.output = {
+        'status': 'OK',
+        'code': 200}
 
 def list_channels(current):
     """
