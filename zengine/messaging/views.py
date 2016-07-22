@@ -140,7 +140,7 @@ def show_channel(current, waited=False):
         #  request:
             {
                 'view':'_zops_show_channel',
-                'channel_key': key,
+                'key': key,
             }
 
         #  response:
@@ -159,9 +159,9 @@ def show_channel(current, waited=False):
             'code': 200
             }
     """
-    ch = Channel(current).objects.get(current.input['channel_key'])
+    ch = Channel(current).objects.get(current.input['key'])
     sbs = ch.get_subscription_for_user(current.user_id)
-    current.output = {'channel_key': current.input['channel_key'],
+    current.output = {'channel_key': current.input['key'],
                       'description': ch.description,
                       'name': sbs.name,
                       'actions': sbs.get_actions(),
@@ -323,7 +323,7 @@ def create_channel(current):
                                          channel=channel,
                                          can_manage=True,
                                          can_leave=False)
-    current.input['channel_key'] = channel.key
+    current.input['key'] = channel.key
     show_channel(current)
     current.output.update({
         'status': 'Created',
@@ -512,7 +512,7 @@ def create_direct_channel(current):
     """
     channel, sub_name = Channel.get_or_create_direct_channel(current.user_id,
                                                              current.input['user_key'])
-    current.input['channel_key'] = channel.key
+    current.input['key'] = channel.key
     show_channel(current)
     current.output.update({
         'status': 'Created',
