@@ -161,7 +161,7 @@ def show_channel(current, waited=False):
     """
     ch = Channel(current).objects.get(current.input['key'])
     sbs = ch.get_subscription_for_user(current.user_id)
-    current.output = {'channel_key': current.input['key'],
+    current.output = {'key': current.input['key'],
                       'description': ch.description,
                       'name': sbs.name,
                       'actions': sbs.get_actions(),
@@ -202,11 +202,12 @@ def channel_history(current):
     current.output = {
         'status': 'OK',
         'code': 201,
-        'messages': [
-            msg.serialize(current.user)
-            for msg in Message.objects.filter(channel_id=current.input['channel_key'],
-                                              timestamp__lt=current.input['timestamp'])[:20]]
+        'messages': []
     }
+
+    for msg in Message.objects.filter(channel_id=current.input['channel_key'],
+                                      updated_at__lt=current.input['timestamp'])[:20]:
+        current.output['messages'].insert(0, msg.serialize(current.user))
 
 
 def report_last_seen_message(current):
@@ -273,14 +274,18 @@ def list_channels(current):
     current.output = {
         'status': 'OK',
         'code': 200,
-        'channels': [{'name': sbs.name,
-                      'key': sbs.channel.key,
-                      'type': sbs.channel.typ,
-                      'read_only': sbs.read_only,
-                      'is_online': sbs.is_online(),
-                      'actions': sbs.get_actions(),
-                      'unread': sbs.unread_count()} for sbs in
-                     current.user.subscriptions.objects.filter(is_visible=True)]}
+        'channels': []}
+    for sbs in current.user.subscriptions.objects.filter(is_visible=True):
+        try:
+            current.output['channels'].append({'name': sbs.name,
+                                               'key': sbs.channel.key,
+                                               'type': sbs.channel.typ,
+                                               'read_only': sbs.read_only,
+                                               'is_online': sbs.is_online(),
+                                               'actions': sbs.get_actions(),
+                                               'unread': sbs.unread_count()})
+        except ObjectDoesNotExist:
+            sbs.delete()
 
 
 def create_channel(current):
@@ -311,7 +316,7 @@ def create_channel(current):
                 'last_messages': [MSG_DICT]
                 'status': 'Created',
                 'code': 201,
-                'channel_key': key, # of just created channel
+                'key': key, # of just created channel
                 }
     """
     channel = Channel(name=current.input['name'],

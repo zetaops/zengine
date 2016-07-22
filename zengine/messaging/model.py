@@ -216,7 +216,7 @@ class Subscriber(Model):
             return self.channel.message_set.objects.filter(
                 timestamp__lt=self.last_seen_msg_time).count()
         else:
-            self.channel.message_set.objects.filter().count()
+            return self.channel.message_set.objects.filter().count()
 
     def create_exchange(self):
         """
