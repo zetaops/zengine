@@ -329,7 +329,7 @@ class Message(Model):
             'content': self.body,
             'type': self.typ,
             'updated_at': self.updated_at,
-            'timestamp': self.timestamp.strftime(DATE_TIME_FORMAT),
+            'timestamp': self.updated_at,
             'is_update': hasattr(self, 'unsaved'),
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,

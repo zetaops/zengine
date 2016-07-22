@@ -68,9 +68,10 @@ class BaseUser(object):
         else:
             mq_channel = self._connect_mq()
             for sbs in self.subscriptions.objects.filter():
-                mq_channel.basic_publish(exchange=sbs.channel.key,
-                                         routing_key='',
-                                         body=json.dumps({
+                if sbs.channel.typ == 10:
+                    mq_channel.basic_publish(exchange=sbs.channel.code_name,
+                                             routing_key='',
+                                             body=json.dumps({
                                                  'cmd': 'user_status',
                                                  'channel_key': sbs.channel.key,
                                                  'channel_name': sbs.name,
@@ -78,7 +79,6 @@ class BaseUser(object):
                                                  'is_online': status,
                                              }))
             ConnectionStatus(self.key).set(status)
-
 
     def encrypt_password(self):
         """ encrypt password if not already encrypted """

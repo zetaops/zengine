@@ -224,7 +224,7 @@ def report_last_seen_message(current):
             {
             'view':'_zops_last_seen_msg',
             'channel_key': key,
-            'msg_key': key,
+            'key': key,
             'timestamp': datetime,
             }
 
@@ -671,14 +671,15 @@ def delete_message(current):
 
             #  response:
                 {
+                'key': key,
                 'status': 'OK',
                 'code': 200
                 }
     """
     try:
         Message(current).objects.get(sender_id=current.user_id,
-                                     key=current.input['message_key']).delete()
-        current.output = {'status': 'Deleted', 'code': 200}
+                                     key=current.input['key']).delete()
+        current.output = {'status': 'Deleted', 'code': 200, 'key': current.input['key']}
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
 
@@ -772,7 +773,7 @@ def get_message_actions(current):
         # request:
         {
             'view':'_zops_get_message_actions',
-            'message_key': key,
+            'key': key,
         }
         # response:
             {
@@ -785,7 +786,7 @@ def get_message_actions(current):
     current.output = {'status': 'OK',
                       'code': 200,
                       'actions': Message.objects.get(
-                          current.input['message_key']).get_actions_for(current.user)}
+                          current.input['key']).get_actions_for(current.user)}
 
 
 def add_to_favorites(current):

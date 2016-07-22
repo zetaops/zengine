@@ -137,7 +137,7 @@ URL_CONFS = [
     (r'/(\w+)', HttpHandler),
 ]
 
-app = web.Application(URL_CONFS, debug=DEBUG)
+app = web.Application(URL_CONFS, debug=DEBUG, autoreload=False)
 
 
 def runserver(host=None, port=None):
