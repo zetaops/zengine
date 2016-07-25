@@ -235,9 +235,10 @@ def report_last_seen_message(current):
             'code': 200,
             }
     """
-    Subscriber(current).objects.filter(channel_id=current.input['channel_key'],
-                                       user_id=current.user_id
-                                       ).update(last_seen_msg_time=current.input['timestamp'])
+    sbs = Subscriber(current).objects.filter(channel_id=current.input['channel_key'],
+                                          user_id=current.user_id)[0]
+    sbs.last_seen_msg_time=current.input['timestamp']
+    sbs.save()
     current.output = {
         'status': 'OK',
         'code': 200}
@@ -288,6 +289,43 @@ def list_channels(current):
                                                'unread': sbs.unread_count()})
         except ObjectDoesNotExist:
             sbs.delete()
+
+def unread_count(current):
+    """
+        Number of unread messages for current user
+
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view':'_zops_unread_count',
+                }
+
+            #  response:
+                {
+                'status': 'OK',
+                'code': 200,
+                'notifications': int,
+                'messages': int,
+                }
+        """
+    unread_ntf = 0
+    unread_msg = 0
+    for sbs in current.user.subscriptions.objects.filter(is_visible=True):
+        try:
+            if sbs.channel.key == current.user.prv_exchange:
+                unread_ntf += sbs.unread_count()
+            else:
+                unread_msg += sbs.unread_count()
+        except ObjectDoesNotExist:
+            sbs.delete()
+    current.output = {
+        'status': 'OK',
+        'code': 200,
+        'notifications': unread_ntf,
+        'messages': unread_msg
+    }
 
 
 def create_channel(current):

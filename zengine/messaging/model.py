@@ -214,7 +214,7 @@ class Subscriber(Model):
         # FIXME: track and return actual unread message count
         if self.last_seen_msg_time:
             return self.channel.message_set.objects.filter(
-                timestamp__lt=self.last_seen_msg_time).count()
+                timestamp__gt=self.last_seen_msg_time).count()
         else:
             return self.channel.message_set.objects.filter().count()
 

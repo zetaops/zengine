@@ -147,7 +147,7 @@ class BaseUser(object):
 
 
         """
-        self.channel_set.channel.__class__.add_message(
+        self.created_channels.channel.add_message(
             channel_key=self.prv_exchange,
             body=message,
             title=title,

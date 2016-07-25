@@ -143,6 +143,7 @@ VIEW_URLS = {
     '_zops_pin_channel': 'zengine.messaging.views.pin_channel',
     '_zops_flag_message': 'zengine.messaging.views.flag_message',
     '_zops_unflag_message': 'zengine.messaging.views.unflag_message',
+    '_zops_unread_count': 'zengine.messaging.views.unread_count',
     # '_zops_': 'zengine.messaging.views.',
 }
 
