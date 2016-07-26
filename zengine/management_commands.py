@@ -15,7 +15,6 @@ from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 
 
-
 class UpdatePermissions(Command):
     """
     Gets permissions from
@@ -62,11 +61,11 @@ class UpdatePermissions(Command):
                     perm.key = code
                     perm.save()
                     new_perms.append(perm)
-                # perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
-                # if new:
-                #     new_perms.append(perm)
-                # else:
-                #     existing_perms.append(perm)
+                    # perm, new = model.objects.get_or_create({'description': desc}, code=code, name=name)
+                    # if new:
+                    #     new_perms.append(perm)
+                    # else:
+                    #     existing_perms.append(perm)
 
         report = "\n\n%s permission(s) were found in DB. " % len(existing_perms)
         if new_perms:
@@ -125,7 +124,7 @@ class RunServer(Command):
          'help': 'Listening address. Defaults to 127.0.0.1'},
         {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
         {'name': 'server_type', 'default': 'tornado', 'help': 'Server type. Default: "tornado"'
-                                                             'Possible values: falcon, tornado'},
+                                                              'Possible values: falcon, tornado'},
     ]
 
     def run(self):
@@ -172,6 +171,10 @@ class RunWorker(Command):
         # {'name': 'addr', 'default': '127.0.0.1', 'help': 'Listening address. Defaults to 127.0.0.1'},
         # {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
         {'name': 'workers', 'default': '1', 'help': 'Number of worker process'},
+        {'name': 'autoreload', 'action': 'store_true', 'help': 'Autoreload on changes'},
+        {'name': 'paths', 'default': '.',
+         'help': 'Directory path(s) for autoreload changes. (comma separated)'},
+
     ]
 
     def run(self):
@@ -179,12 +182,20 @@ class RunWorker(Command):
         Starts a development server for the zengine application
         """
         from zengine.wf_daemon import run_workers, Worker
+
         worker_count = int(self.manager.args.workers or 1)
-        if worker_count > 1:
-            run_workers(worker_count)
+        if not self.manager.args.daemonize:
+            print("Starting worker(s)")
+
+        if worker_count > 1 or self.manager.args.autoreload:
+            run_workers(worker_count,
+                        self.manager.args.paths.split(','),
+                        self.manager.args.daemonize)
         else:
             worker = Worker()
             worker.run()
+
+
 
 
 class PrepareMQ(Command):
@@ -211,16 +222,13 @@ class PrepareMQ(Command):
                                                            user=usr,
                                                            read_only=True,
                                                            name='Notifications',
-                                                           can_manage=True,
-                                                           can_leave=False
+                                                           defaults=dict(can_manage=True,
+                                                                         can_leave=False)
                                                            )
                 print("%s notify sub: %s" % ('created' if new else 'existing', ch.code_name))
-
-
 
     def create_channel_exchanges(self):
         from zengine.messaging.model import Channel
         for ch in Channel.objects.filter():
             print("(re)creation exchange: %s" % ch.code_name)
             ch.create_exchange()
-
