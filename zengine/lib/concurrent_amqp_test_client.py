@@ -98,10 +98,10 @@ class TestWSClient(object):
                 self.message_stack[body['callbackID']] = body
                 self.message_callbacks[body['callbackID']](body)
             elif 'cmd' in body:
-                self.cmds[body['cmd']](body)
+                self.message_callbacks[body['cmd']](body)
         except:
             import traceback
-            print("\n")
+            print("\nException BODY: %s \n" % pformat(body))
             traceback.print_exc()
 
         log.info("WRITE MESSAGE TO CLIENT:\n%s" % (pformat(body),))
@@ -137,11 +137,11 @@ class ConcurrentTestCase(object):
     def __init__(self, queue_manager):
         log.info("ConcurrentTestCase class init with %s" % queue_manager)
         self.cmds = {}
+        self.register_cmds()
         self.queue_manager = queue_manager
         self.clients = {}
         self.make_client('ulakbus')
         self.run_tests()
-        self.register_cmds()
 
     def make_client(self, username):
         """
