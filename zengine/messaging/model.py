@@ -169,14 +169,15 @@ class Subscriber(Model):
     class Meta:
         verbose_name = "Abonelik"
         verbose_name_plural = "Abonelikler"
-        # list_fields = ["name", "gorev_tipi", "kurum_disi_gorev_baslama_tarihi"]
-        list_filters = ["name",]
+        # list_fields = ["name", ]
+        # list_filters = ["name",]
         search_fields = ["name", ]
 
     mq_channel = None
     mq_connection = None
 
     channel = Channel()
+    typ = field.Integer("Tip", choices=CHANNEL_TYPES)
     name = field.String("Abonelik adı")
     user = UserModel(reverse_name='subscriptions')
     is_muted = field.Boolean("Kanalı sustur", default=False)
@@ -203,15 +204,15 @@ class Subscriber(Model):
 
     def get_actions(self):
         actions = [
-            ('Pin', '_zops_pin_channel'),
+            ('Yukarı Sabitle', '_zops_pin_channel'),
             # ('Mute', '_zops_mute_channel'),
         ]
         if self.channel.owner == self.user or self.can_manage:
             actions.extend([
-                ('Delete', '_zops_delete_channel'),
-                ('Edit', '_zops_edit_channel'),
-                ('Add Users', '_zops_add_members'),
-                ('Add Unit', '_zops_add_unit_to_channel')
+                ('Sil', '_zops_delete_channel'),
+                ('Düzenle', '_zops_edit_channel'),
+                ('Kullanıcı Ekle', '_zops_add_members'),
+                ('Birim Ekle', '_zops_add_unit_to_channel')
             ])
         return actions
 
