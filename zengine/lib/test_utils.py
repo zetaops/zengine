@@ -94,7 +94,7 @@ class BaseTestClient(Worker):
         self.path = path
         self.token = token
 
-    def _prepare_post(self, **data):
+    def _prepare_post(self, data):
         """
         by default data dict encoded as json and
         content type set as application/json
