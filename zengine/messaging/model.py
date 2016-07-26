@@ -45,13 +45,18 @@ class Channel(Model):
 
     is_direct: Represents a user-to-user direct message exchange
     """
+
+    class Meta:
+        verbose_name = "Kanal"
+        verbose_name_plural = "Kanallar"
+
     mq_channel = None
     mq_connection = None
 
-    typ = field.Integer("Type", choices=CHANNEL_TYPES)
-    name = field.String("Name")
-    code_name = field.String("Internal name")
-    description = field.String("Description")
+    typ = field.Integer("Tip", choices=CHANNEL_TYPES)
+    name = field.String("Ad")
+    code_name = field.String("İç ad")
+    description = field.String("Tanım")
     owner = UserModel(reverse_name='created_channels', null=True)
 
     def __unicode__(self):
@@ -161,22 +166,28 @@ class Subscriber(Model):
     """
     Permission model
     """
+    class Meta:
+        verbose_name = "Abonelik"
+        verbose_name_plural = "Abonelikler"
+        # list_fields = ["name", "gorev_tipi", "kurum_disi_gorev_baslama_tarihi"]
+        list_filters = ["name",]
+        search_fields = ["name", ]
 
     mq_channel = None
     mq_connection = None
 
     channel = Channel()
-    name = field.String("Subscription Name")
+    name = field.String("Abonelik adı")
     user = UserModel(reverse_name='subscriptions')
-    is_muted = field.Boolean("Mute the channel", default=False)
-    pinned = field.Boolean("Pin channel to top", default=False)
-    inform_me = field.Boolean("Inform when I'm mentioned", default=True)
-    read_only = field.Boolean("This is a read-only subscription (to a broadcast channel)",
+    is_muted = field.Boolean("Kanalı sustur", default=False)
+    pinned = field.Boolean("Yukarı sabitle", default=False)
+    inform_me = field.Boolean("Adım geçtiğinde haber ver", default=True)
+    read_only = field.Boolean("Salt-okunur (duyuru) kanalı",
                               default=False)
-    is_visible = field.Boolean("Show under user's channel list", default=True)
-    can_manage = field.Boolean("Can manage this channel", default=False)
-    can_leave = field.Boolean("Membership is not obligatory", default=True)
-    last_seen_msg_time = field.TimeStamp("Last seen message's time")
+    is_visible = field.Boolean("Görünür", default=True)
+    can_manage = field.Boolean("Bu kanalı yönetebilir", default=False)
+    can_leave = field.Boolean("Kanaldan ayrılabilir", default=True)
+    last_seen_msg_time = field.TimeStamp("Son okunan mesajın zamanpulu")
 
     # status = field.Integer("Status", choices=SUBSCRIPTION_STATUS)
 
@@ -281,13 +292,19 @@ class Message(Model):
             - Channel objects's **add_message()** method.
             - User object's **set_message()** method. (which also uses channel.add_message)
     """
+
+
+    class Meta:
+        verbose_name = "Mesaj"
+        verbose_name_plural = "Mesajlar"
+
     channel = Channel()
     sender = UserModel(reverse_name='sent_messages')
     receiver = UserModel(reverse_name='received_messages')
-    typ = field.Integer("Type", choices=MSG_TYPES, default=1)
-    status = field.Integer("Status", choices=MESSAGE_STATUS, default=1)
-    msg_title = field.String("Title")
-    body = field.String("Body")
+    typ = field.Integer("Tip", choices=MSG_TYPES, default=1)
+    status = field.Integer("Durum", choices=MESSAGE_STATUS, default=1)
+    msg_title = field.String("Başlık")
+    body = field.String("Metin")
     url = field.String("URL")
 
     def get_actions_for(self, user):
@@ -295,20 +312,20 @@ class Message(Model):
         if Favorite.objects.filter(user=user,
                                    channel=self.channel,
                                    message=self).count():
-            actions.append(('Remove from favorites', '_zops_remove_from_favorites'))
+            actions.append(('Favorilerden çıkar', '_zops_remove_from_favorites'))
         else:
-            actions.append(('Add to favorites', '_zops_favorite_message'))
+            actions.append(('Favorilere ekle', '_zops_favorite_message'))
 
 
         if user:
             if FlaggedMessage.objects.filter(user=user, message=self).count():
-                actions.append(('Remove Flag', '_zops_unflag_message'))
+                actions.append(('İşareti Kaldır', '_zops_unflag_message'))
             else:
-                actions.append(('Flag Message', '_zops_flag_message'))
+                actions.append(('İşaretle', '_zops_flag_message'))
             if self.sender == user:
                 actions.extend([
-                    ('Delete', '_zops_delete_message'),
-                    ('Edit', '_zops_edit_message')
+                    ('Sil', '_zops_delete_message'),
+                    ('Düzenle', '_zops_edit_message')
                 ])
         return actions
 
@@ -359,9 +376,9 @@ class Message(Model):
 
 
 ATTACHMENT_TYPES = (
-    (1, "Document"),
-    (11, "Spreadsheet"),
-    (22, "Image"),
+    (1, "Belge"),
+    (11, "Hesap Tablosu"),
+    (22, "Görsel"),
     (33, "PDF"),
 
 )
@@ -371,10 +388,10 @@ class Attachment(Model):
     """
     A model to store message attachments
     """
-    file = field.File("File", random_name=True, required=False)
-    typ = field.Integer("Type", choices=ATTACHMENT_TYPES)
-    name = field.String("File Name")
-    description = field.String("Description")
+    file = field.File("Dosya", random_name=True, required=False)
+    typ = field.Integer("Tip", choices=ATTACHMENT_TYPES)
+    name = field.String("Dosya Adı")
+    description = field.String("Tanım")
     channel = Channel()
     message = Message()
 
@@ -393,11 +410,16 @@ class Favorite(Model):
     """
     A model to store users bookmarked messages
     """
+
+    class Meta:
+        verbose_name = "Favori"
+        verbose_name_plural = "Favoriler"
+
     channel = Channel()
     user = UserModel()
     message = Message()
-    summary = field.String("Message Summary")
-    channel_name = field.String("Channel Name")
+    summary = field.String("Mesaj Özeti")
+    channel_name = field.String("Kanal Adı")
 
     def pre_creation(self):
         if not self.channel:
@@ -410,6 +432,11 @@ class FlaggedMessage(Model):
     """
     A model to store users bookmarked messages
     """
+
+    class Meta:
+        verbose_name = "İşaretlenmiş Mesaj"
+        verbose_name_plural = "İşaretlenmiş Mesajlar"
+
     channel = Channel()
     user = UserModel()
     message = Message()
