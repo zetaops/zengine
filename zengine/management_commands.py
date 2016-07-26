@@ -8,7 +8,9 @@
 # (GPLv3).  See LICENSE.txt for details.
 import six
 
+from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist
+from pyoko.lib.utils import get_object_from_path
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 
@@ -183,3 +185,42 @@ class RunWorker(Command):
         else:
             worker = Worker()
             worker.run()
+
+
+class PrepareMQ(Command):
+    """
+    Creates necessary exchanges, queues and bindings
+    """
+    CMD_NAME = 'preparemq'
+    HELP = 'Creates necessary exchanges, queues and bindings for messaging subsystem'
+
+    def run(self):
+        self.create_user_channels()
+        self.create_channel_exchanges()
+
+    def create_user_channels(self):
+        from zengine.messaging.model import Channel, Subscriber
+        user_model = get_object_from_path(settings.USER_MODEL)
+        with BlockSave(Channel):
+            for usr in user_model.objects.filter():
+                # create private exchange of user
+                ch, new = Channel.objects.get_or_create(owner=usr, typ=5)
+                print("%s exchange: %s" % ('created' if new else 'existing', ch.code_name))
+                # create notification subscription to private exchange
+                sb, new = Subscriber.objects.get_or_create(channel=ch,
+                                                           user=usr,
+                                                           read_only=True,
+                                                           name='Notifications',
+                                                           can_manage=True,
+                                                           can_leave=False
+                                                           )
+                print("%s notify sub: %s" % ('created' if new else 'existing', ch.code_name))
+
+
+
+    def create_channel_exchanges(self):
+        from zengine.messaging.model import Channel
+        for ch in Channel.objects.filter():
+            print("(re)creation exchange: %s" % ch.code_name)
+            ch.create_exchange()
+

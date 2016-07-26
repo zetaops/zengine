@@ -11,13 +11,9 @@ __all__ = [
     'set_password',
 ]
 
-
-
-
 from pyoko.conf import settings
 from zengine.dispatch.dispatcher import receiver
 from zengine.signals import lane_user_change, crud_post_save
-
 
 DEFAULT_LANE_CHANGE_INVITE_MSG = {
     'title': settings.MESSAGES['lane_change_invite_title'],
@@ -37,7 +33,7 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     from zengine.lib.catalog_data import gettxt as _
     from pyoko.lib.utils import get_object_from_path
     UserModel = get_object_from_path(settings.USER_MODEL)
-    from zengine.notifications import Notify
+    from zengine.messaging import Notify
     current = kwargs['current']
     old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']
@@ -48,11 +44,11 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     for recipient in owners:
         if not isinstance(recipient, UserModel):
             recipient = recipient.get_user()
-        Notify(recipient.key).set_message(title=_(msg_context['title']),
-                                          msg=_(msg_context['body']),
-                                          typ=Notify.TaskInfo,
-                                          url=current.get_wf_link()
-                                          )
+        recipient.send_notification(title=_(msg_context['title']),
+                                    message=_(msg_context['body']),
+                                    typ=Notify.TaskInfo,
+                                    url=current.get_wf_link()
+                                    )
 
 
 # encrypting password on save

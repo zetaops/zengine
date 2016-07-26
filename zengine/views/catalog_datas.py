@@ -13,13 +13,14 @@ from pyoko import Model, field, ListNode
 from zengine.views.crud import CrudView
 from zengine import forms
 from zengine.forms import fields
-from falcon import HTTPBadRequest
+from zengine.lib.exceptions import HTTPError
 
 
 class CatalogSelectForm(forms.JsonForm):
     """
     Generates Form object for catalog select view.
     """
+
     class Meta:
         title = 'Choose Catalog Data'
         help_text = "Type and choose existing catalog data to edit. Or if you want to add one type the name of the catalog data you want to add."
@@ -121,6 +122,6 @@ class CatalogDataView(CrudView):
                 self.output["notify"] = "catalog: %s successfully updated." % self.input[
                     "object_key"]
             except:
-                raise HTTPBadRequest("Form object could not be saved")
+                raise HTTPError(500, "Form object could not be saved")
         if self.input["cmd"] == 'cancel':
             self.output["notify"] = "catalog: %s canceled." % self.input["object_key"]

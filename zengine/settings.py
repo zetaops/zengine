@@ -36,6 +36,9 @@ USER_MODEL = 'zengine.models.User'
 #: Role model
 ROLE_MODEL = 'zengine.models.Role'
 
+#: Unit model
+UNIT_MODEL = 'zengine.models.Unit'
+
 MQ_HOST = os.getenv('MQ_HOST', 'localhost')
 MQ_PORT = int(os.getenv('MQ_PORT', '5672'))
 MQ_USER = os.getenv('MQ_USER', 'guest')
@@ -111,10 +114,37 @@ SESSION_OPTIONS = {
 
 #: View URL list for non-workflow views.
 #:
-#: ('falcon URI template', 'python path to view method/class'),
+#: ('URI template', 'python path to view method/class'),
 VIEW_URLS = {
     'dashboard': 'zengine.views.menu.Menu',
+    'sessid_to_userid': 'zengine.views.system.sessid_to_userid',
+    'mark_offline_user': 'zengine.views.system.mark_offline_user',
     'ping': 'zengine.views.dev_utils.Ping',
+    '_zops_create_message': 'zengine.messaging.views.create_message',
+    '_zops_show_channel': 'zengine.messaging.views.show_channel',
+    '_zops_list_channels': 'zengine.messaging.views.list_channels',
+    '_zops_channel_history': 'zengine.messaging.views.channel_history',
+    '_zops_report_last_seen_message': 'zengine.messaging.views.report_last_seen_message',
+    '_zops_create_channel': 'zengine.messaging.views.create_channel',
+    '_zops_add_members': 'zengine.messaging.views.add_members',
+    '_zops_add_unit_to_channel': 'zengine.messaging.views.add_unit_to_channel',
+    '_zops_search_user': 'zengine.messaging.views.search_user',
+    '_zops_search_unit': 'zengine.messaging.views.search_unit',
+    '_zops_create_direct_channel': 'zengine.messaging.views.create_direct_channel',
+    '_zops_find_message': 'zengine.messaging.views.find_message',
+    '_zops_delete_message': 'zengine.messaging.views.delete_message',
+    '_zops_edit_message': 'zengine.messaging.views.edit_message',
+    '_zops_get_message_actions': 'zengine.messaging.views.get_message_actions',
+    '_zops_add_to_favorites': 'zengine.messaging.views.add_to_favorites',
+    '_zops_remove_from_favorites': 'zengine.messaging.views.remove_from_favorites',
+    '_zops_list_favorites': 'zengine.messaging.views.list_favorites',
+    '_zops_edit_channel': 'zengine.messaging.views.edit_channel',
+    '_zops_delete_channel': 'zengine.messaging.views.delete_channel',
+    '_zops_pin_channel': 'zengine.messaging.views.pin_channel',
+    '_zops_flag_message': 'zengine.messaging.views.flag_message',
+    '_zops_unflag_message': 'zengine.messaging.views.unflag_message',
+    '_zops_unread_count': 'zengine.messaging.views.unread_count',
+    # '_zops_': 'zengine.messaging.views.',
 }
 
 if DEBUG:
@@ -188,3 +218,11 @@ ERROR_MESSAGE_500 = 'Internal Server Error'
 
 #: These models will not flushed when running tests
 TEST_FLUSHING_EXCLUDES = 'Permission,User,Role'
+
+
+#: User search method of messaging subsystem will work on these fields
+MESSAGING_USER_SEARCH_FIELDS = ['username', 'name', 'surname']
+
+#: Unit search method of messaging subsystem will work on these fields
+MESSAGING_UNIT_SEARCH_FIELDS = ['name',]
+

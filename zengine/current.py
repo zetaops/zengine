@@ -24,7 +24,7 @@ from zengine.config import settings
 from zengine.lib.cache import WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import log
-from zengine.notifications import Notify
+from zengine.messaging import Notify
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],

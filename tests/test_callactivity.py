@@ -12,7 +12,7 @@ from pyoko.db.adapter.db_riak import BlockSave
 from zengine.lib.exceptions import HTTPError
 from zengine.lib.test_utils import BaseTestCase
 from zengine.models import User
-from zengine.notifications.model import NotificationMessage
+from zengine.messaging.model import Message
 from zengine.signals import lane_user_change
 
 

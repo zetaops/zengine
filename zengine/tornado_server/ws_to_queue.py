@@ -9,8 +9,8 @@
 import json
 from uuid import uuid4
 
-import os
-
+import os, sys
+sys.sessid_to_userid = {}
 import pika
 import time
 from pika.adapters import TornadoConnection, BaseConnection
@@ -30,6 +30,7 @@ settings = type('settings', (object,), {
     'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),
     'MQ_USER': os.environ.get('MQ_USER', 'guest'),
     'MQ_PASS': os.environ.get('MQ_PASS', 'guest'),
+    'DEBUG': os.environ.get('DEBUG', False),
     'MQ_VHOST': os.environ.get('MQ_VHOST', '/'),
 })
 log = get_logger(settings)
@@ -51,7 +52,7 @@ NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 
 
 class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 10  # sec
+    REPLY_TIMEOUT = 5  # sec
 
     def __init__(self):
         self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
@@ -66,22 +67,32 @@ class BlockingConnectionForHTTP(object):
 
     def _send_message(self, sess_id, input_data):
         log.info("sending data for %s" % sess_id)
-        self.input_channel.basic_publish(exchange='tornado_input',
+        self.input_channel.basic_publish(exchange='input_exc',
                                          routing_key=sess_id,
                                          body=json_encode(input_data))
 
+    def _store_user_id(self, sess_id, body):
+        log.debug("SET SESSUSERS: %s" % sys.sessid_to_userid)
+        sys.sessid_to_userid[sess_id[5:]] = json_decode(body)['user_id'].lower()
+
     def _wait_for_reply(self, sess_id, input_data):
         channel = self.create_channel()
-        channel.queue_declare(queue=sess_id, auto_delete=True)
+        channel.queue_declare(queue=sess_id,
+                              arguments={'x-expires': 4000}
+                              # auto_delete=True
+                              )
         timeout_start = time.time()
         while 1:
             method_frame, header_frame, body = channel.basic_get(sess_id)
+            log.debug("\n%s\n%s\n%s\n%s" % (sess_id, method_frame, header_frame, body))
             if method_frame:
                 reply = json_decode(body)
                 if 'callbackID' in reply and reply['callbackID'] == input_data['callbackID']:
                     channel.basic_ack(method_frame.delivery_tag)
                     channel.close()
                     log.info('Returned view message for %s: %s' % (sess_id, body))
+                    if 'upgrade' in body:
+                        self._store_user_id(sess_id, body)
                     return body
                 else:
                     if time.time() - json_decode(body)['reply_timestamp'] > self.REPLY_TIMEOUT:
@@ -90,7 +101,7 @@ class BlockingConnectionForHTTP(object):
             if time.time() - timeout_start > self.REPLY_TIMEOUT:
                 break
             else:
-                time.sleep(0.4)
+                time.sleep(1)
         log.info('No message returned for %s' % sess_id)
         channel.close()
 
@@ -113,7 +124,7 @@ class QueueManager(object):
     """
     INPUT_QUEUE_NAME = 'in_queue'
 
-    def __init__(self, io_loop):
+    def __init__(self, io_loop=None):
         log.info('PikaClient: __init__')
         self.io_loop = io_loop
         self.connected = False
@@ -123,7 +134,7 @@ class QueueManager(object):
         self.out_channels = {}
         self.out_channel = None
         self.websockets = {}
-        self.connect()
+        # self.connect()
 
     def connect(self):
         """
@@ -137,6 +148,8 @@ class QueueManager(object):
         self.connecting = True
 
         self.connection = TornadoConnection(NON_BLOCKING_MQ_PARAMS,
+                                            stop_ioloop_on_close=False,
+                                            custom_ioloop=self.io_loop,
                                             on_open_callback=self.on_connected)
 
     def on_connected(self, connection):
@@ -149,10 +162,9 @@ class QueueManager(object):
         """
         log.info('PikaClient: connected to RabbitMQ')
         self.connected = True
-        self.connection = connection
-        self.in_channel = self.connection.channel(self.on_conn_open)
+        self.in_channel = self.connection.channel(self.on_channel_open)
 
-    def on_conn_open(self, channel):
+    def on_channel_open(self, channel):
         """
         Input channel creation callback
         Queue declaration done here
@@ -160,7 +172,7 @@ class QueueManager(object):
         Args:
             channel: input channel
         """
-        self.in_channel.exchange_declare(exchange='tornado_input', type='topic')
+        self.in_channel.exchange_declare(exchange='input_exc', type='topic', durable=True)
         channel.queue_declare(callback=self.on_input_queue_declare, queue=self.INPUT_QUEUE_NAME)
 
     def on_input_queue_declare(self, queue):
@@ -172,9 +184,15 @@ class QueueManager(object):
             queue: input queue
         """
         self.in_channel.queue_bind(callback=None,
-                                   exchange='tornado_input',
+                                   exchange='input_exc',
                                    queue=self.INPUT_QUEUE_NAME,
                                    routing_key="#")
+    def ask_for_user_id(self, sess_id):
+        log.debug(sess_id)
+        # TODO: add remote ip
+        self.publish_incoming_message(dict(_zops_remote_ip='',
+                                           data={'view': 'sessid_to_userid'}), sess_id)
+
 
     def register_websocket(self, sess_id, ws):
         """
@@ -183,45 +201,80 @@ class QueueManager(object):
             sess_id:
             ws:
         """
-        self.websockets[sess_id] = ws
-        channel = self.create_out_channel(sess_id)
+        log.debug("GET SESSUSERS: %s" % sys.sessid_to_userid)
+        try:
+            user_id = sys.sessid_to_userid[sess_id]
+            self.websockets[user_id] = ws
+        except KeyError:
+            self.ask_for_user_id(sess_id)
+            self.websockets[sess_id] = ws
+            user_id = sess_id
+        self.create_out_channel(sess_id, user_id)
+
+    def inform_disconnection(self, sess_id):
+        self.in_channel.basic_publish(exchange='input_exc',
+                                      routing_key=sess_id,
+                                      body=json_encode(dict(data={
+                                          'view': 'mark_offline_user',
+                                          'sess_id': sess_id,},
+                                          _zops_remote_ip='')))
 
     def unregister_websocket(self, sess_id):
+        user_id = sys.sessid_to_userid.get(sess_id, None)
         try:
-            del self.websockets[sess_id]
+            self.inform_disconnection(sess_id)
+            del self.websockets[user_id]
         except KeyError:
-            log.exception("Non-existent websocket")
+            log.exception("Non-existent websocket for %s" % user_id)
         if sess_id in self.out_channels:
             try:
                 self.out_channels[sess_id].close()
             except ChannelClosed:
                 log.exception("Pika client (out) channel already closed")
 
-    def create_out_channel(self, sess_id):
+    def create_out_channel(self, sess_id, user_id):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
-                channel.basic_consume(self.on_message, queue=sess_id)
-
+                channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=user_id)
+                log.debug("BIND QUEUE TO WS Q.%s on Ch.%s WS.%s" % (sess_id,
+                                                                    channel.consumer_tags[0],
+                                                                    user_id))
             self.out_channels[sess_id] = channel
+
             channel.queue_declare(callback=_on_output_queue_decleration,
                                   queue=sess_id,
+                                  arguments={'x-expires': 40000},
                                   # auto_delete=True,
                                   # exclusive=True
                                   )
 
         self.connection.channel(_on_output_channel_creation)
 
+
     def redirect_incoming_message(self, sess_id, message, request):
-        message = message[:-1] + ',"_zops_remote_ip":"%s"}' % request.remote_ip
-        self.in_channel.basic_publish(exchange='tornado_input',
+        message = json_decode(message)
+        message['_zops_sess_id'] = sess_id
+        message['_zops_remote_ip'] = request.remote_ip
+        self.publish_incoming_message(message, sess_id)
+
+    def publish_incoming_message(self, message, sess_id):
+        self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
-                                      body=message)
+                                      body=json_encode(message))
 
     def on_message(self, channel, method, header, body):
-        sess_id = method.routing_key
-        if sess_id in self.websockets:
-            self.websockets[sess_id].write_message(body)
-            log.debug("WS RPLY for %s: %s" % (sess_id, body))
-            channel.basic_ack(delivery_tag=method.delivery_tag)
+        user_id = method.consumer_tag
+        log.debug("WS RPLY for %s: %s" % (user_id, body))
+        if user_id in self.websockets:
+            log.info("write msg to client")
+            self.websockets[user_id].write_message(body)
+            # channel.basic_ack(delivery_tag=method.delivery_tag)
+        elif 'sessid_to_userid' in body:
+            reply = json_decode(body)
+            sys.sessid_to_userid[reply['sess_id']] = reply['user_id']
+            self.websockets[reply['user_id']] = self.websockets[reply['sess_id']]
+            del self.websockets[reply['sess_id']]
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+
             # else:
             #     channel.basic_reject(delivery_tag=method.delivery_tag)

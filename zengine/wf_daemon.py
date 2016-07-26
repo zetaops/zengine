@@ -36,7 +36,7 @@ class Worker(object):
     Workflow runner worker object
     """
     INPUT_QUEUE_NAME = 'in_queue'
-    INPUT_EXCHANGE = 'tornado_input'
+    INPUT_EXCHANGE = 'input_exc'
 
     def __init__(self):
         self.connect()
@@ -62,10 +62,13 @@ class Worker(object):
         self.client_queue = ClientQueue()
         self.input_channel = self.connection.channel()
 
-        self.input_channel.exchange_declare(exchange=self.INPUT_EXCHANGE, type='topic')
+        self.input_channel.exchange_declare(exchange=self.INPUT_EXCHANGE,
+                                            type='topic',
+                                            durable=True)
         self.input_channel.queue_declare(queue=self.INPUT_QUEUE_NAME)
         self.input_channel.queue_bind(exchange=self.INPUT_EXCHANGE, queue=self.INPUT_QUEUE_NAME)
-        log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME, self.INPUT_EXCHANGE))
+        log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME,
+                                                                        self.INPUT_EXCHANGE))
 
     def run(self):
         """
@@ -119,7 +122,7 @@ class Worker(object):
     def handle_message(self, ch, method, properties, body):
         """
         this is a pika.basic_consumer callback
-        handles client inputs, runs appropriate workflows
+        handles client inputs, runs appropriate workflows and views
 
         Args:
             ch: amqp channel
@@ -129,7 +132,7 @@ class Worker(object):
         """
         input = {}
         try:
-            sessid = method.routing_key
+            self.sessid = method.routing_key
 
             input = json_decode(body)
             data = input['data']
@@ -141,9 +144,9 @@ class Worker(object):
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']
-                session = Session(sessid[5:])  # clip "HTTP_" prefix from sessid
+                session = Session(self.sessid[5:])  # clip "HTTP_" prefix from sessid
             else:
-                session = Session(sessid)
+                session = Session(self.sessid)
 
             headers = {'remote_ip': input['_zops_remote_ip']}
 
@@ -163,20 +166,22 @@ class Worker(object):
                 raise
             err = traceback.format_exc()
             output = {'error': self._prepare_error_msg(err), "code": 500}
-            log.exception("Worker error occurred")
+            log.exception("Worker error occurred with messsage body:\n%s" % body)
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
-        log.info("OUTPUT for %s: %s" % (sessid, output))
+        log.info("OUTPUT for %s: %s" % (self.sessid, output))
         output['reply_timestamp'] = time()
-        self.send_output(output, sessid)
+        self.send_output(output)
 
-    def send_output(self, output, sessid):
-        self.client_queue.sess_id = sessid
-        self.client_queue.send_to_queue(output)
-        # self.output_channel.basic_publish(exchange='',
-        #                                   routing_key=sessid,
-        #                                   body=json.dumps(output))
-        # except ConnectionClosed:
+    def send_output(self, output):
+        # TODO: This is ugly, we should separate login process
+        # log.debug("SEND_OUTPUT: %s" % output)
+        if self.current.user_id is None or 'login_process' in output:
+            self.client_queue.send_to_default_exchange(self.sessid, output)
+        else:
+            self.client_queue.send_to_prv_exchange(self.current.user_id, output)
+
+
 
 
 def run_workers(no_subprocess):

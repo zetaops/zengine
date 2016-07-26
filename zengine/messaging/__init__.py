@@ -16,7 +16,7 @@ from uuid import uuid4
 import time
 import six
 from zengine.lib.cache import Cache, KeepAlive
-from .model import NotificationMessage
+
 
 class Notify(Cache, ClientQueue):
     """
@@ -54,12 +54,13 @@ class Notify(Cache, ClientQueue):
             self.remove_item(n)
 
     def set_message(self, title, msg, typ, url=None, sender=None):
+        from .model import Message
         message = {'title': title, 'body': msg, 'type': typ, 'url': url, 'id': uuid4().hex}
         if sender and isinstance(sender, six.string_types):
-            sender = NotificationMessage.sender.objects.get(sender)
-        receiver = NotificationMessage.receiver.objects.get(self.user_id)
-        NotificationMessage(typ=typ, msg_title=title, body=msg, url=url,
-                            sender=sender, receiver=receiver).save()
+            sender = Message.sender.objects.get(sender)
+        receiver = Message.receiver.objects.get(self.user_id)
+        Message(typ=typ, msg_title=title, body=msg, url=url,
+                sender=sender, receiver=receiver).save()
         if KeepAlive(user_id=self.user_id).is_alive():
             client_message = {'cmd': 'notification', 'notifications': [message, ]}
             self.send_to_queue(client_message)
