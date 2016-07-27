@@ -223,12 +223,18 @@ class Subscriber(Model):
                 user=self.user).get().user.is_online()
 
     def unread_count(self):
-        # FIXME: track and return actual unread message count
         if self.last_seen_msg_time:
             return self.channel.message_set.objects.filter(
                 timestamp__gt=self.last_seen_msg_time).count()
         else:
             return self.channel.message_set.objects.filter().count()
+
+    def get_unread_messages(self, amount):
+        if self.last_seen_msg_time:
+            return self.channel.message_set.objects.filter(
+                timestamp__gt=self.last_seen_msg_time)[:amount]
+        else:
+            return self.channel.message_set.objects.filter()[:amount]
 
     def create_exchange(self):
         """
