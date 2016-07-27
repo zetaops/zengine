@@ -192,6 +192,7 @@ def run_workers(no_subprocess, watch_paths=None, is_background=False):
         # from watchdog.observers.polling import PollingObserver as Observer
         from watchdog.events import FileSystemEventHandler
 
+
     def on_modified(event):
         if not is_background:
             print("Restarting worker due to change in %s" % event.src_path)
@@ -234,7 +235,8 @@ def run_workers(no_subprocess, watch_paths=None, is_background=False):
     if watch_paths:
         observer = Observer()
         for path in watch_paths:
-            print("Watch for changes under %s" % path)
+            if not is_background:
+                print("Watching for changes under %s" % path)
             observer.schedule(handler, path=path, recursive=True)
         observer.start()
     while 1:

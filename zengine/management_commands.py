@@ -168,12 +168,10 @@ class RunWorker(Command):
     CMD_NAME = 'runworker'
     HELP = 'Run the workflow worker'
     PARAMS = [
-        # {'name': 'addr', 'default': '127.0.0.1', 'help': 'Listening address. Defaults to 127.0.0.1'},
-        # {'name': 'port', 'default': '9001', 'help': 'Listening port. Defaults to 9001'},
         {'name': 'workers', 'default': '1', 'help': 'Number of worker process'},
         {'name': 'autoreload', 'action': 'store_true', 'help': 'Autoreload on changes'},
         {'name': 'paths', 'default': '.',
-         'help': 'Directory path(s) for autoreload changes. (comma separated)'},
+         'help': 'Directory path(s) for watching changes for auto-reloading. (whitespace separated)'},
 
     ]
 
@@ -189,7 +187,7 @@ class RunWorker(Command):
 
         if worker_count > 1 or self.manager.args.autoreload:
             run_workers(worker_count,
-                        self.manager.args.paths.split(','),
+                        self.manager.args.paths.split(' '),
                         self.manager.args.daemonize)
         else:
             worker = Worker()
