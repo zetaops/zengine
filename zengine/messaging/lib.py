@@ -135,6 +135,12 @@ class BaseUser(object):
                                                                                self.prv_exchange))
         mq_channel.queue_bind(exchange=self.prv_exchange, queue=sess_id)
 
+    def unbind_private_channel(self, sess_id):
+        mq_channel = self._connect_mq()
+        log.debug("Unbinding existing queue from private exchange: Q:%s --> E:%s" % (sess_id,
+                                                                               self.prv_exchange))
+        mq_channel.queue_unbind(queue=sess_id, exchange=self.prv_exchange)
+
     def send_notification(self, title, message, typ=1, url=None):
         """
         sends message to users private mq exchange

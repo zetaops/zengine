@@ -9,7 +9,8 @@ import falcon
 
 from pyoko import fields
 from zengine.forms.json_form import JsonForm
-from zengine.lib.cache import UserSessionID, KeepAlive
+from zengine.lib.cache import UserSessionID, KeepAlive, Session
+from zengine.log import log
 from zengine.messaging import Notify
 from zengine.views.base import SimpleView
 
@@ -59,9 +60,18 @@ class Login(SimpleView):
         self.current.output['cmd'] = 'upgrade'
         self.current.output['user_id'] = self.current.user_id
         self.current.user.is_online(True)
+        self.terminate_existing_login()
         self.current.user.bind_private_channel(self.current.session.sess_id)
         user_sess = UserSessionID(self.current.user_id)
         user_sess.set(self.current.session.sess_id)
+
+    def terminate_existing_login(self):
+        existing_sess_id = UserSessionID(self.current.user_id).get()
+        if self.current.session.sess_id == existing_sess_id:
+            log.info("TERMINATE: this should not happen!")
+        if existing_sess_id:
+            self.current.user.unbind_private_channel(existing_sess_id)
+            Session(existing_sess_id).delete()
 
     def do_view(self):
         """
