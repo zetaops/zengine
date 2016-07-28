@@ -52,7 +52,7 @@ NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 
 
 class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 5  # sec
+    REPLY_TIMEOUT = 105  # sec
 
     def __init__(self):
         self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
@@ -201,15 +201,16 @@ class QueueManager(object):
             sess_id:
             ws:
         """
-        log.debug("GET SESSUSERS: %s" % sys.sessid_to_userid)
-        try:
-            user_id = sys.sessid_to_userid[sess_id]
-            self.websockets[user_id] = ws
-        except KeyError:
-            self.ask_for_user_id(sess_id)
-            self.websockets[sess_id] = ws
-            user_id = sess_id
-        self.create_out_channel(sess_id, user_id)
+        # log.debug("GET SESSUSERS: %s" % sys.sessid_to_userid)
+        # try:
+        #     user_id = sys.sessid_to_userid[sess_id]
+        #     self.websockets[user_id] = ws
+        # except KeyError:
+        #     self.ask_for_user_id(sess_id)
+        #     self.websockets[sess_id] = ws
+        #     user_id = sess_id
+        self.websockets[sess_id] = ws
+        self.create_out_channel(sess_id)
 
     def inform_disconnection(self, sess_id):
         self.in_channel.basic_publish(exchange='input_exc',
@@ -220,25 +221,23 @@ class QueueManager(object):
                                           _zops_remote_ip='')))
 
     def unregister_websocket(self, sess_id):
-        user_id = sys.sessid_to_userid.get(sess_id, None)
+        # user_id = sys.sessid_to_userid.get(sess_id, None)
         try:
             self.inform_disconnection(sess_id)
-            del self.websockets[user_id]
+            del self.websockets[sess_id]
         except KeyError:
-            log.exception("Non-existent websocket for %s" % user_id)
+            log.exception("Non-existent websocket for %s" % sess_id)
         if sess_id in self.out_channels:
             try:
                 self.out_channels[sess_id].close()
             except ChannelClosed:
                 log.exception("Pika client (out) channel already closed")
 
-    def create_out_channel(self, sess_id, user_id):
+    def create_out_channel(self, sess_id):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
-                channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=user_id)
-                log.debug("BIND QUEUE TO WS Q.%s on Ch.%s WS.%s" % (sess_id,
-                                                                    channel.consumer_tags[0],
-                                                                    user_id))
+                channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=sess_id)
+                log.debug("BIND QUEUE TO WS Q.%s" % sess_id)
             self.out_channels[sess_id] = channel
 
             channel.queue_declare(callback=_on_output_queue_decleration,
@@ -263,17 +262,17 @@ class QueueManager(object):
                                       body=json_encode(message))
 
     def on_message(self, channel, method, header, body):
-        user_id = method.consumer_tag
-        log.debug("WS RPLY for %s: %s" % (user_id, body))
-        if user_id in self.websockets:
+        sess_id = method.consumer_tag
+        log.debug("WS RPLY for %s: %s" % (sess_id, body))
+        if sess_id in self.websockets:
             log.info("write msg to client")
-            self.websockets[user_id].write_message(body)
+            self.websockets[sess_id].write_message(body)
             # channel.basic_ack(delivery_tag=method.delivery_tag)
-        elif 'sessid_to_userid' in body:
-            reply = json_decode(body)
-            sys.sessid_to_userid[reply['sess_id']] = reply['user_id']
-            self.websockets[reply['user_id']] = self.websockets[reply['sess_id']]
-            del self.websockets[reply['sess_id']]
+        # elif 'sessid_to_userid' in body:
+        #     reply = json_decode(body)
+        #     sys.sessid_to_userid[reply['sess_id']] = reply['user_id']
+        #     self.websockets[reply['user_id']] = self.websockets[reply['sess_id']]
+        #     del self.websockets[reply['sess_id']]
         channel.basic_ack(delivery_tag=method.delivery_tag)
 
             # else:

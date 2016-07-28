@@ -5,6 +5,8 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from time import sleep
+
 import falcon
 
 from pyoko import fields
@@ -59,19 +61,22 @@ class Login(SimpleView):
         """ open websocket connection """
         self.current.output['cmd'] = 'upgrade'
         self.current.output['user_id'] = self.current.user_id
-        self.current.user.is_online(True)
         self.terminate_existing_login()
+        self.current.user.is_online(True)
         self.current.user.bind_private_channel(self.current.session.sess_id)
         user_sess = UserSessionID(self.current.user_id)
         user_sess.set(self.current.session.sess_id)
 
     def terminate_existing_login(self):
         existing_sess_id = UserSessionID(self.current.user_id).get()
-        if self.current.session.sess_id == existing_sess_id:
-            log.info("TERMINATE: this should not happen!")
-        if existing_sess_id:
-            self.current.user.unbind_private_channel(existing_sess_id)
-            Session(existing_sess_id).delete()
+        if existing_sess_id and self.current.session.sess_id != existing_sess_id:
+            if Session(existing_sess_id).delete():
+                log.info("EXISTING LOGIN DEDECTED, WE SHOULD LOGUT IT FIRST")
+                self.current.user.send_client_cmd({'error': "Login required", "code": 401},
+                                                  via_queue=existing_sess_id)
+                self.current.user.unbind_private_channel(existing_sess_id)
+
+
 
     def do_view(self):
         """

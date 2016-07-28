@@ -52,6 +52,14 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
         'avatar_url': string,
         'is_online': boolean,
     }
+
+    CHANNEL_SUBSCRIPTION = {
+        'cmd': 'channel_subscription',
+        'channel_key': key,
+        'channel_name': string,
+        'avatar_url': string,
+        'is_online': boolean,
+    }
 """
 
 
@@ -282,13 +290,7 @@ def list_channels(current):
         'channels': []}
     for sbs in current.user.subscriptions.objects.filter(is_visible=True):
         try:
-            current.output['channels'].append({'name': sbs.name,
-                                               'key': sbs.channel.key,
-                                               'type': sbs.channel.typ,
-                                               'read_only': sbs.read_only,
-                                               'is_online': sbs.is_online(),
-                                               'actions': sbs.get_actions(),
-                                               'unread': sbs.unread_count()})
+            current.output['channels'].append(sbs.get_channel_listing())
         except ObjectDoesNotExist:
             # FIXME: This should not happen,
             log.exception("UNPAIRED DIRECT EXCHANGES!!!!")
@@ -690,16 +692,11 @@ def delete_channel(current):
                 'code': 200
                 }
     """
-    ch = Channel(current).objects.get(owner_id=current.user_id,
-                                      key=current.input['channel_key'])
-    for sbs in ch.subscriber_set.objects.filter():
-        sbs.delete()
-    for msg in ch.message_set.objects.filter():
-        msg.delete()
-    try:
-        ch.delete()
-    except:
-        log.exception("fix this!!!!!")
+    ch_key = current.input['channel_key']
+    ch = Channel(current).objects.get(owner_id=current.user_id, key=ch_key)
+    ch.delete()
+    Subscriber.objects.filter(channel_id=ch_key).delete()
+    Message.objects.filter(channel_id=ch_key).delete()
     current.output = {'status': 'Deleted', 'code': 200}
 
 

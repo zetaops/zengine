@@ -22,9 +22,6 @@ from zengine.lib.utils import to_safe_str
 
 UserModel = get_object_from_path(settings.USER_MODEL)
 
-
-
-
 CHANNEL_TYPES = (
     # users private message hub
     (5, "Private"),
@@ -142,6 +139,13 @@ class Channel(Model):
                                     exchange_type='fanout',
                                     durable=True)
 
+    def delete_exchange(self):
+        """
+        Deletes MQ exchange for this channel
+        Needs to be defined only once.
+        """
+        mq_channel = self._connect_mq()
+        mq_channel.exchange_delete(exchange=self.code_name)
 
     def pre_creation(self):
         if not self.code_name:
@@ -157,6 +161,9 @@ class Channel(Model):
         else:
             self.key = self.code_name
 
+    def post_delete(self):
+        self.delete_exchange()
+
     def post_save(self):
         self.create_exchange()
         # self.subscribe_owner()
@@ -166,6 +173,7 @@ class Subscriber(Model):
     """
     Permission model
     """
+
     class Meta:
         verbose_name = "Abonelik"
         verbose_name_plural = "Abonelikler"
@@ -195,12 +203,24 @@ class Subscriber(Model):
     def __unicode__(self):
         return "%s subscription of %s" % (self.name, self.user)
 
-
     @classmethod
     def _connect_mq(cls):
         if cls.mq_connection is None or cls.mq_connection.is_closed:
             cls.mq_connection, cls.mq_channel = get_mq_connection()
         return cls.mq_channel
+
+    def get_channel_listing(self):
+        """
+        serialized form for channel listing
+
+        """
+        return {'name': self.name,
+                'key': self.channel.key,
+                'type': self.channel.typ,
+                'read_only': self.read_only,
+                'is_online': self.is_online(),
+                'actions': self.get_actions(),
+                'unread': self.unread_count()}
 
     def get_actions(self):
         actions = [
@@ -263,11 +283,19 @@ class Subscriber(Model):
             channel = self._connect_mq()
             channel.exchange_bind(source=self.channel.code_name, destination=self.user.prv_exchange)
 
+    def inform_subscriber(self):
+        if self.channel.typ != 5:
+            self.user.send_client_cmd(self.get_channel_listing(), 'channel_subscription')
+
     def post_creation(self):
         self.create_exchange()
         self.bind_to_channel()
+        self.inform_subscriber()
 
     def pre_creation(self):
+        if (self.channel.key == self.user.prv_exchange and
+                Subscriber.objects.filter(channel_id=self.user.prv_exchange).count()):
+            raise Exception("Duplicate private channel subscription for %s" % self.user)
         if not self.name:
             self.name = self.channel.name
 
@@ -300,7 +328,6 @@ class Message(Model):
             - User object's **set_message()** method. (which also uses channel.add_message)
     """
 
-
     class Meta:
         verbose_name = "Mesaj"
         verbose_name_plural = "Mesajlar"
@@ -322,7 +349,6 @@ class Message(Model):
             actions.append(('Favorilerden çıkar', '_zops_remove_from_favorites'))
         else:
             actions.append(('Favorilere ekle', '_zops_favorite_message'))
-
 
         if user:
             if FlaggedMessage.objects.filter(user=user, message=self).count():
