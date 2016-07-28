@@ -33,6 +33,7 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
         'sender_name': string,
         'sender_key': key,
         'type': int,
+        'url': string,
         'avatar_url': string,
         'key': key,
         'cmd': 'message',
@@ -323,6 +324,8 @@ def unread_count(current):
             else:
                 unread_msg += sbs.unread_count()
         except ObjectDoesNotExist:
+            # FIXME: This should not happen,
+            log.exception("MULTIPLE PRV EXCHANGES!!!!")
             sbs.delete()
     current.output = {
         'status': 'OK',

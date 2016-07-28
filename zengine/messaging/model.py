@@ -225,14 +225,14 @@ class Subscriber(Model):
     def unread_count(self):
         if self.last_seen_msg_time:
             return self.channel.message_set.objects.filter(
-                timestamp__gt=self.last_seen_msg_time).count()
+                updated_at__gt=self.last_seen_msg_time).count()
         else:
             return self.channel.message_set.objects.filter().count()
 
     def get_unread_messages(self, amount):
         if self.last_seen_msg_time:
             return self.channel.message_set.objects.filter(
-                timestamp__gt=self.last_seen_msg_time)[:amount]
+                updated_at__gt=self.last_seen_msg_time)[:amount]
         else:
             return self.channel.message_set.objects.filter()[:amount]
 
@@ -357,6 +357,7 @@ class Message(Model):
             'is_update': hasattr(self, 'unsaved'),
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
+            'url': self.url,
             'sender_name': self.sender.full_name,
             'sender_key': self.sender.key,
             'channel_key': self.channel.key,
