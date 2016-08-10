@@ -103,7 +103,6 @@ class Current(object):
     def set_message(self, title, msg, typ, url=None):
         """
         Sets user notification message.
-        See :attr:`~zengine.notifications.Notify` for details.
 
         Args:
             title: Msg. title
