@@ -214,9 +214,13 @@ def channel_history(current):
         'messages': []
     }
 
-    for msg in Message.objects.filter(channel_id=current.input['channel_key'],
-                                      updated_at__lt=current.input['timestamp'])[:20]:
+    for msg in list(Message.objects.filter(channel_id=current.input['channel_key'],
+                                      updated_at__lte=current.input['timestamp'])[:20]):
         current.output['messages'].insert(0, msg.serialize(current.user))
+    # FIXME: looks like  pyoko's __lt is broken
+    # TODO: convert lte to lt and remove this block, when __lt filter fixed
+    if current.output['messages']:
+        current.output['messages'].pop(-1)
 
 
 def report_last_seen_message(current):
@@ -693,6 +697,7 @@ def delete_channel(current):
                 }
     """
     ch_key = current.input['channel_key']
+
     ch = Channel(current).objects.get(owner_id=current.user_id, key=ch_key)
     ch.delete()
     Subscriber.objects.filter(channel_id=ch_key).delete()
@@ -807,10 +812,10 @@ def edit_message(current):
 
     """
     current.output = {'status': 'OK', 'code': 200}
-    msg = current.input['message']
+    in_msg = current.input['message']
     try:
-        msg = Message(current).objects.get(sender_id=current.user_id, key=msg['key'])
-        msg.body = msg['body']
+        msg = Message(current).objects.get(sender_id=current.user_id, key=in_msg['key'])
+        msg.body = in_msg['body']
         msg.save()
     except ObjectDoesNotExist:
         raise HTTPError(404, "")

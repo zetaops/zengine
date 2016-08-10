@@ -10,6 +10,7 @@ import json
 from uuid import uuid4
 
 import pika
+import six
 
 from pyoko import Model, field, ListNode
 from pyoko.conf import settings
@@ -64,7 +65,7 @@ class Channel(Model):
     #
     # class Managers(ListNode):
     #     user = UserModel()
-
+    @property
     def is_private(self):
         return self.typ == 5
 
@@ -239,8 +240,11 @@ class Subscriber(Model):
     def is_online(self):
         # TODO: Cache this method
         if self.channel.typ == 10:
-            return self.channel.subscriber_set.objects.exclude(
-                user=self.user).get().user.is_online()
+            try:
+                return self.channel.subscriber_set.objects.exclude(
+                    user=self.user).get().user.is_online()
+            except:
+                return False
 
     def unread_count(self):
         if self.last_seen_msg_time:
@@ -380,7 +384,7 @@ class Message(Model):
             'type': self.typ,
             'updated_at': self.updated_at,
             'timestamp': self.updated_at,
-            'is_update': hasattr(self, 'unsaved'),
+            'is_update': not hasattr(self, 'unsaved'),
             'attachments': [attachment.serialize() for attachment in self.attachment_set],
             'title': self.msg_title,
             'url': self.url,
@@ -393,7 +397,7 @@ class Message(Model):
         }
 
     def __unicode__(self):
-        content = self.msg_title or self.body
+        content = six.text_type(self.msg_title or self.body)
         return "%s%s" % (content[:30], '...' if len(content) > 30 else '')
 
     def _republish(self):
