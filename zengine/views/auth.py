@@ -10,6 +10,7 @@ from time import sleep
 import falcon
 
 from pyoko import fields
+from pyoko.exceptions import ObjectDoesNotExist
 from zengine.forms.json_form import JsonForm
 from zengine.lib.cache import UserSessionID, KeepAlive, Session
 from zengine.log import log
@@ -101,9 +102,11 @@ class Login(SimpleView):
                     # notify.cache_to_queue()
                     # if old_sess_id:
                     #     notify.old_to_new_queue(old_sess_id)
+            except ObjectDoesNotExist:
+                self.current.log.exception("Wrong username or another error occurred")
+                pass
             except:
                 raise
-                self.current.log.exception("Wrong username or another error occurred")
             if self.current.output.get('cmd') != 'upgrade':
                 self.current.output['status_code'] = 403
             else:
