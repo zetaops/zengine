@@ -230,3 +230,18 @@ class PrepareMQ(Command):
         for ch in Channel.objects.filter():
             print("(re)creation exchange: %s" % ch.code_name)
             ch.create_exchange()
+
+
+class LoadDiagrams(Command):
+    """
+    Loads wf diagrams from disk to DB
+    """
+    CMD_NAME = 'load_diagrams'
+    HELP = 'Loads workflow diagrams from diagrams folder to DB'
+
+    def run(self):
+        self.get_workflows()
+
+
+    def get_workflows(self):
+        pass
