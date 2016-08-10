@@ -24,7 +24,6 @@ from zengine.config import settings
 from zengine.lib.cache import WFCache
 from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import log
-from zengine.messaging import Notify
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
@@ -113,7 +112,10 @@ class Current(object):
         Returns:
             Message ID.
         """
-        return self.msg_cache.set_message(title=title, msg=msg, typ=typ, url=url)
+        return self.user.send_notification(title=title,
+                                           message=msg,
+                                           typ=typ,
+                                           url=url)
 
     @lazy_property
     def is_auth(self):

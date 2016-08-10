@@ -14,7 +14,6 @@ from pyoko.exceptions import ObjectDoesNotExist
 from zengine.forms.json_form import JsonForm
 from zengine.lib.cache import UserSessionID, KeepAlive, Session
 from zengine.log import log
-from zengine.messaging import Notify
 from zengine.views.base import SimpleView
 
 
@@ -96,12 +95,6 @@ class Login(SimpleView):
                 self.current.task_data['login_successful'] = auth_result
                 if auth_result:
                     self._do_upgrade()
-
-                    # old_sess_id = user_sess.get()
-                    # notify = Notify(self.current.user_id)
-                    # notify.cache_to_queue()
-                    # if old_sess_id:
-                    #     notify.old_to_new_queue(old_sess_id)
             except ObjectDoesNotExist:
                 self.current.log.exception("Wrong username or another error occurred")
                 pass
