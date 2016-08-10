@@ -55,8 +55,15 @@ class BlockingConnectionForHTTP(object):
     REPLY_TIMEOUT = 105  # sec
 
     def __init__(self):
-        self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-        self.input_channel = self.connection.channel()
+        try:
+            self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+            self.input_channel = self.connection.channel()
+        except ConnectionClosed:
+            if os.environ.get('READTHEDOCS') == 'True':
+                pass
+            else:
+                raise
+
 
     def create_channel(self):
         try:
