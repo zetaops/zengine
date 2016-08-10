@@ -33,6 +33,9 @@ PERMISSION_MODEL = 'zengine.models.Permission'
 #: User model
 USER_MODEL = 'zengine.models.User'
 
+#: AbstractRole model
+ABSTRACT_ROLE_MODEL = 'zengine.models.AbstractRole'
+
 #: Role model
 ROLE_MODEL = 'zengine.models.Role'
 

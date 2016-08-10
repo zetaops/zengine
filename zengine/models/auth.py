@@ -9,6 +9,7 @@
 
 from pyoko import Model, field, ListNode, LinkProxy
 from passlib.hash import pbkdf2_sha512
+from zengine.lib.cache import Cache
 from zengine.messaging.lib import BaseUser
 
 
@@ -101,10 +102,89 @@ class User(Model, BaseUser):
         users_primary_role = self.role_set[0].role
         return users_primary_role.get_permissions()
 
+
+class PermissionCache(Cache):
+    """PermissionCache sınıfı Kullanıcıya Permission nesnelerinin
+    kontrolünü hızlandırmak için yetkileri cache bellekte saklamak ve
+    gerektiğinde okumak için oluşturulmuştur.
+    """
+    PREFIX = 'PRM'
+
+    def __init__(self, role_id):
+        super(PermissionCache, self).__init__(role_id)
+
+
+class AbstractRole(Model):
+    """
+    AbstractRoles are stand as a foundation for actual roles
+    """
+    name = field.String("Name", index=True)
+    read_only = field.Boolean("Archived")
+
+    class Meta:
+        verbose_name = "Abstract Role"
+        verbose_name_plural = "Abstract Roles"
+        search_fields = ['name']
+
+    def __unicode__(self):
+        return "%s" % self.name
+
+    def get_permissions(self):
+        """
+        Soyut role ait Permission nesnelerini bulur ve code değerlerini
+        döner.
+
+        Returns:
+            list: Permission code değerleri
+
+        """
+        return [p.permission.code for p in self.Permissions if p.permission.code]
+
+    def add_permission(self, perm):
+        """
+        Soyut Role Permission nesnesi tanımlamayı sağlar.
+
+        Args:
+            perm (object):
+
+        """
+        self.Permissions(permission=perm)
+        PermissionCache.flush()
+        self.save()
+
+    def add_permission_by_name(self, code, save=False):
+        """
+        Soyut role Permission eklemek veya eklenebilecek Permission
+        nesnelerini verilen ``code`` parametresine göre listelemek olmak
+        üzere iki şekilde kullanılır.
+
+        Args:
+            code (str): Permission nesnelerini filtre etmekte kullanılır
+            save (bool): True ise Permission ekler, False ise Permission
+                listesi döner.
+
+        Returns:
+            list: ``save`` False ise Permission listesi döner.
+
+        """
+        if not save:
+            return ["%s | %s" % (p.name, p.code) for p in
+                    Permission.objects.filter(code__contains=code)]
+        PermissionCache.flush()
+        for p in Permission.objects.filter(code__contains=code):
+            if p not in self.Permissions:
+                self.Permissions(permission=p)
+        if p:
+            self.save()
+
+    class Permissions(ListNode):
+        permission = Permission()
+
 class Role(Model):
     """
     This model binds group of Permissions with a certain User.
     """
+    arole = AbstractRole()
     user = User()
 
     class Meta:
