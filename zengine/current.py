@@ -1,5 +1,8 @@
 # -*-  coding: utf-8 -*-
 """
+This module holds Current and WFCurrent classes.
+Current is carrier object between client request and view methods.
+ WFCurrent extends Current and adds properties specific to workflows tasks.
 """
 
 # Copyright (C) 2015 ZetaOps Inc.
@@ -13,7 +16,6 @@ from __future__ import print_function, absolute_import, division
 from uuid import uuid4
 
 import lazy_object_proxy
-from SpiffWorkflow.bpmn.storage.Packager import Packager
 from SpiffWorkflow.specs import WorkflowSpec
 from beaker.session import Session
 
@@ -22,7 +24,6 @@ from zengine import signals
 from zengine.client_queue import ClientQueue
 from zengine.config import settings
 from zengine.lib.cache import WFCache
-from zengine.lib.camunda_parser import CamundaBMPNParser
 from zengine.log import log
 
 DEFAULT_LANE_CHANGE_MSG = {
@@ -70,15 +71,6 @@ class Current(object):
         self.role = lazy_object_proxy.Proxy(lambda: self.auth.get_role())
         log.debug("\n\nINPUT DATA: %s" % self.input)
         self.permissions = []
-
-    @lazy_property
-    def msg_cache(self):
-        """
-        A lazy proxy for Notify object.
-
-        Returns: Notify
-        """
-        return Notify(self.user_id)
 
     @lazy_property
     def client_queue(self):
@@ -199,6 +191,12 @@ class WFCurrent(Current):
         self.set_client_cmds()
 
     def get_wf_link(self):
+        """
+        Create a "in app" anchor for accessing this workflow instance.
+
+        Returns: String. Anchor link.
+
+        """
         return "#cwf/%s/%s" % (self.workflow_name, self.token)
 
     def sendoff_current_user(self):
@@ -232,7 +230,6 @@ class WFCurrent(Current):
                 self.lane_owners = lane_data['owners']
             self.lane_auto_sendoff = 'False' not in lane_data.get('auto_sendoff', '')
             self.lane_auto_invite = 'False' not in lane_data.get('auto_invite', '')
-
 
     def _update_task(self, task):
         """
@@ -281,4 +278,3 @@ class WFCurrent(Current):
         except:
             if 'object_id' in self.input:
                 self.task_data['object_id'] = self.input.get('object_id')
-
