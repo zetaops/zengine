@@ -11,11 +11,11 @@ import os, sys
 import traceback
 from uuid import uuid4
 from tornado import websocket, web, ioloop
-from tornado.escape import json_decode, json_encode
+from tornado.escape import json_decode
 from tornado.httpclient import HTTPError
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
-from ws_to_queue import QueueManager, BlockingConnectionForHTTP, log
+from ws_to_queue import QueueManager, BlockingConnectionForHTTP, log, settings
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
@@ -69,13 +69,40 @@ class SocketHandler(websocket.WebSocketHandler):
         self.application.pc.unregister_websocket(self._get_sess_id())
 
 
+# noinspection PyAbstractClass
 class HttpHandler(web.RequestHandler):
     """
     login handler class
     """
 
+    def _handle_headers(self):
+        """
+        Do response processing
+        """
+        origin = self.request.headers.get('Origin')
+        if not settings.DEBUG:
+            if origin in settings.ALLOWED_ORIGINS or not origin:
+                self.set_header('Access-Control-Allow-Origin', origin)
+            else:
+                log.debug("CORS ERROR: %s not allowed, allowed hosts: %s" % (origin,
+                                                                             settings.ALLOWED_ORIGINS))
+                raise HTTPError(403, "Origin not in ALLOWED_ORIGINS: %s" % origin)
+        else:
+            self.set_header('Access-Control-Allow-Origin', origin or '*')
+        self.set_header('Access-Control-Allow-Credentials', "true")
+        self.set_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.set_header('Access-Control-Allow-Methods', 'OPTIONS')
+        self.set_header('Content-Type', 'application/json')
+
     @web.asynchronous
     def get(self, view_name):
+        """
+        only used to display login form
+
+        Args:
+            view_name: should be "login"
+
+        """
         self.post(view_name)
 
     @web.asynchronous
@@ -83,17 +110,17 @@ class HttpHandler(web.RequestHandler):
         """
         login handler
         """
+        sess_id = None
+        input_data = {}
         try:
-            if 'Origin' in self.request.headers:
-                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
-                self.set_header('Access-Control-Allow-Credentials', 'true')
-            self.set_header('Content-Type', 'application/json')
+            self._handle_headers()
+
+            # handle input
             input_data = json_decode(self.request.body) if self.request.body else {}
             input_data['path'] = view_name
 
-
-            if not self.get_cookie(
-                    COOKIE_NAME) or view_name == 'login' and 'username' in input_data:
+            # set or get session cookie
+            if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
                 sess_id = uuid4().hex
                 self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
             else:
@@ -105,10 +132,7 @@ class HttpHandler(web.RequestHandler):
 
             output = blocking_connection.send_message(h_sess_id, input_data)
             out_obj = json_decode(output)
-            # if out_obj.get('cmd') == 'upgrade':
-            #     sess_id = uuid4().hex
-            #     self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
-            # allow overriding of headers
+
             if 'http_headers' in out_obj:
                 for k, v in out_obj['http_headers']:
                     self.set_header(k, v)
