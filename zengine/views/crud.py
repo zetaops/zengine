@@ -547,11 +547,20 @@ class CrudView(BaseView):
         """
 
         actions = []
-        if self.Meta.object_actions:
-            for perm, action in self.Meta.object_actions.items():
-                permission = "%s.%s" % (self.object.__class__.__name__, perm)
-                if self.current.has_permission(permission):
-                    actions.append(action)
+        # If override actions for the model is defined, then only show those actions
+        override_actions = getattr(self.object.Meta, 'crud_override_actions', None)
+        if override_actions is not None:
+            actions = override_actions
+        else:
+            # If override actions is not defined, show the actions defined on the view
+            if self.Meta.object_actions:
+                for perm, action in self.Meta.object_actions.items():
+                    permission = "%s.%s" % (self.object.__class__.__name__, perm)
+                    if self.current.has_permission(permission):
+                        actions.append(action)
+        # If there are extra actions for the model, add them
+        extra_actions = getattr(self.object.Meta, 'crud_extra_actions', [])
+        actions.extend(extra_actions)
         result = {'key': obj.key, 'fields': [], 'actions': actions}.copy()
         for method in self.FILTER_METHODS:
             method(self, obj, result)
