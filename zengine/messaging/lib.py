@@ -73,7 +73,7 @@ class BaseUser(object):
             for sbs in self.subscriptions.objects.filter():
                 if sbs.channel.typ == 10:
                     other_party = self.get_prv_exchange(
-                        sbs.channel.code_name.replace('self.key', '').replace('_', ''))
+                        sbs.channel.code_name.replace(self.key, '').replace('_', ''))
                     mq_channel.basic_publish(exchange=other_party,
                                              routing_key='',
                                              body=json.dumps({
