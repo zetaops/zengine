@@ -51,80 +51,6 @@ NON_BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 )
 
 
-class BlockingConnectionForHTTP(object):
-    REPLY_TIMEOUT = 105  # sec
-
-    def __init__(self):
-        try:
-            self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-            self.input_channel = self.connection.channel()
-        except ConnectionClosed:
-            if os.environ.get('READTHEDOCS') == 'True':
-                pass
-            else:
-                raise
-
-
-    def create_channel(self):
-        try:
-            return self.connection.channel()
-        except (ConnectionClosed, AttributeError, KeyError):
-            self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
-            return self.connection.channel()
-
-    def _send_message(self, sess_id, input_data):
-        log.info("sending data for %s" % sess_id)
-        self.input_channel.basic_publish(exchange='input_exc',
-                                         routing_key=sess_id,
-                                         body=json_encode(input_data))
-
-    def _store_user_id(self, sess_id, body):
-        log.debug("SET SESSUSERS: %s" % sys.sessid_to_userid)
-        sys.sessid_to_userid[sess_id[5:]] = json_decode(body)['user_id'].lower()
-
-    def _wait_for_reply(self, sess_id, input_data):
-        channel = self.create_channel()
-        channel.queue_declare(queue=sess_id,
-                              arguments={'x-expires': 4000}
-                              # auto_delete=True
-                              )
-        timeout_start = time.time()
-        while 1:
-            method_frame, header_frame, body = channel.basic_get(sess_id)
-            log.debug("\n%s\n%s\n%s\n%s" % (sess_id, method_frame, header_frame, body))
-            if method_frame:
-                reply = json_decode(body)
-                if 'callbackID' in reply and reply['callbackID'] == input_data['callbackID']:
-                    channel.basic_ack(method_frame.delivery_tag)
-                    channel.close()
-                    log.info('Returned view message for %s: %s' % (sess_id, body))
-                    if 'upgrade' in body:
-                        self._store_user_id(sess_id, body)
-                    return body
-                else:
-                    if time.time() - json_decode(body)['reply_timestamp'] > self.REPLY_TIMEOUT:
-                        channel.basic_ack(method_frame.delivery_tag)
-                    continue
-            if time.time() - timeout_start > self.REPLY_TIMEOUT:
-                break
-            else:
-                time.sleep(1)
-        log.info('No message returned for %s' % sess_id)
-        channel.close()
-
-    def send_message(self, sess_id, input_data):
-        input_data['callbackID'] = uuid4().hex
-        input_data['timestamp'] = time.time()
-        try:
-            self._send_message(sess_id, input_data)
-        except (ConnectionClosed, ChannelClosed, AttributeError):
-            self.input_channel = self.create_channel()
-            self._send_message(sess_id, input_data)
-
-        return self._wait_for_reply(sess_id, input_data) or json.dumps(
-            {'code': 503, 'error': 'Retry'})
-
-
 class QueueManager(object):
     """
     Async RabbitMQ & Tornado websocket connector
@@ -194,11 +120,7 @@ class QueueManager(object):
                                    exchange='input_exc',
                                    queue=self.INPUT_QUEUE_NAME,
                                    routing_key="#")
-    def ask_for_user_id(self, sess_id):
-        log.debug(sess_id)
-        # TODO: add remote ip
-        self.publish_incoming_message(dict(_zops_remote_ip='',
-                                           data={'view': 'sessid_to_userid'}), sess_id)
+
 
 
     def register_websocket(self, sess_id, ws):
@@ -208,14 +130,6 @@ class QueueManager(object):
             sess_id:
             ws:
         """
-        # log.debug("GET SESSUSERS: %s" % sys.sessid_to_userid)
-        # try:
-        #     user_id = sys.sessid_to_userid[sess_id]
-        #     self.websockets[user_id] = ws
-        # except KeyError:
-        #     self.ask_for_user_id(sess_id)
-        #     self.websockets[sess_id] = ws
-        #     user_id = sess_id
         self.websockets[sess_id] = ws
         self.create_out_channel(sess_id)
 
@@ -243,8 +157,9 @@ class QueueManager(object):
     def create_out_channel(self, sess_id):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
+                # differentiate and identify incoming message with registered consumer
                 channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=sess_id)
-                log.debug("BIND QUEUE TO WS Q.%s" % sess_id)
+                log.debug("BINDED QUEUE TO WS Q.%s" % sess_id)
             self.out_channels[sess_id] = channel
 
             channel.queue_declare(callback=_on_output_queue_decleration,
@@ -274,13 +189,4 @@ class QueueManager(object):
         if sess_id in self.websockets:
             log.info("write msg to client")
             self.websockets[sess_id].write_message(body)
-            # channel.basic_ack(delivery_tag=method.delivery_tag)
-        # elif 'sessid_to_userid' in body:
-        #     reply = json_decode(body)
-        #     sys.sessid_to_userid[reply['sess_id']] = reply['user_id']
-        #     self.websockets[reply['user_id']] = self.websockets[reply['sess_id']]
-        #     del self.websockets[reply['sess_id']]
         channel.basic_ack(delivery_tag=method.delivery_tag)
-
-            # else:
-            #     channel.basic_reject(delivery_tag=method.delivery_tag)

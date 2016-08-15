@@ -63,6 +63,9 @@ class BaseUser(object):
                                               salt_size=10)
 
     def is_online(self, status=None):
+        if not self.key:
+            # FIXME: This should not happen!
+            return
         if status is None:
             return ConnectionStatus(self.key).get() or False
         else:

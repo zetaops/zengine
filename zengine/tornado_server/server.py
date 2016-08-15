@@ -11,15 +11,15 @@ import os, sys
 import traceback
 from uuid import uuid4
 from tornado import websocket, web, ioloop
-from tornado.escape import json_decode
+from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
-from ws_to_queue import QueueManager, BlockingConnectionForHTTP, log, settings
+from ws_to_queue import QueueManager, log, settings
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
-blocking_connection = BlockingConnectionForHTTP()
+# blocking_connection = BlockingConnectionForHTTP()
 
 
 class SocketHandler(websocket.WebSocketHandler):
@@ -112,48 +112,59 @@ class HttpHandler(web.RequestHandler):
         """
         sess_id = None
         input_data = {}
-        try:
-            self._handle_headers()
+        # try:
+        self._handle_headers()
 
-            # handle input
-            input_data = json_decode(self.request.body) if self.request.body else {}
-            input_data['path'] = view_name
+        # handle input
+        input_data = json_decode(self.request.body) if self.request.body else {}
+        input_data['path'] = view_name
 
-            # set or get session cookie
-            if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
-                sess_id = uuid4().hex
-                self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
-            else:
-                sess_id = self.get_cookie(COOKIE_NAME)
-            h_sess_id = "HTTP_%s" % sess_id
-            input_data = {'data': input_data, '_zops_remote_ip': self.request.remote_ip}
-            log.info("New Request for %s: %s" % (sess_id, input_data))
+        # set or get session cookie
+        if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
+            sess_id = uuid4().hex
+            self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
+        else:
+            sess_id = self.get_cookie(COOKIE_NAME)
+        # h_sess_id = "HTTP_%s" % sess_id
+        input_data = {'data': input_data,
+                      '_zops_remote_ip': self.request.remote_ip}
+        log.info("New Request for %s: %s" % (sess_id, input_data))
 
+        self.application.pc.register_websocket(sess_id, self)
+        self.application.pc.redirect_incoming_message(sess_id,
+                                                      json_encode(input_data),
+                                                      self.request)
 
-            output = blocking_connection.send_message(h_sess_id, input_data)
-            out_obj = json_decode(output)
-
-            if 'http_headers' in out_obj:
-                for k, v in out_obj['http_headers']:
-                    self.set_header(k, v)
-            if 'response' in out_obj:
-                output = out_obj['response']
-
-            self.set_status(int(out_obj.get('code', 200)))
-        except HTTPError as e:
-            log.exception("HTTPError for %s: %s" % (sess_id, input_data))
-            output = {'cmd': 'error', 'error': e.message, "code": e.code}
-            self.set_status(int(e.code))
-        except:
-            log.exception("HTTPError for %s: %s" % (sess_id, input_data))
-            if DEBUG:
-                self.set_status(500)
-                output = json.dumps({'error': traceback.format_exc()})
-            else:
-                output = {'cmd': 'error', 'error': "Internal Error", "code": 500}
+    def write_message(self, output):
+        log.debug("WRITE MESSAGE To CLIENT: %s" % output)
         self.write(output)
         self.finish()
         self.flush()
+
+        #     # output = blocking_connection.send_message(h_sess_id, input_data)
+        #     out_obj = json_decode(output)
+        #
+        #     if 'http_headers' in out_obj:
+        #         for k, v in out_obj['http_headers']:
+        #             self.set_header(k, v)
+        #     if 'response' in out_obj:
+        #         output = out_obj['response']
+        #
+        #     self.set_status(int(out_obj.get('code', 200)))
+        # except HTTPError as e:
+        #     log.exception("HTTPError for %s: %s" % (sess_id, input_data))
+        #     output = {'cmd': 'error', 'error': e.message, "code": e.code}
+        #     self.set_status(int(e.code))
+        # except:
+        #     log.exception("HTTPError for %s: %s" % (sess_id, input_data))
+        #     if DEBUG:
+        #         self.set_status(500)
+        #         output = json.dumps({'error': traceback.format_exc()})
+        #     else:
+        #         output = {'cmd': 'error', 'error': "Internal Error", "code": 500}
+        # self.write_message(output)
+
+
 
 
 URL_CONFS = [
