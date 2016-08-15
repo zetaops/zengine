@@ -228,8 +228,8 @@ class ZEngine(object):
         Initializes the workflow with given request, response objects and diagram name.
 
         Args:
-            request: Falcon Request object.
-            response: Falcon Response object.
+            session:
+            input:
             workflow_name (str): Name of workflow diagram without ".bpmn" suffix.
              File must be placed under one of configured :py:attr:`~zengine.settings.WORKFLOW_PACKAGES_PATHS`
 

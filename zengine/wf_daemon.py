@@ -30,7 +30,7 @@ sys._zops_wf_state_log = ''
 
 wf_engine = ZEngine()
 
-
+LOGIN_REQUIRED_MESSAGE = {'error': "Login required", "code": 401}
 class Worker(object):
     """
     Workflow runner worker object
@@ -92,20 +92,34 @@ class Worker(object):
         except:
             return msg
 
+    def _handle_ping_pong(self, data, session):
+
+        still_alive = KeepAlive(sess_id=session.sess_id).update_or_expire_session()
+        msg = {'msg': 'pong'}
+        if not still_alive:
+            msg.update(LOGIN_REQUIRED_MESSAGE)
+        return msg
+
     def _handle_view(self, session, data, headers):
-        login_required_msg = {'error': "Login required", "code": 401}
+        # create Current object
         self.current = Current(session=session, input=data)
         self.current.headers = headers
+
+        # handle ping/pong/session expiration
         if data['view'] == 'ping':
-            still_alive = KeepAlive(sess_id=session.sess_id).update_or_expire_session()
-            msg = {'msg': 'pong'}
-            if not still_alive:
-                msg.update(login_required_msg)
-            return msg
+            return self._handle_ping_pong(data, session)
+
+        # handle authentication
         if not (self.current.is_auth or data['view'] in settings.ANONYMOUS_WORKFLOWS):
-            return login_required_msg
+            return LOGIN_REQUIRED_MESSAGE
+
+        # import view
         view = get_object_from_path(settings.VIEW_URLS[data['view']])
+
+        # call view with current object
         view(self.current)
+
+        # return output
         return self.current.output
 
     def _handle_workflow(self, session, data, headers):
@@ -113,9 +127,9 @@ class Worker(object):
         wf_engine.current.headers = headers
         self.current = wf_engine.current
         wf_engine.run()
-        if self.connection.is_closed:
-            log.info("Connection is closed, re-opening...")
-            self.connect()
+        # if self.connection.is_closed:
+        #     log.info("Connection is closed, re-opening...")
+        #     self.connect()
         return wf_engine.current.output
 
     def handle_message(self, ch, method, properties, body):
@@ -137,15 +151,13 @@ class Worker(object):
             data = input['data']
 
             # since this comes as "path" we dont know if it's view or workflow yet
-            # just a workaround till we modify ui to
+            #TODO: just a workaround till we modify ui to
             if 'path' in data:
                 if data['path'] in settings.VIEW_URLS:
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']
-                session = Session(self.sessid[5:])  # clip "HTTP_" prefix from sessid
-            else:
-                session = Session(self.sessid)
+            session = Session(self.sessid)
 
             headers = {'remote_ip': input['_zops_remote_ip']}
 
