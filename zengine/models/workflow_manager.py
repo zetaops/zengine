@@ -15,6 +15,12 @@ UnitModel = get_object_from_path(settings.UNIT_MODEL)
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
 AbstractRoleModel = get_object_from_path(settings.ABSTRACT_ROLE_MODEL)
 
+class DiagramXML(Model):
+    """
+    Diagram XML versions
+    """
+    body = field.String("XML content", index=False)
+    name = field.String("Name")
 
 class BPMNWorkflow(Model):
     """
@@ -23,9 +29,9 @@ class BPMNWorkflow(Model):
     It's also can hold any WF specific setting and configuration.
 
     """
+    xml = DiagramXML()
     name = field.String("Name")
     description = field.String("Description")
-    xml = field.String("XML", index=False)
     show_in_menu = field.Boolean(default=False)
     requires_object = field.Boolean(default=False)
     object_field_name = field.String("Object field name")
@@ -56,6 +62,7 @@ class WFInstance(Model):
     """
     wf = BPMNWorkflow()
     role = RoleModel()
+    diagram_version = field.DateTime()
     wf_object = field.String("Subject ID")
     start_date = field.DateTime("Start time")
     last_activation = field.DateTime("Last activation")
