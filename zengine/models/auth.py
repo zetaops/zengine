@@ -223,6 +223,16 @@ class Role(Model):
         self.Permissions(permission=perm)
         self.save()
 
+    def remove_permission(self, perm):
+        """
+        Removes a :class:`Permission` from the role
+
+        Args:
+             perm: :class:`Permission` object.
+        """
+        del self.Permissions[perm.key]
+        self.save()
+
     def add_permission_by_name(self, code, save=False):
         """
         Adds a permission with given name.
