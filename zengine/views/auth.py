@@ -54,18 +54,18 @@ class Login(SimpleView):
     does the authentication at ``do`` stage.
     """
 
-    def _user_is_online(self):
-        self.current.user.is_online(True)
+    # def _user_is_online(self):
+    #     self.current.user.is_online(True)
 
     def _do_upgrade(self):
         """ open websocket connection """
         self.current.output['cmd'] = 'upgrade'
         self.current.output['user_id'] = self.current.user_id
         self.terminate_existing_login()
-        self.current.user.is_online(True)
         self.current.user.bind_private_channel(self.current.session.sess_id)
         user_sess = UserSessionID(self.current.user_id)
         user_sess.set(self.current.session.sess_id)
+        self.current.user.is_online(True)
 
     def terminate_existing_login(self):
         existing_sess_id = UserSessionID(self.current.user_id).get()

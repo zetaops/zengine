@@ -141,29 +141,6 @@ class HttpHandler(web.RequestHandler):
         self.finish()
         self.flush()
 
-        #     # output = blocking_connection.send_message(h_sess_id, input_data)
-        #     out_obj = json_decode(output)
-        #
-        #     if 'http_headers' in out_obj:
-        #         for k, v in out_obj['http_headers']:
-        #             self.set_header(k, v)
-        #     if 'response' in out_obj:
-        #         output = out_obj['response']
-        #
-        #     self.set_status(int(out_obj.get('code', 200)))
-        # except HTTPError as e:
-        #     log.exception("HTTPError for %s: %s" % (sess_id, input_data))
-        #     output = {'cmd': 'error', 'error': e.message, "code": e.code}
-        #     self.set_status(int(e.code))
-        # except:
-        #     log.exception("HTTPError for %s: %s" % (sess_id, input_data))
-        #     if DEBUG:
-        #         self.set_status(500)
-        #         output = json.dumps({'error': traceback.format_exc()})
-        #     else:
-        #         output = {'cmd': 'error', 'error': "Internal Error", "code": 500}
-        # self.write_message(output)
-
 
 
 

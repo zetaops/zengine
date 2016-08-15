@@ -63,16 +63,18 @@ class BaseUser(object):
                                               salt_size=10)
 
     def is_online(self, status=None):
-        if not self.key:
+        # if not self.key:
             # FIXME: This should not happen!
-            return
+            # return
         if status is None:
             return ConnectionStatus(self.key).get() or False
         else:
             mq_channel = self._connect_mq()
             for sbs in self.subscriptions.objects.filter():
                 if sbs.channel.typ == 10:
-                    mq_channel.basic_publish(exchange=sbs.channel.code_name,
+                    other_party = self.get_prv_exchange(
+                        sbs.channel.code_name.replace('self.key', '').replace('_', ''))
+                    mq_channel.basic_publish(exchange=other_party,
                                              routing_key='',
                                              body=json.dumps({
                                                  'cmd': 'user_status',
@@ -129,7 +131,11 @@ class BaseUser(object):
 
     @property
     def prv_exchange(self):
-        return 'prv_%s' % str(self.key).lower()
+        return self.get_prv_exchange(self.key)
+
+    @staticmethod
+    def get_prv_exchange(key):
+        return 'prv_%s' % str(key).lower()
 
     def bind_private_channel(self, sess_id):
         mq_channel = self._connect_mq()

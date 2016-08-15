@@ -186,7 +186,10 @@ class QueueManager(object):
     def on_message(self, channel, method, header, body):
         sess_id = method.consumer_tag
         log.debug("WS RPLY for %s: %s" % (sess_id, body))
-        if sess_id in self.websockets:
-            log.info("write msg to client")
-            self.websockets[sess_id].write_message(body)
-        channel.basic_ack(delivery_tag=method.delivery_tag)
+        try:
+            if sess_id in self.websockets:
+                log.info("write msg to client")
+                self.websockets[sess_id].write_message(body)
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+        except RuntimeError:
+            log.exception("CANT WRITE TO HTTP OR WS: \n%s" % body)
