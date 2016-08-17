@@ -12,7 +12,6 @@ from pprint import pprint
 from zengine.lib.cache import ClearCache
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
-from zengine.tornado_server.ws_to_queue import BlockingConnectionForHTTP
 from zengine.wf_daemon import Worker
 
 from zengine.models import User
@@ -130,19 +129,6 @@ class BaseTestClient(Worker):
         self.token = self.response_wrapper.token
         return self.response_wrapper
 
-
-class AMQPTestClient(BaseTestClient):
-    def apost(self, **data):
-        """
-        AMQP based post method
-        Args:
-            **data: Post data
-
-        Returns:
-
-        """
-        post_data = self._prepare_post(data)
-        BlockingConnectionForHTTP().send_message(self.sess_id, post_data)
 
 
 class TestClient(BaseTestClient):
