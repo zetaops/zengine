@@ -193,6 +193,7 @@ class Role(Model):
         """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
+        crud_extra_actions = [{'name': 'Edit Permissions', 'wf': 'permissions', 'show_as': 'button'}]
 
     def __unicode__(self):
         try:
