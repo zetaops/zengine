@@ -1,4 +1,4 @@
-from zengine.views.crud import CrudView
+from zengine.views.base import BaseView
 from zengine import forms
 from zengine.forms import fields
 from zengine.lib.cache import Cache
@@ -101,15 +101,11 @@ class PermissionTreeCache(Cache):
     # No key is set, we'll be only storing one object
 
 
-class Permissions(CrudView):
+class Permissions(BaseView):
     """View for editing permissions of roles."""
 
     def __init__(self, current=None):
         super(Permissions, self).__init__(current)
-        self.object_form = PermissionForm(self.object, current=current)
-
-    class Meta:
-        model = 'Role'
 
     def edit_permissions(self):
         """Creates the view used to edit permissions.
