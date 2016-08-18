@@ -30,7 +30,6 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     Args:
         **kwargs: ``current`` and ``possible_owners`` are required.
     """
-    from zengine.lib.catalog_data import gettxt as _
     from pyoko.lib.utils import get_object_from_path
     UserModel = get_object_from_path(settings.USER_MODEL)
     current = kwargs['current']
@@ -43,8 +42,8 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     for recipient in owners:
         if not isinstance(recipient, UserModel):
             recipient = recipient.get_user()
-        recipient.send_notification(title=_(msg_context['title']),
-                                    message=_(msg_context['body']),
+        recipient.send_notification(title=msg_context['title'],
+                                    message=msg_context['body'],
                                     typ=1, # info
                                     url=current.get_wf_link()
                                     )
