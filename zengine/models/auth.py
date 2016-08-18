@@ -193,6 +193,7 @@ class Role(Model):
         """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
+        crud_extra_actions = [{'name': 'Edit Permissions', 'wf': 'permissions', 'show_as': 'button'}]
 
     def __unicode__(self):
         try:
@@ -221,6 +222,16 @@ class Role(Model):
             perm: :class:`Permission` object.
         """
         self.Permissions(permission=perm)
+        self.save()
+
+    def remove_permission(self, perm):
+        """
+        Removes a :class:`Permission` from the role
+
+        Args:
+             perm: :class:`Permission` object.
+        """
+        del self.Permissions[perm.key]
         self.save()
 
     def add_permission_by_name(self, code, save=False):

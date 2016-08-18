@@ -409,8 +409,8 @@ class ZEngine(object):
             return eval(self.current.lane_owners, self.get_pool_context())
         else:
             users = set()
-            for perm in self.current.lane_permissions:
-                users.update(self.permission_model.objects.get(perm).get_permitted_users())
+            perm = self.current.lane_permission
+            users.update(self.permission_model.objects.get(perm).get_permitted_users())
             return list(users)
 
     def run_activity(self):
@@ -512,11 +512,11 @@ class ZEngine(object):
 
         """
         # TODO: Cache lane_data in app memory
-        if self.current.lane_permissions:
-            log.debug("HAS LANE PERMS: %s" % self.current.lane_permissions)
-            for perm in self.current.lane_permissions:
-                if not self.current.has_permission(perm):
-                    raise HTTPError(403, "You don't have required lane permission: %s" % perm)
+        if self.current.lane_permission:
+            log.debug("HAS LANE PERM: %s" % self.current.lane_permission)
+            perm = self.current.lane_permission
+            if not self.current.has_permission(perm):
+                raise HTTPError(403, "You don't have required lane permission: %s" % perm)
 
         if self.current.lane_relations:
             context = self.get_pool_context()
@@ -542,7 +542,8 @@ class ZEngine(object):
             HTTPError: if user doesn't have required permissions.
         """
         if self.current.task:
-            permission = "%s.%s" % (self.current.workflow_name, self.current.task_name)
+            lane = getattr(self.current.spec, 'lane_id', None) or ''
+            permission = "%s.%s.%s" % (self.current.workflow_name, lane, self.current.task_name)
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)

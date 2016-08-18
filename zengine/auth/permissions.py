@@ -65,26 +65,35 @@ def _get_workflow_permissions(permission_list=None):
     permissions = permission_list or []
     for wf in _get_workflows():
         wf_name = wf.spec.name
-        permissions.append((wf_name, wf_name, ""))
+        wf_description = wf.spec.description or wf.spec.name
+        # Add workflow permission
+        permissions.append((wf_name, wf_description, ""))
+        # Add lane permissions
+        permissions.extend(list(_get_lane_permissions(permissions, wf.spec)))
+        # Add task permissions
         for name, task_spec in wf.spec.task_specs.items():
+            # Skip spec objects like StartTask, ExclusiveGateway etc.
             if not isinstance(task_spec, (UserTask, ServiceTask)):
                 continue
-            _get_lane_permissions(permissions, task_spec)
-            permissions.append(("%s.%s" % (wf_name, name),
-                                "%s %s of %s" % (name,
-                                                 task_spec.__class__.__name__,
-                                                 wf_name),
-                                ""))
+            # `name` field of Modeler is used as `description` by SpiffWorkflow
+            description = task_spec.description
+            lane = task_spec.lane_id or ''
+            permissions.append(
+                # Code
+                ("%s.%s.%s" % (wf_name, lane, name),
+                # Name
+                "%s %s" % (description if description != "" else name, task_spec.__class__.__name__),
+                # Description
+                "")
+            )
     return permissions
 
-def _get_lane_permissions(permissions, task_spec):
-    if (task_spec.data
-        and 'lane_data' in task_spec.data
-        and 'permissions' in task_spec.data['lane_data']):
-        perm_codes = task_spec.data['lane_data']['permissions'].replace(' ', '').split(',')
-        for code in perm_codes:
-            permissions.append((code, "%s of %s" % (code, task_spec.__class__.__name__), ""))
-    return permissions
+def _get_lane_permissions(permissions, spec):
+    # Using a set to get unique lanes
+    return {('{}.{}'.format(spec.name, task.lane_id), task.lane, '')
+            for task in spec.task_specs.values()
+            # Exclude the ones that don't have lane ids, or have lane ids that are empty
+            if getattr(task, 'lane_id', None)}
 
 def _get_object_menu_models():
     """

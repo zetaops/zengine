@@ -171,7 +171,7 @@ class WFCurrent(Current):
         self.flow_enabled = True
         self.task_name = ''
         self.activity = ''
-        self.lane_permissions = []
+        self.lane_permission = ''
         self.lane_relations = ''
         self.old_lane = ''
         self.lane_owners = None
@@ -222,8 +222,9 @@ class WFCurrent(Current):
         if 'lane_data' in self.spec.data:
             lane_data = self.spec.data['lane_data']
             self.lane_name = lane_data['name']
-            if 'permissions' in lane_data:
-                self.lane_permissions = lane_data['permissions'].split(',')
+            # If there is a lane, create the permission for it
+            if self.spec.lane_id:
+                self.lane_permission = '{}.{}'.format(self.workflow_name, self.spec.lane_id)
             if 'relations' in lane_data:
                 self.lane_relations = lane_data['relations']
             if 'owners' in lane_data:
