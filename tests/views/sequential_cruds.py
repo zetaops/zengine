@@ -22,7 +22,7 @@ class CrudOne(CrudView):
 
 class CrudTwo(CrudView):
     class Meta:
-        model = 'Unit'
+        model = 'User'
 
     def __init__(self, current):
         super(CrudTwo, self).__init__(current)
