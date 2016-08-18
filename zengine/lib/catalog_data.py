@@ -98,32 +98,3 @@ class CatalogData(object):
 
 catalog_data_manager = CatalogData()
 
-CATALOG_DATA = []
-
-
-def gettxt(source_text):
-    """
-    Fake gettext object.
-
-    Args:
-        source_text: original text
-
-    Returns:
-        Translated text.
-    """
-    CATALOG_DATA.append(source_text)
-    return source_text
-
-
-def lazy_gettxt(source_text):
-    """
-    Lazy version of :attr:`gettxt()`
-
-    Args:
-        source_text: Original text
-
-    Returns:
-        Translated text
-    """
-    CATALOG_DATA.append(source_text)
-    return source_text
