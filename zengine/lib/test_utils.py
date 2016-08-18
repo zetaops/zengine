@@ -15,7 +15,7 @@ from zengine.log import log
 from zengine.wf_daemon import Worker
 
 from zengine.models import User
-from zengine.notifications.model import NotificationMessage
+from zengine.messaging.model import Message
 
 
 class ResponseWrapper(object):
@@ -60,7 +60,7 @@ class ResponseWrapper(object):
             pprint(self.content)
 
 
-class TestClient(Worker):
+class BaseTestClient(Worker):
     """
     TestClient to simplify writing API tests for Zengine based apps.
     """
@@ -71,7 +71,7 @@ class TestClient(Worker):
 
         :param str path: Request uri
         """
-        super(TestClient, self).__init__(*args, **kwargs)
+        super(BaseTestClient, self).__init__(*args, **kwargs)
         self.test_client_sessid = None
         self.response_wrapper = None
         self.set_path(path, None)
@@ -93,7 +93,7 @@ class TestClient(Worker):
         self.path = path
         self.token = token
 
-    def post(self, **data):
+    def _prepare_post(self, data):
         """
         by default data dict encoded as json and
         content type set as application/json
@@ -119,14 +119,20 @@ class TestClient(Worker):
         post_data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
         log.info("PostData : %s" % post_data)
         print("PostData : %s" % post_data)
-        post_data = json.dumps(post_data)
+        return post_data
+
+    def post(self, **data):
+        post_data = json.dumps(self._prepare_post(data))
         fake_method = type('FakeMethod', (object,), {'routing_key': self.sess_id})
         self.handle_message(None, fake_method, None, post_data)
         # update client token from response
         self.token = self.response_wrapper.token
         return self.response_wrapper
 
-    def send_output(self, output, sessid):
+
+
+class TestClient(BaseTestClient):
+    def send_output(self, output):
         self.response_wrapper = ResponseWrapper(output)
 
 
@@ -168,7 +174,7 @@ class BaseTestCase:
                     sleep(2)
                 else:
                     print(
-                    "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+                        "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
 
         else:
             print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
@@ -219,11 +225,12 @@ class BaseTestCase:
         assert all([(field in req_fields) for field in ('username', 'password')])
         resp = self.client.post(username=self.client.username or self.client.user.username,
                                 password="123", cmd="do")
+        log.debug("login result :\n%s" % resp.json)
         assert resp.json['cmd'] == 'upgrade'
 
     @staticmethod
     def get_user_token(username):
         user = User.objects.get(username=username)
-        msg = NotificationMessage.objects.filter(receiver=user)[0]
+        msg = Message.objects.filter(channel_id=user.prv_exchange)[0]
         token = msg.url.split('/')[-1]
         return token, user

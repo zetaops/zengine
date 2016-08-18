@@ -10,6 +10,5 @@ lazy_object_proxy
 enum34
 werkzeug
 pytest
-celery
-werkzeug
-pytest
+pika
+tornado

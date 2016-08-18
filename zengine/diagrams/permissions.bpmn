@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:collaboration id="permissions_collab">
+    <bpmn:participant id="system_administrator" name="System Administrator" processRef="permissions" />
+  </bpmn:collaboration>
+  <bpmn:process id="permissions" isExecutable="false">
+    <bpmn:laneSet />
+    <bpmn:sequenceFlow id="SequenceFlow_18tkjy6" sourceRef="StartEvent_1" targetRef="edit_permissions" />
+    <bpmn:sequenceFlow id="SequenceFlow_1igt8sn" sourceRef="edit_permissions" targetRef="ExclusiveGateway_07jngdq" />
+    <bpmn:sequenceFlow id="SequenceFlow_0cwnreq" sourceRef="ExclusiveGateway_07jngdq" targetRef="apply_change">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[cmd=='set_permission']]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_1luooiu" sourceRef="ExclusiveGateway_07jngdq" targetRef="EndEvent_0jvx0uh">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[cmd=='finish']]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_0xw5gb2" sourceRef="apply_change" targetRef="edit_permissions" />
+    <bpmn:exclusiveGateway id="ExclusiveGateway_07jngdq">
+      <bpmn:incoming>SequenceFlow_1igt8sn</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0cwnreq</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_1luooiu</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_18tkjy6</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="EndEvent_0jvx0uh">
+      <bpmn:incoming>SequenceFlow_1luooiu</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="edit_permissions" name="Edit Permissions" camunda:assignee="permissions.Permissions.edit_permissions">
+      <bpmn:incoming>SequenceFlow_18tkjy6</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_0xw5gb2</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1igt8sn</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="apply_change" name="Apply Change" camunda:class="permissions.Permissions.apply_change">
+      <bpmn:incoming>SequenceFlow_0cwnreq</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0xw5gb2</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="permissions_collab">
+      <bpmndi:BPMNShape id="Participant_0z3w8ka_di" bpmnElement="system_administrator">
+        <dc:Bounds x="71" y="-33" width="541" height="313" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="123" y="157" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="96" y="193" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_0jvx0uh_di" bpmnElement="EndEvent_0jvx0uh">
+        <dc:Bounds x="527.3832487309645" y="157" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="500.3832487309645" y="193" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ExclusiveGateway_07jngdq_di" bpmnElement="ExclusiveGateway_07jngdq" isMarkerVisible="true">
+        <dc:Bounds x="393" y="150.40693739424702" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="373" y="200.40693739424702" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_18tkjy6_di" bpmnElement="SequenceFlow_18tkjy6">
+        <di:waypoint xsi:type="dc:Point" x="159" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="186" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="186" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="213" y="175" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="156" y="165" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1igt8sn_di" bpmnElement="SequenceFlow_1igt8sn">
+        <di:waypoint xsi:type="dc:Point" x="313" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="353" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="353" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="393" y="175" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="323" y="165" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0cwnreq_di" bpmnElement="SequenceFlow_0cwnreq">
+        <di:waypoint xsi:type="dc:Point" x="418" y="150" />
+        <di:waypoint xsi:type="dc:Point" x="418" y="59" />
+        <di:waypoint xsi:type="dc:Point" x="383" y="59" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="388" y="94.5" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1luooiu_di" bpmnElement="SequenceFlow_1luooiu">
+        <di:waypoint xsi:type="dc:Point" x="443" y="175" />
+        <di:waypoint xsi:type="dc:Point" x="527" y="175" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="440" y="150" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0xw5gb2_di" bpmnElement="SequenceFlow_0xw5gb2">
+        <di:waypoint xsi:type="dc:Point" x="281" y="59" />
+        <di:waypoint xsi:type="dc:Point" x="262" y="59" />
+        <di:waypoint xsi:type="dc:Point" x="262" y="135" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="226.5" y="34" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="UserTask_06ok2cy_di" bpmnElement="edit_permissions">
+        <dc:Bounds x="213" y="135" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_0zy7nlm_di" bpmnElement="apply_change">
+        <dc:Bounds x="283" y="19" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

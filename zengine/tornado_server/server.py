@@ -15,11 +15,11 @@ from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
-from queue_manager import QueueManager, BlockingConnectionForHTTP, log
+from ws_to_queue import QueueManager, log, settings
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
-blocking_connection = BlockingConnectionForHTTP()
+# blocking_connection = BlockingConnectionForHTTP()
 
 
 class SocketHandler(websocket.WebSocketHandler):
@@ -69,13 +69,40 @@ class SocketHandler(websocket.WebSocketHandler):
         self.application.pc.unregister_websocket(self._get_sess_id())
 
 
+# noinspection PyAbstractClass
 class HttpHandler(web.RequestHandler):
     """
     login handler class
     """
 
+    def _handle_headers(self):
+        """
+        Do response processing
+        """
+        origin = self.request.headers.get('Origin')
+        if not settings.DEBUG:
+            if origin in settings.ALLOWED_ORIGINS or not origin:
+                self.set_header('Access-Control-Allow-Origin', origin)
+            else:
+                log.debug("CORS ERROR: %s not allowed, allowed hosts: %s" % (origin,
+                                                                             settings.ALLOWED_ORIGINS))
+                raise HTTPError(403, "Origin not in ALLOWED_ORIGINS: %s" % origin)
+        else:
+            self.set_header('Access-Control-Allow-Origin', origin or '*')
+        self.set_header('Access-Control-Allow-Credentials', "true")
+        self.set_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.set_header('Access-Control-Allow-Methods', 'OPTIONS')
+        self.set_header('Content-Type', 'application/json')
+
     @web.asynchronous
     def get(self, view_name):
+        """
+        only used to display login form
+
+        Args:
+            view_name: should be "login"
+
+        """
         self.post(view_name)
 
     @web.asynchronous
@@ -83,53 +110,38 @@ class HttpHandler(web.RequestHandler):
         """
         login handler
         """
-        try:
-            if 'Origin' in self.request.headers:
-                self.set_header('Access-Control-Allow-Origin', self.request.headers.get('Origin'))
-                self.set_header('Access-Control-Allow-Credentials', 'true')
-            self.set_header('Content-Type', 'application/json')
-            input_data = json_decode(self.request.body) if self.request.body else {}
-            input_data['path'] = view_name
+        sess_id = None
+        input_data = {}
+        # try:
+        self._handle_headers()
 
+        # handle input
+        input_data = json_decode(self.request.body) if self.request.body else {}
+        input_data['path'] = view_name
 
-            if not self.get_cookie(
-                    COOKIE_NAME) or view_name == 'login' and 'username' in input_data:
-                sess_id = uuid4().hex
-                self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
-            else:
-                sess_id = self.get_cookie(COOKIE_NAME)
-            h_sess_id = "HTTP_%s" % sess_id
-            input_data = {'data': input_data, '_zops_remote_ip': self.request.remote_ip}
-            log.info("New Request for %s: %s" % (sess_id, input_data))
+        # set or get session cookie
+        if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
+            sess_id = uuid4().hex
+            self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
+        else:
+            sess_id = self.get_cookie(COOKIE_NAME)
+        # h_sess_id = "HTTP_%s" % sess_id
+        input_data = {'data': input_data,
+                      '_zops_remote_ip': self.request.remote_ip}
+        log.info("New Request for %s: %s" % (sess_id, input_data))
 
+        self.application.pc.register_websocket(sess_id, self)
+        self.application.pc.redirect_incoming_message(sess_id,
+                                                      json_encode(input_data),
+                                                      self.request)
 
-            output = blocking_connection.send_message(h_sess_id, input_data)
-            out_obj = json_decode(output)
-            # if out_obj.get('cmd') == 'upgrade':
-            #     sess_id = uuid4().hex
-            #     self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
-            # allow overriding of headers
-            if 'http_headers' in out_obj:
-                for k, v in out_obj['http_headers']:
-                    self.set_header(k, v)
-            if 'response' in out_obj:
-                output = out_obj['response']
-
-            self.set_status(int(out_obj.get('code', 200)))
-        except HTTPError as e:
-            log.exception("HTTPError for %s: %s" % (sess_id, input_data))
-            output = {'cmd': 'error', 'error': e.message, "code": e.code}
-            self.set_status(int(e.code))
-        except:
-            log.exception("HTTPError for %s: %s" % (sess_id, input_data))
-            if DEBUG:
-                self.set_status(500)
-                output = json.dumps({'error': traceback.format_exc()})
-            else:
-                output = {'cmd': 'error', 'error': "Internal Error", "code": 500}
+    def write_message(self, output):
+        log.debug("WRITE MESSAGE To CLIENT: %s" % output)
         self.write(output)
         self.finish()
         self.flush()
+
+
 
 
 URL_CONFS = [
@@ -137,7 +149,7 @@ URL_CONFS = [
     (r'/(\w+)', HttpHandler),
 ]
 
-app = web.Application(URL_CONFS, debug=DEBUG)
+app = web.Application(URL_CONFS, debug=DEBUG, autoreload=False)
 
 
 def runserver(host=None, port=None):

@@ -12,10 +12,10 @@ zengine.tornado_server.get_logger module
     :undoc-members:
     :show-inheritance:
 
-zengine.tornado_server.queue_manager module
+zengine.tornado_server.ws_to_queue module
 -------------------------------------------
 
-.. automodule:: zengine.tornado_server.queue_manager
+.. automodule:: zengine.tornado_server.ws_to_queue
     :members:
     :undoc-members:
     :show-inheritance:

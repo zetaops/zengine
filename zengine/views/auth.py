@@ -5,12 +5,15 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from time import sleep
+
 import falcon
 
 from pyoko import fields
+from pyoko.exceptions import ObjectDoesNotExist
 from zengine.forms.json_form import JsonForm
-from zengine.lib.cache import UserSessionID, KeepAlive
-from zengine.notifications import Notify
+from zengine.lib.cache import UserSessionID, KeepAlive, Session
+from zengine.log import log
 from zengine.views.base import SimpleView
 
 
@@ -30,9 +33,7 @@ def logout(current):
     Args:
         current: :attr:`~zengine.engine.WFCurrent` object.
     """
-    user_id = current.session.get('user_id')
-    if user_id:
-        KeepAlive(user_id).delete()
+    current.user.is_online(False)
     current.session.delete()
 
 
@@ -53,13 +54,39 @@ class Login(SimpleView):
     does the authentication at ``do`` stage.
     """
 
+    # def _user_is_online(self):
+    #     self.current.user.is_online(True)
+
+    def _do_upgrade(self):
+        """ open websocket connection """
+        self.current.output['cmd'] = 'upgrade'
+        self.current.output['user_id'] = self.current.user_id
+        self.terminate_existing_login()
+        self.current.user.bind_private_channel(self.current.session.sess_id)
+        user_sess = UserSessionID(self.current.user_id)
+        user_sess.set(self.current.session.sess_id)
+        self.current.user.is_online(True)
+
+    def terminate_existing_login(self):
+        existing_sess_id = UserSessionID(self.current.user_id).get()
+        if existing_sess_id and self.current.session.sess_id != existing_sess_id:
+            if Session(existing_sess_id).delete():
+                log.info("EXISTING LOGIN DEDECTED, WE SHOULD LOGUT IT FIRST")
+                self.current.user.send_client_cmd({'error': "Login required", "code": 401},
+                                                  via_queue=existing_sess_id)
+                self.current.user.unbind_private_channel(existing_sess_id)
+
+
+
     def do_view(self):
         """
         Authenticate user with given credentials.
+        Connects user's queue and exchange
         """
+        self.current.output['login_process'] = True
         self.current.task_data['login_successful'] = False
         if self.current.is_auth:
-            self.current.output['cmd'] = 'upgrade'
+            self._do_upgrade()
         else:
             try:
                 auth_result = self.current.auth.authenticate(
@@ -67,17 +94,12 @@ class Login(SimpleView):
                     self.current.input['password'])
                 self.current.task_data['login_successful'] = auth_result
                 if auth_result:
-                    user_sess = UserSessionID(self.current.user_id)
-                    old_sess_id = user_sess.get()
-                    user_sess.set(self.current.session.sess_id)
-                    notify = Notify(self.current.user_id)
-                    notify.cache_to_queue()
-                    if old_sess_id:
-                        notify.old_to_new_queue(old_sess_id)
-                    self.current.output['cmd'] = 'upgrade'
+                    self._do_upgrade()
+            except ObjectDoesNotExist:
+                self.current.log.exception("Wrong username or another error occurred")
+                pass
             except:
                 raise
-                self.current.log.exception("Wrong username or another error occurred")
             if self.current.output.get('cmd') != 'upgrade':
                 self.current.output['status_code'] = 403
             else:
@@ -87,7 +109,8 @@ class Login(SimpleView):
         """
         Show :attr:`LoginForm` form.
         """
+        self.current.output['login_process'] = True
         if self.current.is_auth:
-            self.current.output['cmd'] = 'upgrade'
+            self._do_upgrade()
         else:
             self.current.output['forms'] = LoginForm(current=self.current).serialize()

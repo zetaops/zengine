@@ -7,8 +7,38 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from pyoko import Model, field, ListNode
+from pyoko import Model, field, ListNode, LinkProxy
 from passlib.hash import pbkdf2_sha512
+from zengine.lib.cache import Cache
+from zengine.messaging.lib import BaseUser
+
+
+class Unit(Model):
+    """Unit model
+
+    Can be used to group users according to their physical or organizational position
+
+    """
+    name = field.String("İsim", index=True)
+    parent = LinkProxy('Unit', verbose_name='Parent Unit', reverse_name='sub_units')
+
+    class Meta:
+        verbose_name = "Unit"
+        verbose_name_plural = "Units"
+        search_fields = ['name']
+        list_fields = ['name',]
+
+    def __unicode__(self):
+        return '%s' % self.name
+
+
+    @classmethod
+    def get_user_keys(cls, unit_key):
+        stack = User.objects.filter(unit_id=unit_key).values_list('key', flatten=True)
+        for unit_key in cls.objects.filter(parent_id=unit_key).values_list('key', flatten=True):
+            stack.extend(cls.get_user_keys(unit_key))
+        return stack
+
 
 
 class Permission(Model):
@@ -41,48 +71,26 @@ class Permission(Model):
         return [rset.role for rset in self.role_set]
 
 
-class User(Model):
+class User(Model, BaseUser):
     """
     Basic User model
     """
     username = field.String("Username", index=True)
     password = field.String("Password")
     superuser = field.Boolean("Super user", default=False)
+    avatar = field.File("Avatar", random_name=True, required=False)
+    unit = Unit()
 
     class Meta:
         """ meta class
         """
         list_fields = ['username', 'superuser']
 
-    def __unicode__(self):
-        return "User %s" % self.username
+    def pre_save(self):
+        self.encrypt_password()
 
-    def __repr__(self):
-        return "User_%s" % self.key
-
-    def set_password(self, raw_password):
-        """
-        Encrypts user password.
-
-        Args:
-            raw_password: Clean password string.
-
-        """
-        self.password = pbkdf2_sha512.encrypt(raw_password,
-                                              rounds=10000,
-                                              salt_size=10)
-
-    def check_password(self, raw_password):
-        """
-        Checks given clean password against stored encrtyped password.
-
-        Args:
-            raw_password: Clean password.
-
-        Returns:
-            Boolean. True if given password match.
-        """
-        return pbkdf2_sha512.verify(raw_password, self.password)
+    def post_creation(self):
+        self.prepare_channels()
 
     def get_permissions(self):
         """
@@ -94,27 +102,89 @@ class User(Model):
         users_primary_role = self.role_set[0].role
         return users_primary_role.get_permissions()
 
-    def get_role(self, role_id):
-        """
-            Gets the first role of the user with given key.
 
-        Args:
-            role_id: Key of the Role object.
+class PermissionCache(Cache):
+    """PermissionCache sınıfı Kullanıcıya Permission nesnelerinin
+    kontrolünü hızlandırmak için yetkileri cache bellekte saklamak ve
+    gerektiğinde okumak için oluşturulmuştur.
+    """
+    PREFIX = 'PRM'
+
+    def __init__(self, role_id):
+        super(PermissionCache, self).__init__(role_id)
+
+
+class AbstractRole(Model):
+    """
+    AbstractRoles are stand as a foundation for actual roles
+    """
+    name = field.String("Name", index=True)
+    read_only = field.Boolean("Archived")
+
+    class Meta:
+        verbose_name = "Abstract Role"
+        verbose_name_plural = "Abstract Roles"
+        search_fields = ['name']
+
+    def __unicode__(self):
+        return "%s" % self.name
+
+    def get_permissions(self):
+        """
+        Soyut role ait Permission nesnelerini bulur ve code değerlerini
+        döner.
 
         Returns:
-            :class:`Role` object
+            list: Permission code değerleri
+
         """
-        return self.role_set.node_dict[role_id]
+        return [p.permission.code for p in self.Permissions if p.permission.code]
 
-    def send_message(self, title, message, sender=None):
-        from zengine.notifications import Notify
-        Notify(self.key).set_message(title, message, typ=Notify.Message, sender=sender)
+    def add_permission(self, perm):
+        """
+        Soyut Role Permission nesnesi tanımlamayı sağlar.
 
+        Args:
+            perm (object):
+
+        """
+        self.Permissions(permission=perm)
+        PermissionCache.flush()
+        self.save()
+
+    def add_permission_by_name(self, code, save=False):
+        """
+        Soyut role Permission eklemek veya eklenebilecek Permission
+        nesnelerini verilen ``code`` parametresine göre listelemek olmak
+        üzere iki şekilde kullanılır.
+
+        Args:
+            code (str): Permission nesnelerini filtre etmekte kullanılır
+            save (bool): True ise Permission ekler, False ise Permission
+                listesi döner.
+
+        Returns:
+            list: ``save`` False ise Permission listesi döner.
+
+        """
+        if not save:
+            return ["%s | %s" % (p.name, p.code) for p in
+                    Permission.objects.filter(code__contains=code)]
+        PermissionCache.flush()
+        for p in Permission.objects.filter(code__contains=code):
+            if p not in self.Permissions:
+                self.Permissions(permission=p)
+        if p:
+            self.save()
+
+    class Permissions(ListNode):
+        permission = Permission()
 
 class Role(Model):
     """
     This model binds group of Permissions with a certain User.
     """
+    arole = AbstractRole()
     user = User()
 
     class Meta:
@@ -123,6 +193,7 @@ class Role(Model):
         """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
+        crud_extra_actions = [{'name': 'Edit Permissions', 'wf': 'permissions', 'show_as': 'button'}]
 
     def __unicode__(self):
         try:
@@ -151,6 +222,16 @@ class Role(Model):
             perm: :class:`Permission` object.
         """
         self.Permissions(permission=perm)
+        self.save()
+
+    def remove_permission(self, perm):
+        """
+        Removes a :class:`Permission` from the role
+
+        Args:
+             perm: :class:`Permission` object.
+        """
+        del self.Permissions[perm.key]
         self.save()
 
     def add_permission_by_name(self, code, save=False):

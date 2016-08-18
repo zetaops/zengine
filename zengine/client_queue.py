@@ -13,7 +13,7 @@ import pika
 import time
 from pika.exceptions import ConnectionClosed, ChannelClosed
 
-from zengine.lib.cache import UserSessionID
+
 
 BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     host=settings.MQ_HOST,
@@ -22,6 +22,14 @@ BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
     heartbeat_interval=0,
     credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
 )
+from zengine.log import log
+
+def get_mq_connection():
+    connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+    channel = connection.channel()
+    if not channel.is_open:
+        channel.open()
+    return connection, channel
 
 
 class ClientQueue(object):
@@ -30,10 +38,10 @@ class ClientQueue(object):
     """
     def __init__(self, user_id=None, sess_id=None):
 
-        self.user_id = user_id
+        # self.user_id = user_id
         self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         self.channel = self.connection.channel()
-        self.sess_id = sess_id
+        # self.sess_id = sess_id
 
     def close(self):
         self.channel.close()
@@ -48,37 +56,33 @@ class ClientQueue(object):
                 self.channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         return self.channel
 
-    def get_sess_id(self):
-        if not self.sess_id:
-            self.sess_id = UserSessionID(self.user_id).get()
-        return self.sess_id
-
-    def send_to_queue(self, message=None, json_message=None):
-        self.get_channel().basic_publish(exchange='',
-                                         routing_key=self.get_sess_id(),
-                                         body=json_message or json.dumps(message))
-
-    def old_to_new_queue(self, old_sess_id):
+    def send_to_default_exchange(self, sess_id, message=None):
         """
-        Somehow if users old (obsolete) queue has
-        undelivered messages, we should redirect them to
-        current queue.
+        Send messages through RabbitMQ's default exchange,
+        which will be delivered through routing_key (sess_id).
+
+        This method only used for un-authenticated users, i.e. login process.
+
+        Args:
+            sess_id string: Session id
+            message dict: Message object.
         """
-        old_input_channel = self.connection.channel()
-        while True:
-            try:
-                method_frame, header_frame, body = old_input_channel.basic_get(old_sess_id)
-                if method_frame:
-                    self.send_to_queue(json_message=body)
-                    old_input_channel.basic_ack(method_frame.delivery_tag)
-                else:
-                    old_input_channel.queue_delete(old_sess_id)
-                    old_input_channel.close()
-                    break
-            except ChannelClosed as e:
-                if e[0] == 404:
-                    break
-                    # e => (404, "NOT_FOUND - no queue 'sess_id' in vhost '/'")
-                else:
-                    raise
-                    # old_input_channel = self.connection.channel()
+        msg = json.dumps(message)
+        log.debug("Sending following message to %s queue through default exchange:\n%s" % (
+            sess_id, msg))
+        self.get_channel().publish(exchange='', routing_key=sess_id, body=msg)
+
+    def send_to_prv_exchange(self, user_id, message=None):
+        """
+        Send messages through logged in users private exchange.
+
+        Args:
+            user_id string: User key
+            message dict: Message object
+
+        """
+        exchange = 'prv_%s' % user_id.lower()
+        msg = json.dumps(message)
+        log.debug("Sending following users \"%s\" exchange:\n%s " % (exchange, msg))
+        self.get_channel().publish(exchange=exchange, routing_key='', body=msg)
+
