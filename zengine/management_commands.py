@@ -86,7 +86,7 @@ class UpdatePermissions(Command):
             if not self.manager.args.dry:
                 SelectBoxCache.flush(model.__name__)
             report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
-            report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
+            report = "\n + " + "\n + ".join([p.name or p.code for p in new_perms]) + report
         if self.manager.args.dry:
             print("\n~~~~~~~~~~~~~~ DRY RUN ~~~~~~~~~~~~~~\n")
         print(report + "\n")
