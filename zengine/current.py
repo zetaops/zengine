@@ -198,6 +198,7 @@ class WFCurrent(Current):
         self.old_lane = ''
         self.lane_owners = None
         self.lane_name = ''
+        self.lane_id = ''
 
         if 'token' in self.input:
             self.token = self.input['token']
@@ -244,6 +245,7 @@ class WFCurrent(Current):
         if 'lane_data' in self.spec.data:
             lane_data = self.spec.data['lane_data']
             self.lane_name = lane_data['name']
+            self.lane_id = self.spec.lane_id or ''
             # If there is a lane, create the permission for it
             if self.spec.lane_id:
                 self.lane_permission = '{}.{}'.format(self.workflow_name, self.spec.lane_id)

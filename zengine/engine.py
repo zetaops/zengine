@@ -102,8 +102,8 @@ class ZEngine(object):
                               'data': task_data,
                               'name': self.current.workflow_name,
                               })
-        if self.current.lane_name:
-            self.current.pool[self.current.lane_name] = self.current.role.key
+        if self.current.lane_id:
+            self.current.pool[self.current.lane_id] = self.current.role.key
         self.wf_state['pool'] = self.current.pool
         self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
         self.current.wf_cache.save(self.wf_state)
@@ -116,13 +116,13 @@ class ZEngine(object):
         Returns:
             Context dict.
         """
-        context = {self.current.lane_name: self.current.role, 'self': self.current.role}
+        context = {self.current.lane_id: self.current.role, 'self': self.current.role}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
             context[model_name] = model_registry.get_model(model_name)
-        for lane_name, role_id in self.current.pool.items():
+        for lane_id, role_id in self.current.pool.items():
             if role_id:
-                context[lane_name] = lazy_object_proxy.Proxy(
+                context[lane_id] = lazy_object_proxy.Proxy(
                     lambda: self.role_model(super_context).objects.get(role_id))
         return context
 
@@ -399,8 +399,8 @@ class ZEngine(object):
         if self.current.lane_name:
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
-                if (self.current.lane_name not in self.current.pool or
-                            self.current.pool[self.current.lane_name] != self.current.role_id):
+                if (self.current.lane_id not in self.current.pool or
+                            self.current.pool[self.current.lane_id] != self.current.role_id):
                     self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
                                                                       self.current.lane_name))
                     if self.current.lane_auto_sendoff:
@@ -575,7 +575,7 @@ class ZEngine(object):
             HTTPError: if user doesn't have required permissions.
         """
         if self.current.task:
-            lane = getattr(self.current.spec, 'lane_id', None) or ''
+            lane = self.current.lane_id
             permission = "%s.%s.%s" % (self.current.workflow_name, lane, self.current.task_name)
         else:
             permission = self.current.workflow_name
