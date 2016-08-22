@@ -104,7 +104,7 @@ class ZEngine(object):
                               })
         if self.current.lane_id:
             self.current.pool[self.current.lane_id] = self.current.role.key
-        self.wf_state['pool'] = self.current.pool
+        self.wf_cache['pool'] = self.current.pool
         self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
         self.current.wf_cache.save(self.wf_state)
 
@@ -116,14 +116,14 @@ class ZEngine(object):
         Returns:
             Context dict.
         """
-        context = {self.current.lane_id: self.current.role, 'self': self.current.role}
+        context = {self.current.lane_id: self.current.user, 'self': self.current.user}
         if self.current.lane_owners:
             model_name = self.current.lane_owners.split('.')[0]
             context[model_name] = model_registry.get_model(model_name)
-        for lane_id, role_id in self.current.pool.items():
-            if role_id:
+        for lane_id, user_id in self.current.pool.items():
+            if user_id:
                 context[lane_id] = lazy_object_proxy.Proxy(
-                    lambda: self.role_model(super_context).objects.get(role_id))
+                    lambda: self.user_model(super_context).objects.get(user_id))
         return context
 
     def load_workflow_from_cache(self):
@@ -400,7 +400,7 @@ class ZEngine(object):
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
                 if (self.current.lane_id not in self.current.pool or
-                            self.current.pool[self.current.lane_id] != self.current.role_id):
+                            self.current.pool[self.current.lane_id] != self.current.user_id):
                     self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
                                                                       self.current.lane_name))
                     if self.current.lane_auto_sendoff:
