@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://activiti.org/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="_u87A0GnjEeWc9YwH6Ct-eg" targetNamespace="http://activiti.org/bpmn" exporter="camunda modeler" exporterVersion="2.7.0" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
+<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://activiti.org/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="_u87A0GnjEeWc9YwH6Ct-eg" targetNamespace="http://activiti.org/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
   <bpmn2:collaboration id="_Collaboration_2" name="multi coll name">
     <bpmn2:documentation>multi coll desc</bpmn2:documentation>
     <bpmn2:extensionElements>
@@ -7,27 +7,22 @@
         <camunda:property name="object" value="other" />
       </camunda:properties>
     </bpmn2:extensionElements>
-    <bpmn2:participant id="_Participant_2" name="MultiiiiiPool name" processRef="multi_user2">
+    <bpmn2:participant id="_Participant_2" name="Employee - Manager Interaction" processRef="multi_user2">
       <bpmn2:documentation>multipool desc</bpmn2:documentation>
     </bpmn2:participant>
   </bpmn2:collaboration>
   <bpmn2:process id="multi_user2" isExecutable="false">
     <bpmn2:laneSet id="LaneSet_7" name="Lane Set 7">
-      <bpmn2:lane id="danisman" name="danisman">
+      <bpmn2:lane id="manager" name="Manager">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property name="permissions" value="danisman" />
+            <camunda:property name="relations" value="self == employee.unit.manager" />
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>ServiceTask_1</bpmn2:flowNodeRef>
       </bpmn2:lane>
-      <bpmn2:lane id="ogrenci" name="ogrenci">
-        <bpmn2:extensionElements>
-          <camunda:properties>
-            <camunda:property name="permissions" value="ders_secebilir" />
-          </camunda:properties>
-        </bpmn2:extensionElements>
+      <bpmn2:lane id="employee" name="Employee">
         <bpmn2:flowNodeRef>StartEvent_1</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>UserTask_1</bpmn2:flowNodeRef>
         <bpmn2:flowNodeRef>ServiceTask_2</bpmn2:flowNodeRef>
@@ -67,10 +62,10 @@
       <bpmndi:BPMNShape id="_BPMNShape_Participant_2" bpmnElement="_Participant_2" isHorizontal="true">
         <dc:Bounds x="180" y="0" width="540" height="409" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_Lane_8" bpmnElement="danisman" isHorizontal="true">
+      <bpmndi:BPMNShape id="_BPMNShape_Lane_8" bpmnElement="manager" isHorizontal="true">
         <dc:Bounds x="210" y="0" width="510" height="205" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_Lane_9" bpmnElement="ogrenci" isHorizontal="true">
+      <bpmndi:BPMNShape id="_BPMNShape_Lane_9" bpmnElement="employee" isHorizontal="true">
         <dc:Bounds x="210" y="204" width="510" height="205" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="_BPMNShape_StartEvent_4" bpmnElement="StartEvent_1">

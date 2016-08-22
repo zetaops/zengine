@@ -17,7 +17,7 @@ from zengine.signals import lane_user_change
 
 
 class TestCase(BaseTestCase):
-    def test_multi_user_mono(self):
+    def test_multi_user_success(self):
         test_user = User.objects.get(username='test_user')
         self.prepare_client('/multi_user2/', user=test_user)
         with BlockSave(Message):
@@ -25,13 +25,14 @@ class TestCase(BaseTestCase):
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
         token, user = self.get_user_token('test_user2')
         self.prepare_client('/multi_user2/', user=user, token=token)
-        resp = self.client.post()
-        resp.raw()
-        resp = self.client.post()
-        resp.raw()
+        with BlockSave(Message):
+            resp = self.client.post()
+            resp.raw()
+            resp = self.client.post()
+            resp.raw()
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
 
-    def test_multi_user_with_fail(self):
+    def test_multi_user_permission_fail(self):
         def mock(sender, *args, **kwargs):
             self.current = kwargs['current']
             self.old_lane = kwargs['old_lane']
@@ -52,4 +53,18 @@ class TestCase(BaseTestCase):
         assert  exc_info.value[0] == 403
         assert 'You don\'t have required permission' in exc_info.value[1]
 
-
+    def test_multi_user_relation_fail(self):
+        Message.objects.delete()
+        # Start the workflow from the first user
+        test_user = User.objects.get(username='test_user')
+        self.prepare_client('/multi_user2/', user=test_user)
+        with BlockSave(Message):
+            resp = self.client.post()
+        assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
+        # This user doesn't have the necessary relation, thus shouldn't be able to join the workflow
+        token, user = self.get_user_token('test_user3')
+        self.prepare_client('/multi_user2/', user=user, token=token)
+        with pytest.raises(HTTPError) as exc_info:
+            self.client.post()
+        assert exc_info.value[0] == 403
+        assert 'You aren\'t qualified for this lane:' in exc_info.value[1]
