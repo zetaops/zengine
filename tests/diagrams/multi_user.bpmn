@@ -7,7 +7,7 @@
         <camunda:property name="object" value="other" />
       </camunda:properties>
     </bpmn2:extensionElements>
-    <bpmn2:participant id="_Participant_2" name="MultiPool name" processRef="multi_user">
+    <bpmn2:participant id="_Participant_2" name="User - Manager Interaction" processRef="multi_user">
       <bpmn2:documentation>multipool desc</bpmn2:documentation>
     </bpmn2:participant>
   </bpmn2:collaboration>
@@ -16,8 +16,7 @@
       <bpmn2:lane id="lane2" name="User 2">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property name="relations" value="self == ogrenci" />
-            <camunda:property name="owners" value="User.objects.filter(username=&#39;test_user&#39;)" />
+            <camunda:property name="owners" value="[self.unit.manager]" />
           </camunda:properties>
         </bpmn2:extensionElements>
         <bpmn2:flowNodeRef>UserTask_2</bpmn2:flowNodeRef>

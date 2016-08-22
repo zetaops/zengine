@@ -117,9 +117,6 @@ class ZEngine(object):
             Context dict.
         """
         context = {self.current.lane_id: self.current.user, 'self': self.current.user}
-        if self.current.lane_owners:
-            model_name = self.current.lane_owners.split('.')[0]
-            context[model_name] = model_registry.get_model(model_name)
         for lane_id, user_id in self.current.pool.items():
             if user_id:
                 context[lane_id] = lazy_object_proxy.Proxy(
