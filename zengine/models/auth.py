@@ -42,7 +42,6 @@ class Unit(Model):
         return stack
 
 
-
 class Permission(Model):
     """
     Permission model
