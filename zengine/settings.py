@@ -11,12 +11,18 @@ Zengine Default Project Settings
 from pyoko.settings import *
 import os.path
 
-#: Default lang
-#: Multi-language support not implemented yet.
-DEFAULT_LANG = 'en'
 
 #: Project base
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+#: Default language
+DEFAULT_LANG = 'en'
+
+#: Available translations
+TRANSLATIONS = ['tr']
+
+#: The directory containing the translations
+TRANSLATIONS_DIR = os.path.join(BASE_DIR, 'locale')
 
 #: Path of the activity modules which will be invoked by workflow tasks
 ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.views']

@@ -1,0 +1,15 @@
+# Turkish translations for ZEngine
+# Copyright (C) 2016 ZetaOps Inc.
+# This file is distributed under the same license as the ZEngine project.
+#
+msgid ""
+msgstr ""
+
+#: views/i18n.py:12
+msgid "This is a translateable message."
+msgstr "Bu çevirilebilir bir mesajdır."
+
+#: views/i18n.py:13
+msgid "This message has not been translated."
+msgstr ""
+

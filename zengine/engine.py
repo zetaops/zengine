@@ -10,6 +10,7 @@ Zengine's engine!
 from __future__ import division
 from __future__ import print_function, absolute_import, division
 
+import gettext
 import importlib
 import os
 import sys
@@ -69,6 +70,54 @@ class ZEngine(object):
         self.user_model = get_object_from_path(settings.USER_MODEL)
         self.permission_model = get_object_from_path(settings.PERMISSION_MODEL)
         self.role_model = get_object_from_path(settings.ROLE_MODEL)
+        # Maps language codes to Translations objects
+        self.translation_catalogs = self._load_translations()
+        # Holds the last intalled language, used to avoid unnecessary language re-installs
+        self.last_lang_code = ''
+
+    @staticmethod
+    def _load_translations():
+        translations = {}
+        # `gettext` has support for domains, which can be used to seperate
+        # the translations of one language into multiple files. We expect
+        # all translations of a language to be in a single 'messages.mo' file.
+        TRANSLATION_DOMAIN = 'messages'
+        # For the default language, translations will be return without modification
+        log.debug('Loading translations')
+        translations[settings.DEFAULT_LANG] = gettext.NullTranslations()
+        for language in settings.TRANSLATIONS:
+            log.debug('Loading translation of language {lang}'.format(lang=language))
+            translations[language] = gettext.translation(
+                domain=TRANSLATION_DOMAIN,
+                localedir=settings.TRANSLATIONS_DIR,
+                languages=[language],
+                fallback=False,
+            )
+        return translations
+
+    def install_translation(self, lang):
+        """Install the translations of `lang` into builtins.
+
+        The function that will perform translations will be installed
+        into Python's builtins namespace. After this method is called,
+        any python code can call the `_` function without importing anything,
+        and the message will be translated for the language installed with
+        this method.
+
+        Args:
+             lang (string): The language code to be installed.
+             fallback (bool): If True, the default language will be used
+                 if `lang` is not found. If False and `lang` is not found,
+                 a RuntimeError will be raised.
+        """
+        translation = self.translation_catalogs.get(lang)
+        if translation is None:
+            default = settings.DEFAULT_LANG
+            log.warning('Unable to find requested language {lang}, falling back to {fallback}'.format(
+                lang=lang, fallback=default))
+            translation = self.translation_catalogs[default]
+        translation.install()
+        log.debug('Language {lang} installed.'.format(lang=lang))
 
     def are_we_in_subprocess(self):
         are_we = False
@@ -342,6 +391,7 @@ class ZEngine(object):
                 self.check_for_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
+                self.switch_lang()
                 self.run_activity()
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
@@ -357,6 +407,15 @@ class ZEngine(object):
             self.current._update_task(task)
             self.catch_lane_change()
             self.handle_wf_finalization()
+
+    def switch_lang(self):
+        """Switch to the language of the current user."""
+        lang_code = self.current.lang_code
+        if lang_code != self.last_lang_code:
+            self.current.log.debug('Switching language from {old} to {new}.'.format(old=self.last_lang_code,
+                                                                                    new=lang_code))
+            self.install_translation(lang_code)
+            self.last_lang_code = lang_code
 
     def catch_lane_change(self):
         """
