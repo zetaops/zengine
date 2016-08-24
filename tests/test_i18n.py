@@ -15,6 +15,12 @@ from zengine.models import User
 _MSG_TR = 'Bu çevirilebilir bir mesajdır.'
 _MSG_EN = 'This is a translateable message.'
 _MSG_UNTRANSLATED = 'This message has not been translated.'
+_MSG_EN_SINGULAR = 'One'
+_MSG_EN_PLURAL = 'Many'
+_MSG_TR_SINGULAR = 'Tek'
+_MSG_TR_PLURAL = 'Çok'
+_MSG_EN_MARKED = 'This message is marked, but not translated yet.'
+_MSG_TR_MARKED = 'Bu mesaj işaretlendi, ancak henüz çevirilmedi.'
 
 
 class TestCase(BaseTestCase):
@@ -24,6 +30,10 @@ class TestCase(BaseTestCase):
         self.prepare_client('/i18n/', user=test_user)
         resp = self.client.post(lang_code='tr')
         assert resp.json['message'] == _MSG_TR
+        assert resp.json['singular'] == _MSG_TR_SINGULAR
+        assert resp.json['plural'] == _MSG_TR_PLURAL
+        assert resp.json['marked'] == _MSG_EN_MARKED
+        assert resp.json['marked_translated'] == _MSG_TR_MARKED
         # This message was not translated yet, so this message only should fall back to default message
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
 
@@ -39,6 +49,10 @@ class TestCase(BaseTestCase):
         # Since no language code was given, the engine should switch back to default language
         assert resp.json['message'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
+        assert resp.json['singular'] == _MSG_EN_SINGULAR
+        assert resp.json['plural'] == _MSG_EN_PLURAL
+        assert resp.json['marked'] == _MSG_EN_MARKED
+        assert resp.json['marked_translated'] == _MSG_EN_MARKED
 
     def test_default_with_code(self):
         test_user = User.objects.get(username='super_user')
@@ -52,6 +66,10 @@ class TestCase(BaseTestCase):
         # The engine should have switched to the default language
         assert resp.json['message'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
+        assert resp.json['singular'] == _MSG_EN_SINGULAR
+        assert resp.json['plural'] == _MSG_EN_PLURAL
+        assert resp.json['marked'] == _MSG_EN_MARKED
+        assert resp.json['marked_translated'] == _MSG_EN_MARKED
 
     def test_fallback(self):
         test_user = User.objects.get(username='super_user')
@@ -61,3 +79,7 @@ class TestCase(BaseTestCase):
         # The engine should fall back to the default language since the translations are missing
         assert resp.json['message'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
+        assert resp.json['singular'] == _MSG_EN_SINGULAR
+        assert resp.json['plural'] == _MSG_EN_PLURAL
+        assert resp.json['marked'] == _MSG_EN_MARKED
+        assert resp.json['marked_translated'] == _MSG_EN_MARKED

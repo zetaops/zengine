@@ -4,12 +4,22 @@
 #
 msgid ""
 msgstr ""
+"Plural-Forms: nplurals=2; plural=n != 1\n"
 
-#: views/i18n.py:12
+#: views/i18n.py:13
 msgid "This is a translateable message."
 msgstr "Bu çevirilebilir bir mesajdır."
 
-#: views/i18n.py:13
+#: views/i18n.py:14
 msgid "This message has not been translated."
 msgstr ""
 
+#: views/i18n.py:15 views/i18n.py:16
+msgid "One"
+msgid_plural "Many"
+msgstr[0] "Tek"
+msgstr[1] "Çok"
+
+#: views/i18n.py:17
+msgid "This message is marked, but not translated yet."
+msgstr "Bu mesaj işaretlendi, ancak henüz çevirilmedi."

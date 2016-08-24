@@ -32,6 +32,7 @@ from zengine.config import settings
 from zengine.current import WFCurrent
 from zengine.lib.camunda_parser import InMemoryPackager
 from zengine.lib.exceptions import HTTPError
+from zengine.lib import translation
 from zengine.log import log
 
 
@@ -110,13 +111,13 @@ class ZEngine(object):
                  if `lang` is not found. If False and `lang` is not found,
                  a RuntimeError will be raised.
         """
-        translation = self.translation_catalogs.get(lang)
-        if translation is None:
+        catalog = self.translation_catalogs.get(lang)
+        if catalog is None:
             default = settings.DEFAULT_LANG
             log.warning('Unable to find requested language {lang}, falling back to {fallback}'.format(
                 lang=lang, fallback=default))
-            translation = self.translation_catalogs[default]
-        translation.install()
+            catalog = self.translation_catalogs[default]
+        translation.install(catalog)
         log.debug('Language {lang} installed.'.format(lang=lang))
 
     def are_we_in_subprocess(self):
