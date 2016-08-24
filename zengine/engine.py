@@ -16,6 +16,7 @@ import os
 import sys
 import traceback
 from copy import deepcopy
+import babel
 
 import lazy_object_proxy
 from SpiffWorkflow import Task
@@ -97,27 +98,28 @@ class ZEngine(object):
         return translations
 
     def install_translation(self, lang):
-        """Install the translations of `lang` into builtins.
+        """Install the translations of the language indetified by `lang`.
 
-        The function that will perform translations will be installed
-        into Python's builtins namespace. After this method is called,
-        any python code can call the `_` function without importing anything,
-        and the message will be translated for the language installed with
-        this method.
+        After this method is called, all translation functions will now
+        return the translations for this language, as well performing
+        time, money and number formattings appropriate to this locale.
+
+        This method will handle the negotiation of the locale, such as
+        matching language codes 'en' to 'en_US'; and will automatically
+        fall back to the default locale if no translations exist for
+        the specified one.
 
         Args:
-             lang (string): The language code to be installed.
-             fallback (bool): If True, the default language will be used
-                 if `lang` is not found. If False and `lang` is not found,
-                 a RuntimeError will be raised.
+             lang (str): The language code to be installed.
         """
-        catalog = self.translation_catalogs.get(lang)
+        lang_code = babel.negotiate_locale([lang], self.translation_catalogs.keys())
+        catalog = self.translation_catalogs.get(lang_code)
         if catalog is None:
             default = settings.DEFAULT_LANG
             log.warning('Unable to find requested language {lang}, falling back to {fallback}'.format(
                 lang=lang, fallback=default))
             catalog = self.translation_catalogs[default]
-        translation.install(catalog)
+        translation.install(catalog, lang)
         log.debug('Language {lang} installed.'.format(lang=lang))
 
     def are_we_in_subprocess(self):

@@ -67,14 +67,14 @@ def ngettext(singular, plural, n):
     >>> alert_msg(1)
     1 mesajınız var
     >>> alert_msg(5)
-    5 mesajınız var
+    5 mesajlarınız var
 
-    Both singular and plural forms of the message should have the exactly same variables.
+    When doing formatting, both singular and plural forms of the message should have the exactly same variables.
 
     Args:
         singular (str): The singular form of the message.
         plural (str): The plural form of the message.
-        n (int): The integer, used to decide which form should be used.
+        n (int): The number that is used to decide which form should be used.
     Returns:
         str: The correct pluralization, translated.
     """
@@ -118,7 +118,8 @@ def markonly(message):
     return message
 
 
-def install(cat):
+def install(cat, lang_code):
     """Installs a new translation catalog. All gettext functions will start using the new catalog."""
-    global _catalog
+    global _catalog, installed_lang
     _catalog = cat
+    installed_lang = lang_code
