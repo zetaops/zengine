@@ -21,6 +21,12 @@ _MSG_TR_SINGULAR = 'Tek'
 _MSG_TR_PLURAL = 'Çok'
 _MSG_EN_MARKED = 'This message is marked, but not translated yet.'
 _MSG_TR_MARKED = 'Bu mesaj işaretlendi, ancak henüz çevirilmedi.'
+_MSG_EN_DATETIME = 'Jul 21, 2016, 5:32:00 PM'
+_MSG_EN_DECIMAL = '1.235'
+_MSG_EN_SECOND_DAY = 'Tuesday'
+_MSG_TR_DATETIME = '21 Tem 2016 17:32:00'
+_MSG_TR_DECIMAL = '1,235'
+_MSG_TR_SECOND_DAY = 'Salı'
 
 
 class TestCase(BaseTestCase):
@@ -34,6 +40,9 @@ class TestCase(BaseTestCase):
         assert resp.json['plural'] == _MSG_TR_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED
         assert resp.json['marked_translated'] == _MSG_TR_MARKED
+        assert resp.json['datetime'] == _MSG_TR_DATETIME
+        assert resp.json['decimal'] == _MSG_TR_DECIMAL
+        assert resp.json['second_day'] == _MSG_TR_SECOND_DAY
         # This message was not translated yet, so this message only should fall back to default message
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
 
@@ -53,6 +62,9 @@ class TestCase(BaseTestCase):
         assert resp.json['plural'] == _MSG_EN_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED
         assert resp.json['marked_translated'] == _MSG_EN_MARKED
+        assert resp.json['datetime'] == _MSG_EN_DATETIME
+        assert resp.json['decimal'] == _MSG_EN_DECIMAL
+        assert resp.json['second_day'] == _MSG_EN_SECOND_DAY
 
     def test_default_with_code(self):
         test_user = User.objects.get(username='super_user')
@@ -70,6 +82,9 @@ class TestCase(BaseTestCase):
         assert resp.json['plural'] == _MSG_EN_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED
         assert resp.json['marked_translated'] == _MSG_EN_MARKED
+        assert resp.json['datetime'] == _MSG_EN_DATETIME
+        assert resp.json['decimal'] == _MSG_EN_DECIMAL
+        assert resp.json['second_day'] == _MSG_EN_SECOND_DAY
 
     def test_fallback(self):
         test_user = User.objects.get(username='super_user')
@@ -83,3 +98,6 @@ class TestCase(BaseTestCase):
         assert resp.json['plural'] == _MSG_EN_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED
         assert resp.json['marked_translated'] == _MSG_EN_MARKED
+        assert resp.json['datetime'] == _MSG_EN_DATETIME
+        assert resp.json['decimal'] == _MSG_EN_DECIMAL
+        assert resp.json['second_day'] == _MSG_EN_SECOND_DAY

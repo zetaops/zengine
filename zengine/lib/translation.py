@@ -8,6 +8,11 @@
 # (GPLv3).  See LICENSE.txt for details.
 
 import gettext as gettextlib
+import babel
+from babel import dates
+from babel import numbers
+from zengine.log import log
+from zengine.config import settings
 
 
 installed_lang = ''
@@ -116,6 +121,50 @@ def markonly(message):
             gettext should be called on this string when needed.
     """
     return message
+
+
+def _wrap_locale_formatter(fn):
+    """Wrap a Babel data formatting function to automatically format for currently installed locale."""
+    def wrapped_locale_formatter(*args, **kwargs):
+        """A Babel formatting function, wrapped to automatically use the currently installed language.
+
+        The wrapped function will not throw any exceptions for unknown locales,
+        if Babel doesn't recognise the locale, we will simply fall back to
+        the default language.
+
+        The locale used by the wrapped function can be overriden by passing it a `locale` keyword.
+
+        To learn more about this function, check the documentation of Babel for the function of
+        the same name.
+        """
+        kwargs_ = {'locale': installed_lang}
+        kwargs_.update(kwargs)
+        try:
+            formatted = fn(*args, **kwargs_)
+        except babel.core.UnknownLocaleError:
+            log.warning('Can\'t do formatting for language code {locale}, falling back to default {default}'.format(
+                locale=installed_lang, default=settings.DEFAULT_LANG))
+            kwargs_['locale'] = settings.DEFAULT_LANG
+            formatted = fn(*args, **kwargs_)
+        return formatted
+    return wrapped_locale_formatter
+
+# Date and Time
+format_date =       _wrap_locale_formatter(dates.format_date)
+format_datetime =   _wrap_locale_formatter(dates.format_datetime)
+format_interval =   _wrap_locale_formatter(dates.format_interval)
+format_time =       _wrap_locale_formatter(dates.format_time)
+format_timedelta =  _wrap_locale_formatter(dates.format_timedelta)
+get_timezone_name = _wrap_locale_formatter(dates.get_timezone_name)
+get_day_names =     _wrap_locale_formatter(dates.get_day_names)
+get_month_names =   _wrap_locale_formatter(dates.get_month_names)
+
+# Number
+format_decimal =    _wrap_locale_formatter(numbers.format_decimal)
+format_number =     _wrap_locale_formatter(numbers.format_number)
+format_scientific = _wrap_locale_formatter(numbers.format_scientific)
+format_percent =    _wrap_locale_formatter(numbers.format_percent)
+format_currency =   _wrap_locale_formatter(numbers.format_currency)
 
 
 def install(cat, lang_code):

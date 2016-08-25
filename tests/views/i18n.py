@@ -6,7 +6,9 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-from zengine.lib.translation import gettext as _, ngettext, markonly as N_
+import datetime
+from zengine.lib.translation import gettext as _, ngettext, markonly as N_,\
+    format_datetime, format_decimal, get_day_names
 
 
 def output_message(current):
@@ -17,3 +19,6 @@ def output_message(current):
     marked_message = N_('This message is marked, but not translated yet.')
     current.output['marked'] = marked_message
     current.output['marked_translated'] = _(marked_message)
+    current.output['datetime'] = format_datetime(datetime.datetime(2016, 7, 21, 17, 32))
+    current.output['decimal'] = format_decimal(1.23456)
+    current.output['second_day'] = get_day_names()[1]
