@@ -34,7 +34,7 @@ class TestCase(BaseTestCase):
         test_user = User.objects.get(username='super_user')
         # We'll connect with the 'tr' language code to get the translated message
         self.prepare_client('/i18n/', user=test_user)
-        resp = self.client.post(lang_code='tr')
+        resp = self.client.post(lang_codes=['tr'])
         assert resp.json['message'] == _MSG_TR
         assert resp.json['singular'] == _MSG_TR_SINGULAR
         assert resp.json['plural'] == _MSG_TR_PLURAL
@@ -50,7 +50,7 @@ class TestCase(BaseTestCase):
         test_user = User.objects.get(username='super_user')
         # First, let's make the engine switch to a language other than the default
         self.prepare_client('/i18n/', user=test_user)
-        resp = self.client.post(lang_code='tr')
+        resp = self.client.post(lang_codes=['tr'])
         assert resp.json['message'] == _MSG_TR
         # Next, we'll connect without a language code to get the default language
         self.prepare_client('/i18n/', user=test_user)
@@ -70,11 +70,11 @@ class TestCase(BaseTestCase):
         test_user = User.objects.get(username='super_user')
         # First, let's make the engine switch to a language other than the default
         self.prepare_client('/i18n/', user=test_user)
-        resp = self.client.post(lang_code='tr')
+        resp = self.client.post(lang_codes=['tr'])
         assert resp.json['message'] == _MSG_TR
         # Next, we'll connect specifically with the default language code
         self.prepare_client('/i18n/', user=test_user)
-        resp = self.client.post()
+        resp = self.client.post(lang_codes=['en'])
         # The engine should have switched to the default language
         assert resp.json['message'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
@@ -88,9 +88,9 @@ class TestCase(BaseTestCase):
 
     def test_fallback(self):
         test_user = User.objects.get(username='super_user')
-        # We'll connect witha language code that we don't have the translations for
+        # We'll connect with a language code that we don't have the translations for
         self.prepare_client('/i18n/', user=test_user)
-        resp = self.client.post(lang_code='klingon')
+        resp = self.client.post(lang_codes=['klingon'])
         # The engine should fall back to the default language since the translations are missing
         assert resp.json['message'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
@@ -101,3 +101,19 @@ class TestCase(BaseTestCase):
         assert resp.json['datetime'] == _MSG_EN_DATETIME
         assert resp.json['decimal'] == _MSG_EN_DECIMAL
         assert resp.json['second_day'] == _MSG_EN_SECOND_DAY
+
+    def test_negotiation(self):
+        test_user = User.objects.get(username='super_user')
+        # We'll connect with a language that we have the translations for, but with a different locale
+        self.prepare_client('/i18n/', user=test_user)
+        resp = self.client.post(lang_codes=['tr_TR'])
+        # We don't have 'tr_TR' but we do have 'tr', so we should get that
+        assert resp.json['message'] == _MSG_TR
+        assert resp.json['untranslated'] == _MSG_UNTRANSLATED
+        assert resp.json['singular'] == _MSG_TR_SINGULAR
+        assert resp.json['plural'] == _MSG_TR_PLURAL
+        assert resp.json['marked'] == _MSG_EN_MARKED
+        assert resp.json['marked_translated'] == _MSG_TR_MARKED
+        assert resp.json['datetime'] == _MSG_TR_DATETIME
+        assert resp.json['decimal'] == _MSG_TR_DECIMAL
+        assert resp.json['second_day'] == _MSG_TR_SECOND_DAY

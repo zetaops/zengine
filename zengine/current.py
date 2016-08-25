@@ -62,7 +62,7 @@ class Current(object):
         self.user_id = self.session.get('user_id')
         self.role_id = self.session.get('role_id')
 
-        self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
+        self.lang_codes = self.input.get('lang_codes', [settings.DEFAULT_LANG])
         self.log = log
         self.pool = {}
         AuthBackend = get_object_from_path(settings.AUTH_BACKEND)

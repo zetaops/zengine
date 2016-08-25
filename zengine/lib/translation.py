@@ -197,33 +197,38 @@ def _load_translations():
 _translation_catalogs = _load_translations()
 
 
-def install_translation(lang):
-    """Install the translations of the language indetified by `lang`.
+def install_translation(langs):
+    """Install the translations for one of the languages in `langs`.
 
-    After this method is called, all translation functions will now
+    After this function is called, all translation functions will now
     return the translations for this language, as well performing
     time, money and number formattings appropriate to this locale.
 
-    This method will handle the negotiation of the locale, such as
-    matching language codes 'en' to 'en_US'; and will automatically
-    fall back to the default locale if no translations exist for
-    the specified one.
+    This function will handle the negotiation of the locale. `langs`
+    parameter should contain the preferred languages of the user.
+    The preferences will be compared with the languages that are
+    available, and the most suitable one will be picked. For example,
+    if the preferences are ['en_US', 'en'] and only 'en' is available,
+    that will be picked automatically. If there are no translations
+    available that would be suitable to the selected preference, the
+    default language will be used instead.
 
     If the currently installed language is already the specified one,
     then calling this function is a no-op.
 
     Args:
-         lang (str): The language code to be installed.
+         langs (`list` of `str`): The language code to be installed.
     """
-    lang_code = babel.negotiate_locale([lang], _translation_catalogs.keys())
+    lang_code = babel.negotiate_locale(langs, _translation_catalogs.keys())
     # If the language is already installed, don't do anything
     if lang_code != installed_lang:
         catalog = _translation_catalogs.get(lang_code)
         # If the catalog doesn't exist, or if the language negotiation failed, warn and fall back to default
         if catalog is None:
-            lang_code = settings.DEFAULT_LANG
+            fallback = settings.DEFAULT_LANG
             log.warning('Unable to find requested language {lang}, falling back to {fallback}'.format(
-                lang=lang, fallback=lang_code))
+                lang=lang_code, fallback=fallback))
+            lang_code = fallback
             catalog = _translation_catalogs[lang_code]
         _install(catalog, lang_code)
         log.debug('Language {lang} installed.'.format(lang=lang_code))
