@@ -167,8 +167,63 @@ format_percent =    _wrap_locale_formatter(numbers.format_percent)
 format_currency =   _wrap_locale_formatter(numbers.format_currency)
 
 
-def install(cat, lang_code):
+def _install(cat, lang_code):
     """Installs a new translation catalog. All gettext functions will start using the new catalog."""
     global _catalog, installed_lang
     _catalog = cat
     installed_lang = lang_code
+
+
+
+def _load_translations():
+    translations = {}
+    # `gettext` has support for domains, which can be used to seperate
+    # the translations of one language into multiple files. We expect
+    # all translations of a language to be in a single 'messages.mo' file.
+    TRANSLATION_DOMAIN = 'messages'
+    # For the default language, translations will be return without modification
+    log.debug('Loading translations')
+    translations[settings.DEFAULT_LANG] = gettextlib.NullTranslations()
+    for language in settings.TRANSLATIONS:
+        log.debug('Loading translation of language {lang}'.format(lang=language))
+        translations[language] = gettextlib.translation(
+            domain=TRANSLATION_DOMAIN,
+            localedir=settings.TRANSLATIONS_DIR,
+            languages=[language],
+            fallback=False,
+        )
+    return translations
+
+_translation_catalogs = _load_translations()
+
+
+def install_translation(lang):
+    """Install the translations of the language indetified by `lang`.
+
+    After this method is called, all translation functions will now
+    return the translations for this language, as well performing
+    time, money and number formattings appropriate to this locale.
+
+    This method will handle the negotiation of the locale, such as
+    matching language codes 'en' to 'en_US'; and will automatically
+    fall back to the default locale if no translations exist for
+    the specified one.
+
+    If the currently installed language is already the specified one,
+    then calling this function is a no-op.
+
+    Args:
+         lang (str): The language code to be installed.
+    """
+    lang_code = babel.negotiate_locale([lang], _translation_catalogs.keys())
+    # If the language is already installed, don't do anything
+    if lang_code != installed_lang:
+        catalog = _translation_catalogs.get(lang_code)
+        # If the catalog doesn't exist, or if the language negotiation failed, warn and fall back to default
+        if catalog is None:
+            lang_code = settings.DEFAULT_LANG
+            log.warning('Unable to find requested language {lang}, falling back to {fallback}'.format(
+                lang=lang, fallback=lang_code))
+            catalog = _translation_catalogs[lang_code]
+        _install(catalog, lang_code)
+        log.debug('Language {lang} installed.'.format(lang=lang_code))

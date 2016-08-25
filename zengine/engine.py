@@ -72,55 +72,6 @@ class ZEngine(object):
         self.user_model = get_object_from_path(settings.USER_MODEL)
         self.permission_model = get_object_from_path(settings.PERMISSION_MODEL)
         self.role_model = get_object_from_path(settings.ROLE_MODEL)
-        # Maps language codes to Translations objects
-        self.translation_catalogs = self._load_translations()
-        # Holds the last intalled language, used to avoid unnecessary language re-installs
-        self.last_lang_code = ''
-
-    @staticmethod
-    def _load_translations():
-        translations = {}
-        # `gettext` has support for domains, which can be used to seperate
-        # the translations of one language into multiple files. We expect
-        # all translations of a language to be in a single 'messages.mo' file.
-        TRANSLATION_DOMAIN = 'messages'
-        # For the default language, translations will be return without modification
-        log.debug('Loading translations')
-        translations[settings.DEFAULT_LANG] = gettext.NullTranslations()
-        for language in settings.TRANSLATIONS:
-            log.debug('Loading translation of language {lang}'.format(lang=language))
-            translations[language] = gettext.translation(
-                domain=TRANSLATION_DOMAIN,
-                localedir=settings.TRANSLATIONS_DIR,
-                languages=[language],
-                fallback=False,
-            )
-        return translations
-
-    def install_translation(self, lang):
-        """Install the translations of the language indetified by `lang`.
-
-        After this method is called, all translation functions will now
-        return the translations for this language, as well performing
-        time, money and number formattings appropriate to this locale.
-
-        This method will handle the negotiation of the locale, such as
-        matching language codes 'en' to 'en_US'; and will automatically
-        fall back to the default locale if no translations exist for
-        the specified one.
-
-        Args:
-             lang (str): The language code to be installed.
-        """
-        lang_code = babel.negotiate_locale([lang], self.translation_catalogs.keys())
-        catalog = self.translation_catalogs.get(lang_code)
-        if catalog is None:
-            default = settings.DEFAULT_LANG
-            log.warning('Unable to find requested language {lang}, falling back to {fallback}'.format(
-                lang=lang, fallback=default))
-            catalog = self.translation_catalogs[default]
-        translation.install(catalog, lang)
-        log.debug('Language {lang} installed.'.format(lang=lang))
 
     def are_we_in_subprocess(self):
         are_we = False
@@ -412,13 +363,11 @@ class ZEngine(object):
             self.handle_wf_finalization()
 
     def switch_lang(self):
-        """Switch to the language of the current user."""
-        lang_code = self.current.lang_code
-        if lang_code != self.last_lang_code:
-            self.current.log.debug('Switching language from {old} to {new}.'.format(old=self.last_lang_code,
-                                                                                    new=lang_code))
-            self.install_translation(lang_code)
-            self.last_lang_code = lang_code
+        """Switch to the language of the current user.
+
+        If the current language is already the specified one, nothing will be done.
+        """
+        translation.install_translation(self.current.lang_code)
 
     def catch_lane_change(self):
         """
