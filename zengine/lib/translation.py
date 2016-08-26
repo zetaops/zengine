@@ -7,6 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
+from datetime import datetime
 import gettext as gettextlib
 from babel import Locale, UnknownLocaleError, dates, numbers
 from zengine.log import log
@@ -238,3 +239,29 @@ format_number =     _wrap_locale_formatter(numbers.format_number, 'number')
 format_scientific = _wrap_locale_formatter(numbers.format_scientific, 'number')
 format_percent =    _wrap_locale_formatter(numbers.format_percent, 'number')
 format_currency =   _wrap_locale_formatter(numbers.format_currency, 'number')
+
+
+def _get_available_translations():
+    translations = {}
+    for language in InstalledLocale._translation_catalogs.keys():
+        translations[language] = Locale(language).language_name
+    return translations
+
+available_translations = _get_available_translations()
+
+
+def _get_available_locales(sample_formatter, sample_value):
+    locales = {}
+    for lcode in settings.LOCALIZATION_FORMATS:
+        locales[lcode] = "{sample} - {name}".format(
+            sample=sample_formatter(sample_value, locale=lcode),
+            # For some languages, only the 2-character code has a name, i.e. tr has a name but tr_TR doesn't
+            name=Locale(lcode).language_name or Locale(lcode.split('_')[0]).language_name
+        )
+    return locales
+
+available_datetimes = _get_available_locales(format_datetime, datetime.now().replace(
+    # Just take the current year, rest of the date is hardcoded to provide a more descriptive sample
+    month=7, day=25, hour=18, minute=35, second=0, microsecond=0))
+
+available_numbers = _get_available_locales(format_decimal, 123456.789)

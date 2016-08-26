@@ -9,6 +9,8 @@
 
 import pytest
 from zengine.lib.test_utils import BaseTestCase
+from zengine.lib import translation
+from zengine.config import settings
 from zengine.models import User
 
 
@@ -139,3 +141,32 @@ class TestCase(BaseTestCase):
         assert resp.json['decimal'] == _MSG_TR_DECIMAL
         assert resp.json['second_day'] == _MSG_TR_SECOND_DAY
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
+
+    def test_available_languages_locales(self):
+        assert len(translation.available_translations) > 0
+        assert len(translation.available_datetimes) > 0
+        assert len(translation.available_numbers) > 0
+
+        assert settings.DEFAULT_LANG in translation.available_translations.keys()
+
+        for k, v in translation.available_translations.items():
+            # This shouldn't throw any errors
+            translation.InstalledLocale.install_language(k)
+            # Make sure the human readable string is well-formed
+            assert v != ''
+            assert 'None' not in v
+
+        for k, v in translation.available_datetimes.items():
+            # This shouldn't throw any errors
+            translation.InstalledLocale.install_locale(k, 'datetime')
+            # Make sure the human readable string is well-formed
+            assert v != ''
+            assert 'None' not in v
+
+        for k, v in translation.available_numbers.items():
+            # This shouldn't throw any errors
+            translation.InstalledLocale.install_locale(k, 'number')
+            # Make sure the human readable string is well-formed
+            assert v != ''
+            assert 'None' not in v
+            assert '123' in v and '456' in v and '789' in v
