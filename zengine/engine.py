@@ -367,7 +367,10 @@ class ZEngine(object):
 
         If the current language is already the specified one, nothing will be done.
         """
-        translation.install_translation(self.current.lang_codes)
+        locale = self.current.locale
+        translation.InstalledLocale.install_language(locale['locale_language'])
+        translation.InstalledLocale.install_locale(locale['locale_datetime'], 'datetime')
+        translation.InstalledLocale.install_locale(locale['locale_number'], 'number')
 
     def catch_lane_change(self):
         """

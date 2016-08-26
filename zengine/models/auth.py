@@ -11,6 +11,7 @@ from pyoko import Model, field, ListNode, LinkProxy
 from passlib.hash import pbkdf2_sha512
 from zengine.lib.cache import Cache
 from zengine.messaging.lib import BaseUser
+from zengine.config import settings
 
 
 class Unit(Model):
@@ -79,6 +80,11 @@ class User(Model, BaseUser):
     password = field.String("Password")
     superuser = field.Boolean("Super user", default=False)
     avatar = field.File("Avatar", random_name=True, required=False)
+    locale_language = field.String("Preferred Language", index=False, default=settings.DEFAULT_LANG)
+    locale_datetime = field.String("Preferred Date and Time Format", index=False,
+                                   default=settings.DEFAULT_LOCALIZATION_FORMAT)
+    locale_number = field.String("Preferred Number Format", index=False,
+                                 default=settings.DEFAULT_LOCALIZATION_FORMAT)
     unit = Unit()
 
     class Meta:

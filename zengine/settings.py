@@ -15,11 +15,15 @@ import os.path
 #: Project base
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-#: Default language
+#: Default language and localization formats
 DEFAULT_LANG = 'en'
+DEFAULT_LOCALIZATION_FORMAT = 'en_US'
 
 #: Available translations
 TRANSLATIONS = ['tr']
+
+# Localization formats that will be made available to the users
+LOCALIZATION_FORMATS = ['en_US', 'en_GB', 'tr_TR']
 
 #: The directory containing the translations
 TRANSLATIONS_DIR = os.path.join(BASE_DIR, 'locale')
