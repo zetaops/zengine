@@ -6,9 +6,11 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import glob
+
 import six
 
-from pyoko.db.adapter.db_riak import BlockSave
+from pyoko.db.adapter.db_riak import BlockSave, BlockDelete
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
 from pyoko.manage import *
@@ -194,8 +196,6 @@ class RunWorker(Command):
             worker.run()
 
 
-
-
 class PrepareMQ(Command):
     """
     Creates necessary exchanges, queues and bindings
@@ -236,12 +236,88 @@ class LoadDiagrams(Command):
     """
     Loads wf diagrams from disk to DB
     """
+
     CMD_NAME = 'load_diagrams'
     HELP = 'Loads workflow diagrams from diagrams folder to DB'
+    PARAMS = [
+        {'name': 'wf_path', 'default': None, 'help': 'Only update given BPMN diagram'},
+        {'name': 'clear', 'action': 'store_true', 'help': 'Clear all task related models'},
+        {'name': 'force', 'action': 'store_true', 'help': 'Load BPMN file even if there are active WFInstances exists.'},
+    ]
 
     def run(self):
-        self.get_workflows()
+        """
+        read workflows, checks if it's updated,
+        tries to update if there aren't any running instances of that wf
+        """
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, RunningInstancesExist
 
+        if self.manager.args.clear:
+            self._clear_models()
+            return
+
+        if self.manager.args.wf_path:
+            paths = self.get_wf_from_path(self.manager.args.wf_path)
+        else:
+            paths = self.get_workflows()
+        count = 0
+        for wf_name, content in paths:
+            wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name)
+            content = self._tmp_fix_diagram(content)
+            diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
+            if wf_is_new or diagram_is_updated:
+                count += 1
+                print("%s created or updated" % wf_name.upper())
+                try:
+                    wf.set_xml(diagram, self.manager.args.force)
+                except RunningInstancesExist as e:
+                    print(e.message)
+                    print("Give \"--force\" parameter to enforce")
+        print("%s BPMN file loaded" % count)
+
+
+    def _clear_models(self):
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance
+        print("Workflow related models will be cleared")
+        c = len(DiagramXML.objects.delete())
+        print("%s DiagramXML object deleted" % c)
+        c = len(BPMNWorkflow.objects.delete())
+        print("%s BPMNWorkflow object deleted" % c)
+        c = len(WFInstance.objects.delete())
+        print("%s WFInstance object deleted" % c)
+
+    def _tmp_fix_diagram(self, content):
+        # Temporary solution for easier transition from old to new xml format
+        # TODO: Will be removed after all diagrams converted.
+        return content.replace(
+            'targetNamespace="http://activiti.org/bpmn"',
+            'targetNamespace="http://bpmn.io/schema/bpmn"'
+        ).replace(
+            'xmlns:camunda="http://activiti.org/bpmn"',
+            'xmlns:camunda="http://camunda.org/schema/1.0/bpmn"'
+        )
+
+    def get_wf_from_path(self, path):
+        """
+        load xml from given path
+        Args:
+            path: diagram path
+
+        Returns:
+
+        """
+        with open(path) as fp:
+            content = fp.read()
+        return [(os.path.basename(os.path.splitext(path)[0]), content), ]
 
     def get_workflows(self):
-        pass
+        """
+        Scans and loads all wf found under WORKFLOW_PACKAGES_PATHS
+
+        Yields: XML content of diagram file
+
+        """
+        for pth in settings.WORKFLOW_PACKAGES_PATHS:
+            for f in glob.glob("%s/*.bpmn" % pth):
+                with open(f) as fp:
+                    yield os.path.basename(os.path.splitext(f)[0]), fp.read()

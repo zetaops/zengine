@@ -23,13 +23,15 @@ from pyoko.lib.utils import get_object_from_path, lazy_property
 from zengine import signals
 from zengine.client_queue import ClientQueue
 from zengine.config import settings
-from zengine.lib.cache import WFCache
 from zengine.log import log
+from zengine.models import WFCache
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
     'body': settings.MESSAGES['lane_change_message_body'],
 }
+
+
 
 
 class Current(object):
@@ -186,7 +188,7 @@ class WFCurrent(Current):
             self.new_token = True
             # log.info("TOKEN NEW: %s " % self.token)
 
-        self.wfcache = WFCache(self.token)
+        self.wfcache = WFCache(self.token, self.session.sess_id)
         # log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
         self.set_client_cmds()
 

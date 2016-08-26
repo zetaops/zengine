@@ -20,7 +20,7 @@ class Unit(Model):
 
     """
     name = field.String("İsim", index=True)
-    parent = LinkProxy('Unit', verbose_name='Parent Unit', reverse_name='sub_units')
+    # parent = LinkProxy('Unit', verbose_name='Parent Unit', reverse_name='sub_units')
 
     class Meta:
         verbose_name = "Unit"

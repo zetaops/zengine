@@ -29,12 +29,13 @@ from pyoko.model import super_context, model_registry
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.config import settings
 from zengine.current import WFCurrent
-from zengine.lib.camunda_parser import InMemoryPackager
+from zengine.lib.camunda_parser import InMemoryPackager, ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 
 
 # crud_view = CrudView()
+from zengine.models import BPMNWorkflow
 
 
 class ZEngine(object):
@@ -175,7 +176,7 @@ class ZEngine(object):
         Tries to load the previously serialized (and saved) workflow
         Creates a new one if it can't
         """
-        self.workflow_spec = self.get_worfklow_spec()
+        self.workflow_spec = self.get_worfklow_spec
         return self._load_workflow() or self.create_workflow()
         # self.current.update(workflow=self.workflow)
 
@@ -195,6 +196,7 @@ class ZEngine(object):
         log.error(err_msg)
         raise RuntimeError(err_msg)
 
+    @property
     def get_worfklow_spec(self):
         """
         Generates and caches the workflow spec package from
@@ -205,9 +207,14 @@ class ZEngine(object):
         """
         # TODO: convert from in-process to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
-            path = self.find_workflow_path()
-            spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
-            spec = BpmnSerializer().deserialize_workflow_spec(spec_package)
+            # path = self.find_workflow_path()
+            # spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
+            # spec = BpmnSerializer().deserialize_workflow_spec(spec_package)
+
+            self.current.wf_object = BPMNWorkflow.objects.get(name=self.current.workflow_name)
+            xml_content = self.current.wf_object.xml.body
+            spec = ZopsSerializer().deserialize_workflow_spec(xml_content, self.current.workflow_name)
+
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
@@ -281,7 +288,7 @@ class ZEngine(object):
         if self.wf_cache['in_external'] and self.current.task_type == 'Simple' and self.current.task_name == 'End':
             main_wf = self.wf_cache['main_wf']
             self.current.workflow_name = main_wf['wf_name']
-            self.workflow_spec = self.get_worfklow_spec()
+            self.workflow_spec = self.get_worfklow_spec
             self.workflow = self.deserialize_workflow(main_wf['wf_state'])
             self.current.workflow = self.workflow
             self.wf_cache['in_external'] = False
@@ -299,7 +306,7 @@ class ZEngine(object):
             main_wf = self.wf_cache.copy()
             external_wf_name = self.current.task.task_spec.topic
             self.current.workflow_name = external_wf_name
-            self.workflow_spec = self.get_worfklow_spec()
+            self.workflow_spec = self.get_worfklow_spec
             self.workflow = self.create_workflow()
             self.current.workflow = self.workflow
             self.check_for_authentication()

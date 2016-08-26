@@ -267,17 +267,6 @@ class KeepAlive(Cache):
         return time.time() - float(self.get(0.0)) < self.SESSION_EXPIRE_TIME
 
 
-class WFCache(Cache):
-    """
-    Cache object for workflow instances.
-
-    Args:
-        wf_token: Token of the workflow instance.
-    """
-    PREFIX = 'WF'
-
-    def __init__(self, wf_token):
-        super(WFCache, self).__init__(wf_token)
 
 
 class ClearCache(Cache):
