@@ -101,10 +101,6 @@ class Worker(object):
         return msg
 
     def _handle_view(self, session, data, headers):
-        # create Current object
-        self.current = Current(session=session, input=data)
-        self.current.headers = headers
-
         # handle ping/pong/session expiration
         if data['view'] == 'ping':
             return self._handle_ping_pong(data, session)
@@ -164,7 +160,14 @@ class Worker(object):
             if 'wf' in data:
                 output = self._handle_workflow(session, data, headers)
             else:
+                # create Current object
+                self.current = Current(session=session, input=data)
+                self.current.headers = headers
+
                 output = self._handle_view(session, data, headers)
+                if output == -1:
+                    # -1 means we don't want to return anything to client
+                    return
         except HTTPError as e:
             import sys
             if hasattr(sys, '_called_from_test'):
@@ -172,6 +175,8 @@ class Worker(object):
             output = {'cmd': 'error', 'error': self._prepare_error_msg(e.message), "code": e.code}
             log.exception("Http error occurred")
         except:
+            self.current = Current(session=session, input=data)
+            self.current.headers = headers
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise

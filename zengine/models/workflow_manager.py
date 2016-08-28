@@ -8,11 +8,16 @@
 # (GPLv3).  See LICENSE.txt for details.
 import json
 
+from datetime import datetime
+from time import sleep
+
 from pika.exceptions import ChannelClosed
 from pika.exceptions import ConnectionClosed
 from pyoko import Model, field, ListNode, LinkProxy
 from pyoko.conf import settings
-from pyoko.lib.utils import get_object_from_path
+from pyoko.exceptions import ObjectDoesNotExist
+from pyoko.fields import DATE_TIME_FORMAT
+from pyoko.lib.utils import get_object_from_path, lazy_property
 from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_NS
 from zengine.client_queue import get_mq_connection
 from zengine.lib.cache import Cache
@@ -220,24 +225,36 @@ class WFInstance(Model):
     """
     wf = BPMNWorkflow()
     task = Task()
+    name = field.String("WF Name")
     current_actor = RoleModel()
     wf_object = field.String("Subject ID")
     last_activation = field.DateTime("Last activation")
     finished = field.Boolean(default=False)
     started = field.Boolean(default=False)
+    in_external = field.Boolean(default=False)
     start_date = field.DateTime("Start time")
     finish_date = field.DateTime("Finish time")
-    state = field.String("Serialized state of WF")
+    step = field.String("Last executed WF Step")
+    data = field.String("Task Data")
+    pool = field.String("Pool Data")
 
     class Meta:
         verbose_name = "Workflow Instance"
         verbose_name_plural = "Workflows Instances"
         search_fields = ['name']
-        list_fields = ['name', ]
+        list_fields = ['name', 'actor']
 
-    class Pool(ListNode):
-        order = field.Integer("Lane order")
-        role = RoleModel()
+    def actor(self):
+        return self.current_actor.user.full_name if self.current_actor.exist else '-'
+    actor.title = 'Current Actor'
+
+    # class Pool(ListNode):
+    #     order = field.Integer("Lane order")
+    #     role = RoleModel()
+
+    def pre_save(self):
+        if not self.wf and self.name:
+            self.wf = BPMNWorkflow.objects.get(name=self.name)
 
     def __unicode__(self):
         return '%s instance (%s)' % (self.wf.name, self.key)
@@ -257,7 +274,7 @@ class TaskInvitation(Model):
         """
         When one person use an invitation, we should delete other invitations
         """
-        # TODO: Signal logged-in users to remove the task from task list
+        # TODO: Signal logged-in users to remove the task from their task list
         self.objects.filter(instance=self.instance).exclude(key=self.key).delete()
 
 
@@ -272,10 +289,15 @@ class WFCache(Cache):
     mq_channel = None
     mq_connection = None
 
-    def __init__(self, wf_token, sess_id):
-        self.db_key = wf_token
-        self.sess_id = sess_id
-        super(WFCache, self).__init__(wf_token)
+    def __init__(self, current):
+        try:
+            self.db_key = current.token
+        except AttributeError:
+            self.db_key = current.input['token']
+        self.sess_id = current.session.sess_id
+        self.current = current
+        self.wf_state = {}
+        super(WFCache, self).__init__(self.db_key)
 
     @classmethod
     def _connect_mq(cls):
@@ -283,31 +305,56 @@ class WFCache(Cache):
             cls.mq_connection, cls.mq_channel = get_mq_connection()
         return cls.mq_channel
 
-    def write_to_db_through_mq(self, sess_id, val):
-        """
-        write wf state to DB through MQ >> Worker >> _zops_sync_wf_cache
-        Args:
-            sess_id: users session id
-        """
-        data = dict(exchange='input_exc',
-                    routing_key=sess_id,
-                    body=json.dumps({'data': {
-                        'view': '_zops_sync_wf_cache',
-                        'wf_state': val,
-                        'token': self.db_key},
-                        '_zops_remote_ip': ''}))
+    def publish(self, **data):
+        _data = {'exchange': 'input_exc',
+                 # 'routing_key': self.sess_id,
+                 'routing_key': '',
+                 'body': json.dumps({
+                     'data': data,
+                     '_zops_remote_ip': ''})}
         try:
-            self.mq_channel.basic_publish(**data)
-        except (ConnectionClosed, ChannelClosed):
-            self._connect_mq().basic_publish(**data)
+            self.mq_channel.basic_publish(**_data)
+        except (AttributeError, ConnectionClosed, ChannelClosed):
+            self._connect_mq().basic_publish(**_data)
 
     def get_from_db(self):
-        return WFInstance.objects.get(self.db_key)
+        try:
+            data, key = WFInstance.objects.data().get(self.db_key)
+            return data
+        except ObjectDoesNotExist:
+            return None
 
-    def get(self):
-        return super(WFCache, self).get() or self.get_from_db()
+    def get(self, default=None):
+        self.wf_state = super(WFCache, self).get() or self.get_from_db() or default
+        if 'finish_date' in self.wf_state:
+            try:
+                dt = datetime.strptime(self.wf_state['finish_date'], DATE_TIME_FORMAT)
+                self.wf_state['finish_date'] = dt.strftime(settings.DATETIME_DEFAULT_FORMAT)
+            except ValueError:
+                # FIXME: we should properly handle wfengine > db > wfengine format conversion
+                pass
+        return self.wf_state
 
-    def set(self, val, lifetime=None):
-        super(WFCache, self).set(val, lifetime)
-        self.write_to_db_through_mq(self.sess_id, val)
-        return val
+    def get_instance(self):
+        data_from_cache = super(WFCache, self).get()
+        if data_from_cache:
+            wfi = WFInstance()
+            wfi._load_data(data_from_cache, from_db=True)
+            wfi.key = self.db_key
+            return wfi
+        else:
+            return WFInstance.objects.get(self.db_key)
+
+    def save(self, wf_state):
+        """
+        write wf state to DB through MQ >> Worker >> _zops_sync_wf_cache
+
+        Args:
+            wf_state dict: wf state
+        """
+        self.wf_state = wf_state
+        self.wf_state['role_id'] = self.current.role_id
+        self.set(self.wf_state)
+        if self.wf_state['name'] not in settings.EPHEMERAL_WORKFLOWS:
+            self.publish(view='_zops_sync_wf_cache',
+                         token=self.db_key)

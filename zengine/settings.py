@@ -193,6 +193,9 @@ MESSAGES = {
 
 }
 
+#: These WFs will not saved to DB
+EPHEMERAL_WORKFLOWS = ['crud', 'login', 'logout', 'edit_catalog_data']
+
 #: A manager object for DB stored catalog data.
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
 

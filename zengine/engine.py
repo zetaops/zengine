@@ -23,7 +23,9 @@ from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
 from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
     CompactWorkflowSerializer
 from SpiffWorkflow.specs import WorkflowSpec
+from datetime import datetime
 
+from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
@@ -63,7 +65,7 @@ class ZEngine(object):
         self.use_compact_serializer = True
         # self.current = None
         self.wf_activities = {}
-        self.wf_cache = {'in_external': False}
+        self.wf_state = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
@@ -93,15 +95,15 @@ class ZEngine(object):
                 del task_data[k]
         if 'cmd' in task_data:
             del task_data['cmd']
-        self.wf_cache.update({'wf_state': serialized_wf_instance,
+        self.wf_state.update({'step': serialized_wf_instance,
                               'data': task_data,
-                              'wf_name': self.current.workflow_name,
+                              'name': self.current.workflow_name,
                               })
         if self.current.lane_name:
             self.current.pool[self.current.lane_name] = self.current.role.key
-        self.wf_cache['pool'] = self.current.pool
+        self.wf_state['pool'] = self.current.pool
         self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
-        self.current.wfcache.set(self.wf_cache)
+        self.current.wf_cache.save(self.wf_state)
 
     def get_pool_context(self):
         # TODO: Add in-process caching
@@ -127,11 +129,11 @@ class ZEngine(object):
         updates the self.current.task_data
         """
         if not self.current.new_token:
-            self.wf_cache = self.current.wfcache.get(self.wf_cache)
-            self.current.task_data = self.wf_cache['data']
+            self.wf_state = self.current.wf_cache.get(self.wf_state)
+            self.current.task_data = self.wf_state['data']
             self.current.set_client_cmds()
-            self.current.pool = self.wf_cache['pool']
-            return self.wf_cache['wf_state']
+            self.current.pool = self.wf_state['pool']
+            return self.wf_state['step']
 
     def _load_workflow(self):
         # gets the serialized wf data from cache and deserializes it
@@ -176,7 +178,7 @@ class ZEngine(object):
         Tries to load the previously serialized (and saved) workflow
         Creates a new one if it can't
         """
-        self.workflow_spec = self.get_worfklow_spec
+        self.workflow_spec = self.get_worfklow_spec()
         return self._load_workflow() or self.create_workflow()
         # self.current.update(workflow=self.workflow)
 
@@ -196,7 +198,6 @@ class ZEngine(object):
         log.error(err_msg)
         raise RuntimeError(err_msg)
 
-    @property
     def get_worfklow_spec(self):
         """
         Generates and caches the workflow spec package from
@@ -224,11 +225,12 @@ class ZEngine(object):
         """
         if not self.current.task_type.startswith('Start'):
             if self.current.task_name.startswith('End') and not self.are_we_in_subprocess():
-                self.current.wfcache.delete()
+                self.wf_state['finished'] = True
+                self.wf_state['finish_date'] = datetime.now().strftime(
+                    settings.DATETIME_DEFAULT_FORMAT)
                 self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
                                                                  self.current.token))
-            else:
-                self.save_workflow_to_cache(self.serialize_workflow())
+            self.save_workflow_to_cache(self.serialize_workflow())
 
     def start_engine(self, **kwargs):
         """
@@ -242,11 +244,13 @@ class ZEngine(object):
 
         """
         self.current = WFCurrent(**kwargs)
+        self.wf_state = {'in_external': False, 'finished': False}
         if not self.current.new_token:
-            self.wf_cache = self.current.wfcache.get(self.wf_cache)
-            self.current.workflow_name = self.wf_cache['wf_name']
+            self.wf_state = self.current.wf_cache.get(self.wf_state)
+            self.current.workflow_name = self.wf_state['name']
         self.check_for_authentication()
         self.check_for_permission()
+
         self.workflow = self.load_or_create_workflow()
         log_msg = ("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
                    "\tWF: %s (Possible) TASK:%s\n"
@@ -275,7 +279,7 @@ class ZEngine(object):
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
         output += "\n\tPOOL: %s" % self.current.pool
-        output += "\n\tIN EXTERNAL: %s" % self.wf_cache['in_external']
+        output += "\n\tIN EXTERNAL: %s" % self.wf_state['in_external']
         output += "\n\tLANE: %s" % self.current.lane_name
         output += "\n\tTOKEN: %s" % self.current.token
         sys._zops_wf_state_log = output
@@ -285,15 +289,15 @@ class ZEngine(object):
         log.debug(self.generate_wf_state_log() + "\n= = = = = =\n")
 
     def switch_from_external_to_main_wf(self):
-        if self.wf_cache['in_external'] and self.current.task_type == 'Simple' and self.current.task_name == 'End':
-            main_wf = self.wf_cache['main_wf']
+        if self.wf_state['in_external'] and self.current.task_type == 'Simple' and self.current.task_name == 'End':
+            main_wf = self.wf_state['main_wf']
             self.current.workflow_name = main_wf['wf_name']
-            self.workflow_spec = self.get_worfklow_spec
+            self.workflow_spec = self.get_worfklow_spec()
             self.workflow = self.deserialize_workflow(main_wf['wf_state'])
             self.current.workflow = self.workflow
-            self.wf_cache['in_external'] = False
-            self.wf_cache['pool'] = main_wf['pool']
-            self.current.pool = self.wf_cache['pool']
+            self.wf_state['in_external'] = False
+            self.wf_state['pool'] = main_wf['pool']
+            self.current.pool = self.wf_state['pool']
             self.current.task_name = None
             self.current.task_type = None
             self.current.task = None
@@ -303,23 +307,26 @@ class ZEngine(object):
         if (self.current.task_type == 'ServiceTask' and
                     self.current.task.task_spec.type == 'external'):
             log.debug("Entering to EXTERNAL WF")
-            main_wf = self.wf_cache.copy()
+            main_wf = self.wf_state.copy()
             external_wf_name = self.current.task.task_spec.topic
             self.current.workflow_name = external_wf_name
-            self.workflow_spec = self.get_worfklow_spec
+            self.workflow_spec = self.get_worfklow_spec()
             self.workflow = self.create_workflow()
             self.current.workflow = self.workflow
             self.check_for_authentication()
             self.check_for_permission()
 
-            self.wf_cache = {'main_wf': main_wf, 'in_external': True}
+            self.wf_state = {'main_wf': main_wf, 'in_external': True}
 
     def _should_we_run(self):
         not_a_user_task = self.current.task_type != 'UserTask'
-        wf_not_finished = not (self.current.task_name == 'End' and self.current.task_type == 'Simple')
-        if not wf_not_finished and self.are_we_in_subprocess():
-            wf_not_finished = True
-        return self.current.flow_enabled and not_a_user_task and wf_not_finished
+        wf_in_progress = not (self.current.task_name == 'End' and
+                               self.current.task_type == 'Simple')
+        if wf_in_progress and self.wf_state['finished']:
+            wf_in_progress = False
+        if not wf_in_progress and self.are_we_in_subprocess():
+            wf_in_progress = True
+        return self.current.flow_enabled and not_a_user_task and wf_in_progress
 
     def run(self):
         """
