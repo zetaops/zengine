@@ -41,7 +41,7 @@ def to_safe_str(s):
         u'ö', 'o').replace(u'ş', 's').replace(u'ü', 'u').lower(), re.UNICODE)
 
 
-def update_truthy(*dicts):
+def merge_truthy(*dicts):
     """Merge multiple dictionaries, keeping the truthy values in case of key collisions.
 
     Accepts any number of dictionaries, or any other object that returns a 2-tuple of
@@ -51,7 +51,7 @@ def update_truthy(*dicts):
     dictionary is kept. If the value of the latter dictionary does not evaluate to True, then
     the value of the previous dictionary is kept.
 
-    >>> update_truthy({'a': 1, 'c': 4}, {'a': None, 'b': 2}, {'b': 3})
+    >>> merge_truthy({'a': 1, 'c': 4}, {'a': None, 'b': 2}, {'b': 3})
     {'a': 1, 'b': 3, 'c': 4}
     """
     merged = {}

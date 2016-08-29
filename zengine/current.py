@@ -24,7 +24,7 @@ from zengine import signals
 from zengine.client_queue import ClientQueue
 from zengine.config import settings
 from zengine.lib.cache import WFCache
-from zengine.lib.utils import update_truthy
+from zengine.lib.utils import merge_truthy
 from zengine.lib import translation
 from zengine.log import log
 
@@ -91,10 +91,10 @@ class Current(object):
         if not all(locale_prefs.values()):
             user = self.auth.get_user()
             # Read the preferences from user model
-            locale_prefs = update_truthy(locale_prefs, {ltype: getattr(user, ltype) for ltype in locale_types})
+            locale_prefs = merge_truthy(locale_prefs, {ltype: getattr(user, ltype) for ltype in locale_types})
             # If preference in user model is missing too (or anonymous user), use the default
             if not all(locale_prefs.values()):
-                locale_prefs = update_truthy(locale_prefs, translation.DEFAULT_PREFS)
+                locale_prefs = merge_truthy(locale_prefs, translation.DEFAULT_PREFS)
             # Save the preferences that are used to the session
             for k, v in locale_prefs.items():
                 self.session[k] = v
