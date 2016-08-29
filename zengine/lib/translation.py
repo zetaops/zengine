@@ -116,12 +116,21 @@ def gettext(message):
     by ZEngine when the user connects), this function will simply return the message
     without modification.
 
+    If there are messages containing unicode characters, in Python 2 these messages must
+    be marked as unicode. Otherwise, python will not be able to correctly match these
+    messages with translations. For example:
+
+    >>> print(_('Café'))
+    Café
+    >>> print(_(u'Café'))
+    Kahve
+
     Args:
-        message (str): The input message.
+        message (unicode): The input message.
     Returns:
-        str: The translated message.
+        unicode: The translated message.
     """
-    return InstalledLocale._catalog.gettext(message)
+    return InstalledLocale._catalog.ugettext(message)
 
 
 def ngettext(singular, plural, n):
@@ -150,13 +159,13 @@ def ngettext(singular, plural, n):
     When doing formatting, both singular and plural forms of the message should have the exactly same variables.
 
     Args:
-        singular (str): The singular form of the message.
-        plural (str): The plural form of the message.
+        singular (unicode): The singular form of the message.
+        plural (unicode): The plural form of the message.
         n (int): The number that is used to decide which form should be used.
     Returns:
-        str: The correct pluralization, translated.
+        unicode: The correct pluralization, translated.
     """
-    return InstalledLocale._catalog.ngettext(singular, plural, n)
+    return InstalledLocale._catalog.ungettext(singular, plural, n)
 
 
 def markonly(message):
@@ -188,9 +197,9 @@ def markonly(message):
     portakal
 
     Args:
-        message (str): The input message.
+        message (unicode): The input message.
     Returns:
-        str: The input message, with no modifications. To do the actual translation,
+        unicode: The input message, with no modifications. To do the actual translation,
             gettext should be called on this string when needed.
     """
     return message
