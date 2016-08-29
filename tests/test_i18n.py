@@ -51,14 +51,15 @@ class TestCase(BaseTestCase):
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
 
     def test_default(self):
-        test_user = User.objects.get(username='super_user')
+        initial_user = User.objects.get(username='super_user')
         # First, let's make the engine switch to a language other than the default
-        self.prepare_client('/change_language/', user=test_user)
+        self.prepare_client('/change_language/', user=initial_user)
         self.client.post(locale_language='tr', locale_datetime='tr', locale_number='tr')
-        # Reconnect, don't change the language this time
+        # This user doesn't have any language preferences
+        test_user = User.objects.get(username='test_user2')
         self.prepare_client('/i18n/', user=test_user)
         resp = self.client.post()
-        # Since no language code was given, the engine should switch to the default language
+        # Since no language preferences exist for this user, the engine should switch to the defaults
         assert resp.json['message'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
         assert resp.json['singular'] == _MSG_EN_SINGULAR
@@ -74,7 +75,7 @@ class TestCase(BaseTestCase):
         # First, let's make the engine switch to a language other than the default
         self.prepare_client('/change_language/', user=test_user)
         self.client.post(locale_language='tr', locale_datetime='tr', locale_number='tr')
-        # Next, we'll connect specifically with the default language code
+        # Next, we'll change specifically to the default language
         self.prepare_client('/change_language/', user=test_user)
         self.client.post(locale_language='en', locale_datetime='en', locale_number='en')
         self.client.set_path('/i18n/', None)
