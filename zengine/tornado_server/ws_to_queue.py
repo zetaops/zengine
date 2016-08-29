@@ -158,7 +158,11 @@ class QueueManager(object):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
                 # differentiate and identify incoming message with registered consumer
-                channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=sess_id)
+                channel.basic_consume(self.on_message,
+                                      queue=sess_id,
+                                      consumer_tag=sess_id,
+                                      # no_ack=True
+                                      )
                 log.debug("BINDED QUEUE TO WS Q.%s" % sess_id)
             self.out_channels[sess_id] = channel
 
@@ -185,11 +189,16 @@ class QueueManager(object):
 
     def on_message(self, channel, method, header, body):
         sess_id = method.consumer_tag
-        log.debug("WS RPLY for %s: %s" % (sess_id, body))
+        log.debug("WS RPLY for %s" % sess_id)
+        log.debug("WS BODY for %s" % body)
         try:
             if sess_id in self.websockets:
                 log.info("write msg to client")
                 self.websockets[sess_id].write_message(body)
+                log.debug("WS OBJ %s" % self.websockets[sess_id])
             channel.basic_ack(delivery_tag=method.delivery_tag)
         except RuntimeError:
-            log.exception("CANT WRITE TO HTTP OR WS: \n%s" % body)
+            log.exception("CANT WRITE TO HTTP OR WS: %s\n \n%s" % (sess_id, body))
+        except KeyError:
+            self.unregister_websocket(sess_id)
+            log.exception("CANT FIND WS OR HTTP: %s" % sess_id)
