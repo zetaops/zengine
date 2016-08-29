@@ -9,7 +9,7 @@
 import six
 from pyoko.exceptions import ObjectDoesNotExist
 from zengine.models import WFCache
-from zengine.models import WFInstance
+from zengine.models import WFInstance, TaskInvitation
 
 
 def sessid_to_userid(current):
@@ -18,8 +18,24 @@ def sessid_to_userid(current):
     current.user.bind_private_channel(current.session.sess_id)
     current.output['sessid_to_userid'] = True
 
+
 def mark_offline_user(current):
     current.user.is_online(False)
+
+
+def get_invites(current):
+    # TODO: Also return invitations for user's other roles
+    # TODO: Handle automatic role switching
+    current.output['task_list'] = [
+        {
+            'token': inv.instance.key,
+            'title': inv.name,
+            'description': inv.wf.description,
+            # 'wf_type': string, # Bu nedir ki???
+            'start_date': inv.task.start_date,
+            'finish_date': inv.task.finish_date}
+        for inv in TaskInvitation.objects.filter(role_id=current.role_id)
+        ]
 
 
 def sync_wf_cache(current):
@@ -46,5 +62,3 @@ def sync_wf_cache(current):
         # if cache already cleared, we have nothing to sync
     # -1 means do not return anything to client
     current.output = -1
-
-

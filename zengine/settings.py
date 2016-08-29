@@ -124,6 +124,7 @@ VIEW_URLS = {
     'mark_offline_user': 'zengine.views.system.mark_offline_user',
     'ping': 'zengine.views.dev_utils.Ping',
     '_zops_sync_wf_cache': 'zengine.views.system.sync_wf_cache',
+    '_zops_get_invites': 'zengine.views.system.get_invites',
     '_zops_create_message': 'zengine.messaging.views.create_message',
     '_zops_show_channel': 'zengine.messaging.views.show_channel',
     '_zops_list_channels': 'zengine.messaging.views.list_channels',
