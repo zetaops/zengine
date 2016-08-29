@@ -356,5 +356,5 @@ class WFCache(Cache):
         self.wf_state['role_id'] = self.current.role_id
         self.set(self.wf_state)
         if self.wf_state['name'] not in settings.EPHEMERAL_WORKFLOWS:
-            self.publish(view='_zops_sync_wf_cache',
+            self.publish(job='sync_wf_cache',
                          token=self.db_key)

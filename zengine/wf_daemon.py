@@ -100,7 +100,20 @@ class Worker(object):
             msg.update(LOGIN_REQUIRED_MESSAGE)
         return msg
 
+    def _handle_job(self, session, data, headers):
+        self.current = Current(session=session, input=data)
+        self.current.headers = headers
+        # import method
+        method = get_object_from_path(settings.BG_JOBS[data['job']])
+        # call view with current object
+        method(self.current)
+
+
     def _handle_view(self, session, data, headers):
+        # create Current object
+        self.current = Current(session=session, input=data)
+        self.current.headers = headers
+
         # handle ping/pong/session expiration
         if data['view'] == 'ping':
             return self._handle_ping_pong(data, session)
@@ -159,15 +172,13 @@ class Worker(object):
 
             if 'wf' in data:
                 output = self._handle_workflow(session, data, headers)
-            else:
-                # create Current object
-                self.current = Current(session=session, input=data)
-                self.current.headers = headers
+            elif 'job' in data:
 
+                self._handle_job(session, data, headers)
+                return
+            else:
                 output = self._handle_view(session, data, headers)
-                if output == -1:
-                    # -1 means we don't want to return anything to client
-                    return
+
         except HTTPError as e:
             import sys
             if hasattr(sys, '_called_from_test'):

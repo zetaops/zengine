@@ -8,6 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import six
 from pyoko.exceptions import ObjectDoesNotExist
+from zengine.models import BPMNWorkflow
 from zengine.models import WFCache
 from zengine.models import WFInstance, TaskInvitation
 
@@ -45,8 +46,9 @@ def sync_wf_cache(current):
         try:
             wfi = WFInstance.objects.get(key=current.input['token'])
         except ObjectDoesNotExist:
-            # just for backwards compatibility
+            # wf's that not started from a task invitation
             wfi = WFInstance(key=current.input['token'])
+            wfi.wf = BPMNWorkflow.objects.get(name=wf_state['name'])
         wfi.step = wf_state['step']
         wfi.name = wf_state['name']
         wfi.pool = wf_state['pool']
@@ -60,5 +62,3 @@ def sync_wf_cache(current):
     else:
         pass
         # if cache already cleared, we have nothing to sync
-    # -1 means do not return anything to client
-    current.output = -1
