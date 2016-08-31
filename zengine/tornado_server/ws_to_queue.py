@@ -180,9 +180,7 @@ class QueueManager(object):
         message = json_decode(message)
         message['_zops_sess_id'] = sess_id
         message['_zops_remote_ip'] = request.remote_ip
-        self.publish_incoming_message(message, sess_id)
-
-    def publish_incoming_message(self, message, sess_id):
+        message['_zops_source'] = 'Remote'
         self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
                                       body=json_encode(message))
