@@ -40,6 +40,7 @@ class TestCase(BaseTestCase):
         self.client.set_path('/i18n/', None)
         resp = self.client.post()
         assert resp.json['message'] == _MSG_TR
+        assert resp.json['lazy'] == _MSG_TR
         assert resp.json['singular'] == _MSG_TR_SINGULAR
         assert resp.json['plural'] == _MSG_TR_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED
@@ -61,6 +62,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post()
         # Since no language preferences exist for this user, the engine should switch to the defaults
         assert resp.json['message'] == _MSG_EN
+        assert resp.json['lazy'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
         assert resp.json['singular'] == _MSG_EN_SINGULAR
         assert resp.json['plural'] == _MSG_EN_PLURAL
@@ -82,6 +84,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post()
         # The engine should have switched to the default language
         assert resp.json['message'] == _MSG_EN
+        assert resp.json['lazy'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
         assert resp.json['singular'] == _MSG_EN_SINGULAR
         assert resp.json['plural'] == _MSG_EN_PLURAL
@@ -100,6 +103,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post()
         # The engine should fall back to the default language since the translations are missing
         assert resp.json['message'] == _MSG_EN
+        assert resp.json['lazy'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
         assert resp.json['singular'] == _MSG_EN_SINGULAR
         assert resp.json['plural'] == _MSG_EN_PLURAL
@@ -118,6 +122,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post()
         # The messages should be in English
         assert resp.json['message'] == _MSG_EN
+        assert resp.json['lazy'] == _MSG_EN
         assert resp.json['untranslated'] == _MSG_UNTRANSLATED
         assert resp.json['singular'] == _MSG_EN_SINGULAR
         assert resp.json['plural'] == _MSG_EN_PLURAL
@@ -134,6 +139,7 @@ class TestCase(BaseTestCase):
         self.prepare_client('/i18n/', user=test_user)
         resp = self.client.post()
         assert resp.json['message'] == _MSG_TR
+        assert resp.json['lazy'] == _MSG_TR
         assert resp.json['singular'] == _MSG_TR_SINGULAR
         assert resp.json['plural'] == _MSG_TR_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED

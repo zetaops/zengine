@@ -10,6 +10,7 @@
 from datetime import datetime
 import gettext as gettextlib
 from babel import Locale, UnknownLocaleError, dates, numbers, lists
+from babel.support import LazyProxy
 from zengine.log import log
 from zengine.config import settings
 
@@ -133,6 +134,34 @@ def gettext(message):
     return InstalledLocale._catalog.ugettext(message)
 
 
+def gettext_lazy(message):
+    """Mark a message as translateable, but delay the translation until the message is used.
+
+    Sometimes, there are some messages that need to be translated, but the translation
+    can't be done at the point the message itself is written. For example, the names of
+    the fields in a Model can't be translated at the point they are written, otherwise
+    the translation would be done when the file is imported, long before a user even connects.
+    To avoid this, `gettext_lazy` should be used. For example:
+
+    >>> from zengine.lib.translation import gettext_lazy, InstalledLocale
+    >>> from pyoko import model, fields
+    >>> class User(model.Model):,
+    ...     name = fields.String(gettext_lazy('User Name'))
+    >>> print(User.name.title)
+    User Name
+    >>> InstalledLocale.install_language('tr')
+    >>> print(User.name.title)
+    Kullanıcı Adı
+
+    Args:
+        message (unicode): The input message.
+    Returns:
+        unicode: The translated message, with the translation itself being delayed until
+            the text is actually used.
+    """
+    return LazyProxy(gettext, message, enable_cache=False)
+
+
 def ngettext(singular, plural, n):
     """Mark a message as translateable, and translate it considering plural forms.
 
@@ -166,6 +195,21 @@ def ngettext(singular, plural, n):
         unicode: The correct pluralization, translated.
     """
     return InstalledLocale._catalog.ungettext(singular, plural, n)
+
+
+def ngettext_lazy(singular, plural, n):
+    """Mark a message with plural forms translateable, and delay the translation until the message is used.
+
+    Works the same was a `ngettext`, with a delaying functionality similiar to `gettext_lazy`.
+
+    Args:
+        singular (unicode): The singular form of the message.
+        plural (unicode): The plural form of the message.
+        n (int): The number that is used to decide which form should be used.
+    Returns:
+        unicode: The correct pluralization, with the translation being delayed until the message is used.
+    """
+    return LazyProxy(ngettext, singular, plural, n, enable_cache=False)
 
 
 def markonly(message):
