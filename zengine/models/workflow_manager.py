@@ -198,7 +198,7 @@ class Task(Model):
         """
         creates all the task that defined by this wf task instance
         """
-        WFInstance(wf=self.wf, )
+        WFInstance(wf=self.wf, task=self, name='')
         roles = self.get_roles()
 
     def get_roles(self):
@@ -226,7 +226,8 @@ class WFInstance(Model):
     wf = BPMNWorkflow()
     task = Task()
     name = field.String("WF Name")
-    current_actor = RoleModel()
+    subject = field.String(_("Subject ID"))
+    current_actor = RoleModel("Current Actor")
     wf_object = field.String("Subject ID")
     last_activation = field.DateTime("Last activation")
     finished = field.Boolean(default=False)
@@ -242,10 +243,11 @@ class WFInstance(Model):
         verbose_name = "Workflow Instance"
         verbose_name_plural = "Workflows Instances"
         search_fields = ['name']
-        list_fields = ['name', 'actor']
+        list_fields = ['name', 'current_actor']
 
     def actor(self):
         return self.current_actor.user.full_name if self.current_actor.exist else '-'
+
     actor.title = 'Current Actor'
 
     # class Pool(ListNode):
@@ -260,10 +262,33 @@ class WFInstance(Model):
         return '%s instance (%s)' % (self.wf.name, self.key)
 
 
+OWNERSHIP_STATES = (
+    (10, 'Unclaimed'),  # waiting in job pool
+    (20, 'Claimed'),  # claimed by user
+    (30, 'Assigned'),  # assigned to user
+    (40, 'Transferred'),  # transferred from another user
+)
+PROGRESS_STATES = (
+    (10, 'Future'),  # work will be done in the future
+    (20, 'Waiting'),  # waiting for owner to start to work on it
+    (30, 'In Progress'),  # work in progress
+    (40, 'Finished'),  # task completed
+    (90, 'Expired'),  # task does not finished before it's due date
+)
+
+
 class TaskInvitation(Model):
+    """
+    User facing part of task management system
+
+    """
     instance = WFInstance()
     role = RoleModel()
-    name = field.String()
+    ownership = field.Integer(default=1, choices=OWNERSHIP_STATES)
+    progress = field.Integer(default=1, choices=PROGRESS_STATES)
+    wf_name = field.String("WF Name")
+    title = field.String("Task Name")
+    search_data = field.String("Combined full-text search data")
     start_date = field.DateTime("Start time")
     finish_date = field.DateTime("Finish time")
 
@@ -311,6 +336,7 @@ class WFCache(Cache):
                  'routing_key': '',
                  'body': json.dumps({
                      'data': data,
+                     '_zops_source': 'Internal',
                      '_zops_remote_ip': ''})}
         try:
             self.mq_channel.basic_publish(**_data)
@@ -331,7 +357,7 @@ class WFCache(Cache):
                 dt = datetime.strptime(self.wf_state['finish_date'], DATE_TIME_FORMAT)
                 self.wf_state['finish_date'] = dt.strftime(settings.DATETIME_DEFAULT_FORMAT)
             except ValueError:
-                # FIXME: we should properly handle wfengine > db > wfengine format conversion
+                # FIXME: we should properly handle wfengine > db > wfengine DATE format conversion
                 pass
         return self.wf_state
 
@@ -358,3 +384,38 @@ class WFCache(Cache):
         if self.wf_state['name'] not in settings.EPHEMERAL_WORKFLOWS:
             self.publish(job='sync_wf_cache',
                          token=self.db_key)
+
+
+def sync_wf_cache(current):
+    """
+    BG Job for storing wf state to DB
+    """
+    wf_cache = WFCache(current)
+    wf_state = wf_cache.get()
+    if 'role_id' in wf_state:
+        # role_id inserted by engine, so it's a sign that we get it from cache not db
+        try:
+            wfi = WFInstance.objects.get(key=current.input['token'])
+        except ObjectDoesNotExist:
+            # wf's that not started from a task invitation
+            wfi = WFInstance(key=current.input['token'])
+            wfi.wf = BPMNWorkflow.objects.get(name=wf_state['name'])
+        if not wfi.current_actor.exist:
+            # we just started the wf
+            inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
+            inv.delete_other_invitations()
+            inv.state = 20
+            inv.save()
+        wfi.step = wf_state['step']
+        wfi.name = wf_state['name']
+        wfi.pool = wf_state['pool']
+        wfi.current_actor_id = wf_state['role_id']
+        wfi.data = wf_state['data']
+        if wf_state['finished']:
+            wfi.finished = True
+            wfi.finish_date = wf_state['finish_date']
+            wf_cache.delete()
+        wfi.save()
+    else:
+        # if cache already cleared, we have nothing to sync
+        pass
