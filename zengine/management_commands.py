@@ -240,9 +240,15 @@ class LoadDiagrams(Command):
     CMD_NAME = 'load_diagrams'
     HELP = 'Loads workflow diagrams from diagrams folder to DB'
     PARAMS = [
-        {'name': 'wf_path', 'default': None, 'help': 'Only update given BPMN diagram'},
-        {'name': 'clear', 'action': 'store_true', 'help': 'Clear all task related models'},
-        {'name': 'force', 'action': 'store_true', 'help': 'Load BPMN file even if there are active WFInstances exists.'},
+        {'name': 'wf_path', 'default': None,
+         'help': 'Only update given BPMN diagram'},
+
+        {'name': 'clear', 'action': 'store_true',
+         'help': 'Clear all TaskManager related models'},
+
+        {'name': 'force', 'action': 'store_true',
+         'help': "(Re)Load BPMN file even if it doesn't updated or"
+                 " there are active WFInstances exists."},
     ]
 
     def run(self):
@@ -265,7 +271,7 @@ class LoadDiagrams(Command):
             wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name)
             content = self._tmp_fix_diagram(content)
             diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
-            if wf_is_new or diagram_is_updated:
+            if wf_is_new or diagram_is_updated or self.manager.args.force:
                 count += 1
                 print("%s created or updated" % wf_name.upper())
                 try:
@@ -277,7 +283,7 @@ class LoadDiagrams(Command):
 
 
     def _clear_models(self):
-        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance, TaskInvitation
         print("Workflow related models will be cleared")
         c = len(DiagramXML.objects.delete())
         print("%s DiagramXML object deleted" % c)
@@ -285,6 +291,8 @@ class LoadDiagrams(Command):
         print("%s BPMNWorkflow object deleted" % c)
         c = len(WFInstance.objects.delete())
         print("%s WFInstance object deleted" % c)
+        c = len(TaskInvitation.objects.delete())
+        print("%s TaskInvitation object deleted" % c)
 
     def _tmp_fix_diagram(self, content):
         # Temporary solution for easier transition from old to new xml format
