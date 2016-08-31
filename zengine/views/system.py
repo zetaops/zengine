@@ -6,11 +6,7 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-import six
-from pyoko.exceptions import ObjectDoesNotExist
-from zengine.models import BPMNWorkflow
-from zengine.models import WFCache
-from zengine.models import WFInstance, TaskInvitation
+from zengine.models import TaskInvitation
 
 
 def sessid_to_userid(current):
@@ -24,41 +20,57 @@ def mark_offline_user(current):
     current.user.is_online(False)
 
 
-def get_invites(current):
+def get_tasks(current):
+    """
+        List task invitations of current user
+
+
+        .. code-block:: python
+
+            #  request:
+                {
+                'view': '_zops_get_tasks',
+                'query': string, # optional. for searching on user's tasks
+                'wf_type': string, # optional. only show tasks of selected wf_type
+                'start_date': datetime, # optional. only show tasks starts after this date
+                'finish_date': datetime, # optional. only show tasks should end before this date
+                '
+                }
+
+            #  response:
+                {
+                'task_list': [
+                    {'token': string, # wf token (key of WFInstance)
+                     'title': string,  # name of workflow
+                     'wf_type': string,  # unread message count
+                     'title': string,  # task title
+                     'state': int,  # state of invitation
+                                    # zengine.models.workflow_manager.TASK_STATES
+                     'start_date': datetime,  # start date
+                     'finish_date': datetime,  # end date
+
+                     },]
+                }
+        """
     # TODO: Also return invitations for user's other roles
     # TODO: Handle automatic role switching
+    queryset = TaskInvitation.objects.filter(role_id=current.role_id)
+    if current.input['query']:
+        queryset = queryset.filter(search_data__contains=current.input['query'].lower())
+    if current.input['wf_type']:
+        queryset = queryset.filter(wf_name=current.input['wf_type'])
+    if current.input['start_date']:
+        queryset = queryset.filter(start_date__gte=current.input['start_date'])
+    if current.input['finish_date']:
+        queryset = queryset.filter(finish_date__lte=current.input['finish_date'])
     current.output['task_list'] = [
         {
             'token': inv.instance.key,
-            'title': inv.name,
-            'description': inv.wf.description,
-            # 'wf_type': string, # Bu nedir ki???
+            'title': inv.title,
+            'wf_type': inv.wf_name,
+            'state': inv.state,
             'start_date': inv.task.start_date,
             'finish_date': inv.task.finish_date}
-        for inv in TaskInvitation.objects.filter(role_id=current.role_id)
+        for inv in queryset
         ]
 
-
-def sync_wf_cache(current):
-    wf_cache = WFCache(current)
-    wf_state = wf_cache.get()
-    if 'role_id' in wf_state:
-        try:
-            wfi = WFInstance.objects.get(key=current.input['token'])
-        except ObjectDoesNotExist:
-            # wf's that not started from a task invitation
-            wfi = WFInstance(key=current.input['token'])
-            wfi.wf = BPMNWorkflow.objects.get(name=wf_state['name'])
-        wfi.step = wf_state['step']
-        wfi.name = wf_state['name']
-        wfi.pool = wf_state['pool']
-        wfi.current_actor_id = wf_state['role_id']
-        wfi.data = wf_state['data']
-        if wf_state['finished']:
-            wfi.finished = True
-            wfi.finish_date = wf_state['finish_date']
-            wf_cache.delete()
-        wfi.save()
-    else:
-        pass
-        # if cache already cleared, we have nothing to sync
