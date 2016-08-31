@@ -248,6 +248,11 @@ class ZEngine(object):
         if not self.current.new_token:
             self.wf_state = self.current.wf_cache.get(self.wf_state)
             self.current.workflow_name = self.wf_state['name']
+            # if we have a pre-selected object to work with,
+            # inserting it as current.input['id'] and task_data['object_id']
+            if self.wf_state['subject']:
+                self.current.input['id'] = self.wf_state['subject']
+                self.current.task_data['object_id'] = self.wf_state['subject']
         self.check_for_authentication()
         self.check_for_permission()
 
