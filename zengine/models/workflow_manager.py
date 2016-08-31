@@ -10,6 +10,7 @@ import json
 
 from datetime import datetime
 from time import sleep
+from traceback import format_exc
 
 from pika.exceptions import ChannelClosed
 from pika.exceptions import ConnectionClosed
@@ -22,6 +23,7 @@ from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_N
 from zengine.client_queue import get_mq_connection
 from zengine.lib.cache import Cache
 from zengine.lib.translation import gettext_lazy as _
+import xml.etree.ElementTree as ET
 
 UnitModel = get_object_from_path(settings.UNIT_MODEL)
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
@@ -58,6 +60,9 @@ class DiagramXML(Model):
             diagram = cls(name=name, body=content).save()
         return diagram, new
 
+    def __unicode__(self):
+        return "%s [%s]" % (self.name, self.get_humane_value('timestamp'))
+
 
 class RunningInstancesExist(Exception):
     pass
@@ -73,27 +78,49 @@ class BPMNParser(object):
     """
 
     def __init__(self, xml_content=None, xml_file=None):
-        if xml_content:
-            import StringIO
-            self.root = ET.parse(StringIO(xml_content))
-        else:
-            self.root = ET.parse(xml_file)
+        try:
+            if xml_content:
+                import StringIO
+                self.root = ET.parse(StringIO.StringIO(xml_content))
+            else:
+                self.root = ET.parse(xml_file)
+        except ET.ParseError:
+            print(xml_content or xml_file)
+            raise
 
-    def _get_wf_description(self):
+    def get_description(self):
         """
         Tries to get WF description from 'collabration' or 'process' or 'pariticipant'
 
         Returns str: WF description
 
         """
+        paths = ['bpmn:collaboration/bpmn:participant/bpmn:documentation',
+                 'bpmn:collaboration/bpmn:documentation',
+                 'bpmn:process/bpmn:documentation']
+        for path in paths:
+            elm = self.root.find(path, NS)
+            if elm is not None and elm.text:
+                return elm.text
 
-        desc = (
-            self.root.find('bpmn:collaboration/bpmn:documentation', NS) or
-            self.root.find('bpmn:process/bpmn:documentation', NS) or
-            self.root.find('bpmn:collaboration/bpmn:participant/bpmn:documentation', NS)
-        )
+    def get_name(self):
+        """
+        Tries to get WF name from 'process' or 'collobration' or 'pariticipant'
 
-        return desc.text if desc else ''
+        Returns:
+            str. WF name.
+        """
+        paths = ['bpmn:collaboration/bpmn:participant/',
+                 'bpmn:collaboration',
+                 'bpmn:process'
+                 ]
+        name = None
+        for path in paths:
+            tag = self.root.find(path, NS)
+            if len(tag):
+                name = tag[0].get('name')
+                if name:
+                    return name
 
 
 class BPMNWorkflow(Model):
@@ -104,7 +131,8 @@ class BPMNWorkflow(Model):
 
     """
     xml = DiagramXML()
-    name = field.String("Name")
+    name = field.String("File name")
+    title = field.String("Workflow Title")
     description = field.String("Description")
     show_in_menu = field.Boolean(default=False)
     requires_object = field.Boolean(default=False)
@@ -141,6 +169,9 @@ class BPMNWorkflow(Model):
                 ))
         else:
             self.xml = diagram
+            parser = BPMNParser(diagram.body)
+            self.description = parser.get_description()
+            self.title = parser.get_name()
             self.save()
 
 
