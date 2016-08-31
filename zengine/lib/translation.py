@@ -9,7 +9,7 @@
 
 from datetime import datetime
 import gettext as gettextlib
-from babel import Locale, UnknownLocaleError, dates, numbers
+from babel import Locale, UnknownLocaleError, dates, numbers, lists
 from zengine.log import log
 from zengine.config import settings
 
@@ -248,6 +248,7 @@ format_number =     _wrap_locale_formatter(numbers.format_number, 'number')
 format_scientific = _wrap_locale_formatter(numbers.format_scientific, 'number')
 format_percent =    _wrap_locale_formatter(numbers.format_percent, 'number')
 format_currency =   _wrap_locale_formatter(numbers.format_currency, 'number')
+format_list =       _wrap_locale_formatter(lists.format_list, 'number')
 
 
 def _get_available_translations():
