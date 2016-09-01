@@ -8,6 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 
 from datetime import datetime
+from collections import defaultdict
 import gettext as gettextlib
 from babel import Locale, UnknownLocaleError, dates, numbers, lists
 from babel.support import LazyProxy
@@ -21,32 +22,41 @@ DEFAULT_PREFS = {
     'locale_number': settings.DEFAULT_LOCALIZATION_FORMAT,
 }
 
+# The domain used for all messages in the application.
+# The .mo file of the application should have this name.
+DEFAULT_DOMAIN = 'messages'
+
 
 def _load_translations():
-    translations = {}
-    # `gettext` has support for domains, which can be used to seperate
-    # the translations of one language into multiple files. We expect
-    # all translations of a language to be in a single 'messages.mo' file.
-    TRANSLATION_DOMAIN = 'messages'
-    # For the default language, translations will be return without modification
+    all_translations = {}
     log.debug('Loading translations')
-    translations[settings.DEFAULT_LANG] = gettextlib.NullTranslations()
     for language in settings.TRANSLATIONS:
-        log.debug('Loading translation of language {lang}'.format(lang=language))
-        translations[language] = gettextlib.translation(
-            domain=TRANSLATION_DOMAIN,
-            localedir=settings.TRANSLATIONS_DIR,
-            languages=[language],
-            fallback=False,
-        )
-    return translations
+        translations = {}
+        for domain, default_lang in settings.TRANSLATION_DOMAINS.items():
+            if language == default_lang:
+                # For the default language of the domain, use untranslated messages
+                catalog = gettextlib.NullTranslations()
+            else:
+                # For other languages, we need to insert the translations
+                log.debug('Loading translation of language {lang} for {domain}'.format(lang=language, domain=domain))
+                catalog = gettextlib.translation(
+                    domain=domain,
+                    localedir=settings.TRANSLATIONS_DIR,
+                    languages=[language],
+                    fallback=False,
+                )
+            translations[domain] = catalog
+        all_translations[language] = translations
+    return all_translations
 
 
 class InstalledLocale(object):
-    language = DEFAULT_PREFS['locale_language']
+    language = ''  # Force the first language install to swap out the initial NullTranslations of `_active_catalogs`
     datetime = DEFAULT_PREFS['locale_datetime']
     number   = DEFAULT_PREFS['locale_number']
-    _catalog = gettextlib.NullTranslations()
+    # Until ZEngine runs and translations get installed (i.e. when using the shell),
+    # just show untranslated messages for everything
+    _active_catalogs = defaultdict(gettextlib.NullTranslations)
     _translation_catalogs = _load_translations()
 
     @classmethod
@@ -61,13 +71,13 @@ class InstalledLocale(object):
         if language_code == cls.language:
             return
         try:
-            cls._catalog = cls._translation_catalogs[language_code]
+            cls._active_catalogs = cls._translation_catalogs[language_code]
             cls.language = language_code
             log.debug('Installed language %s', language_code)
         except KeyError:
             default = settings.DEFAULT_LANG
             log.warning('Unknown language %s, falling back to %s', language_code, default)
-            cls._catalog = cls._translation_catalogs[default]
+            cls._active_catalogs = cls._translation_catalogs[default]
             cls.language = default
 
     @classmethod
@@ -93,7 +103,7 @@ class InstalledLocale(object):
         setattr(cls, locale_type, locale.language)
 
 
-def gettext(message):
+def gettext(message, domain=DEFAULT_DOMAIN):
     """Mark a message as translateable, and translate it.
 
     All messages in the application that are translateable should be wrapped with this function.
@@ -128,13 +138,15 @@ def gettext(message):
 
     Args:
         message (unicode): The input message.
+        domain (basestring): The domain of the message. Defaults to 'messages', which
+            is the domain where all application messages should be located.
     Returns:
         unicode: The translated message.
     """
-    return InstalledLocale._catalog.ugettext(message)
+    return InstalledLocale._active_catalogs[domain].ugettext(message)
 
 
-def gettext_lazy(message):
+def gettext_lazy(message, domain=DEFAULT_DOMAIN):
     """Mark a message as translateable, but delay the translation until the message is used.
 
     Sometimes, there are some messages that need to be translated, but the translation
@@ -155,14 +167,16 @@ def gettext_lazy(message):
 
     Args:
         message (unicode): The input message.
+        domain (basestring): The domain of the message. Defaults to 'messages', which
+            is the domain where all application messages should be located.
     Returns:
         unicode: The translated message, with the translation itself being delayed until
             the text is actually used.
     """
-    return LazyProxy(gettext, message, enable_cache=False)
+    return LazyProxy(gettext, message, domain=domain, enable_cache=False)
 
 
-def ngettext(singular, plural, n):
+def ngettext(singular, plural, n, domain=DEFAULT_DOMAIN):
     """Mark a message as translateable, and translate it considering plural forms.
 
     Some messages may need to change based on a number. For example, consider a message
@@ -191,13 +205,15 @@ def ngettext(singular, plural, n):
         singular (unicode): The singular form of the message.
         plural (unicode): The plural form of the message.
         n (int): The number that is used to decide which form should be used.
+        domain (basestring): The domain of the message. Defaults to 'messages', which
+            is the domain where all application messages should be located.
     Returns:
         unicode: The correct pluralization, translated.
     """
-    return InstalledLocale._catalog.ungettext(singular, plural, n)
+    return InstalledLocale._active_catalogs[domain].ungettext(singular, plural, n)
 
 
-def ngettext_lazy(singular, plural, n):
+def ngettext_lazy(singular, plural, n, domain=DEFAULT_DOMAIN):
     """Mark a message with plural forms translateable, and delay the translation until the message is used.
 
     Works the same was a `ngettext`, with a delaying functionality similiar to `gettext_lazy`.
@@ -206,10 +222,12 @@ def ngettext_lazy(singular, plural, n):
         singular (unicode): The singular form of the message.
         plural (unicode): The plural form of the message.
         n (int): The number that is used to decide which form should be used.
+        locale (basestring): The domain of the message. Defaults to 'messages', which
+            is the domain where all application messages should be located.
     Returns:
         unicode: The correct pluralization, with the translation being delayed until the message is used.
     """
-    return LazyProxy(ngettext, singular, plural, n, enable_cache=False)
+    return LazyProxy(ngettext, singular, plural, n, domain=domain, enable_cache=False)
 
 
 def markonly(message):

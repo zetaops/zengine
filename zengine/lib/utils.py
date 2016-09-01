@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from zengine.lib import translation
+
 
 class DotDict(dict):
     """
@@ -59,3 +61,14 @@ def merge_truthy(*dicts):
         for k, v in d.items():
             merged[k] = v or merged.get(k, v)
     return merged
+
+
+_Z_DOMAIN = 'zengine'
+
+def gettext(message):
+    """A wrapper around `zengine.lib.translation.gettext` that sets the correct domain for ZEngine."""
+    return translation.gettext(message, domain=_Z_DOMAIN)
+
+def gettext_lazy(message):
+    """A wrapper around `zengine.lib.translation.gettext_lazy` that sets the correct domain for ZEngine."""
+    return translation.gettext_lazy(message, domain=_Z_DOMAIN)
