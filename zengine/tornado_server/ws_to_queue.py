@@ -137,8 +137,9 @@ class QueueManager(object):
         self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
                                       body=json_encode(dict(data={
-                                          'view': 'mark_offline_user',
+                                          'view': '_zops_mark_offline_user',
                                           'sess_id': sess_id,},
+                                          _zops_source= 'Internal',
                                           _zops_remote_ip='')))
 
     def unregister_websocket(self, sess_id):

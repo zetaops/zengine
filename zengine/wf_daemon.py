@@ -19,12 +19,12 @@ from zengine.engine import ZEngine
 from zengine.current import Current
 from zengine.lib.cache import Session, KeepAlive
 from zengine.lib.exceptions import HTTPError, SecurityInfringementAttempt
+from zengine.lib.decorators import VIEW_METHODS, JOB_METHODS, runtime_importer
+
 from zengine.log import log
 import sys
-# receivers should be imported at right time, right place
-# they will not registered if not placed in a central location
-# but they can cause "cannot import settings" errors if imported too early
-from zengine.receivers import *
+
+runtime_importer()
 
 sys._zops_wf_state_log = ''
 
@@ -71,13 +71,29 @@ class Worker(object):
         log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME,
                                                                         self.INPUT_EXCHANGE))
 
+
+
+    def clear_queue(self):
+        """
+        clear outs all messages from INPUT_QUEUE_NAME
+        """
+        def remove_message(ch, method, properties, body):
+            print("Removed message: %s" % body)
+        self.input_channel.basic_consume(remove_message, queue=self.INPUT_QUEUE_NAME, no_ack=True)
+        try:
+            self.input_channel.start_consuming()
+        except (KeyboardInterrupt, SystemExit):
+            log.info(" Exiting")
+            self.exit()
+
     def run(self):
         """
         actual consuming of incoming works starts here
         """
         self.input_channel.basic_consume(self.handle_message,
                                          queue=self.INPUT_QUEUE_NAME,
-                                         no_ack=True)
+                                         no_ack=True
+                                         )
         try:
             self.input_channel.start_consuming()
         except (KeyboardInterrupt, SystemExit):
@@ -110,9 +126,9 @@ class Worker(object):
         self.current = Current(session=session, input=data)
         self.current.headers = headers
         # import method
-        method = get_object_from_path(settings.BG_JOBS[data['job']])
+        # method = get_object_from_path(settings.BG_JOBS[data['job']])
         # call view with current object
-        method(self.current)
+        JOB_METHODS[data['job']](self.current)
 
     def _handle_view(self, session, data, headers):
         # create Current object
@@ -128,10 +144,10 @@ class Worker(object):
             return LOGIN_REQUIRED_MESSAGE
 
         # import view
-        view = get_object_from_path(settings.VIEW_URLS[data['view']])
+        # view = get_object_from_path(settings.VIEW_URLS[data['view']])
 
         # call view with current object
-        view(self.current)
+        VIEW_METHODS[data['view']](self.current)
 
         # return output
         return self.current.output
@@ -168,7 +184,7 @@ class Worker(object):
             # since this comes as "path" we dont know if it's view or workflow yet
             # TODO: just a workaround till we modify ui to
             if 'path' in data:
-                if data['path'] in settings.VIEW_URLS:
+                if data['path'] in VIEW_METHODS:
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']

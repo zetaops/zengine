@@ -25,6 +25,11 @@ class FormValidationError(ZengineError):
     pass
 
 
+class ConfigurationError(ZengineError):
+    """ pass """
+    pass
+
+
 class HTTPError(ZengineError):
     """Exception thrown for an unsuccessful HTTP request.
 

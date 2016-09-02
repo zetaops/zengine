@@ -17,6 +17,7 @@ from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 
 
+
 class UpdatePermissions(Command):
     """
     Gets permissions from
@@ -232,6 +233,50 @@ class PrepareMQ(Command):
             ch.create_exchange()
 
 
+class ClearQueues(Command):
+    """
+    Creates necessary exchanges, queues and bindings
+    """
+    CMD_NAME = 'clear_queues'
+    HELP = 'Clears various system queues'
+
+    def run(self):
+        self.clear_input_queue()
+
+    def clear_input_queue(self):
+        from zengine.wf_daemon import Worker
+        worker = Worker()
+        worker.clear_queue()
+
+
+
+class ListSysViews(Command):
+    """
+    Lists non-workflow system and development views
+    """
+    CMD_NAME = 'list_views'
+    HELP = 'Lists non-workflow system and development views'
+
+    def run(self):
+        self.list_system_views()
+
+    def list_system_views(self):
+        settings.DEBUG = True
+        exec ('from %s import *' % settings.MODELS_MODULE)
+        from zengine.lib.decorators import VIEW_METHODS, runtime_importer
+        import inspect
+        runtime_importer()
+        by_file = defaultdict(list)
+        for k, v in VIEW_METHODS.items():
+            by_file[inspect.getfile(v)].append(k)
+        for file, views in by_file.items():
+            print("|_ %s" % file)
+            for view in views:
+                print("  |_   %s" % view)
+
+
+
+
 class LoadDiagrams(Command):
     """
     Loads wf diagrams from disk to DB
@@ -281,9 +326,9 @@ class LoadDiagrams(Command):
                     print("Give \"--force\" parameter to enforce")
         print("%s BPMN file loaded" % count)
 
-
     def _clear_models(self):
-        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance, TaskInvitation
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance, \
+            TaskInvitation
         print("Workflow related models will be cleared")
         c = len(DiagramXML.objects.delete())
         print("%s DiagramXML object deleted" % c)

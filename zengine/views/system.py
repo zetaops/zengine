@@ -6,20 +6,21 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from zengine.lib.decorators import view, bg_job
 from zengine.models import TaskInvitation
 
 
-def sessid_to_userid(current):
-    current.output['user_id'] = current.user_id.lower()
-    current.output['sess_id'] = current.session.sess_id
-    current.user.bind_private_channel(current.session.sess_id)
-    current.output['sessid_to_userid'] = True
+# def sessid_to_userid(current):
+#     current.output['user_id'] = current.user_id.lower()
+#     current.output['sess_id'] = current.session.sess_id
+#     current.user.bind_private_channel(current.session.sess_id)
+#     current.output['sessid_to_userid'] = True
 
-
+@view()
 def mark_offline_user(current):
     current.user.is_online(False)
 
-
+@view()
 def get_tasks(current):
     """
         List task invitations of current user
