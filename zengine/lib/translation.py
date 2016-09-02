@@ -39,12 +39,17 @@ def _load_translations():
             else:
                 # For other languages, we need to insert the translations
                 log.debug('Loading translation of language {lang} for {domain}'.format(lang=language, domain=domain))
-                catalog = gettextlib.translation(
-                    domain=domain,
-                    localedir=settings.TRANSLATIONS_DIR,
-                    languages=[language],
-                    fallback=False,
-                )
+                try:
+                    catalog = gettextlib.translation(
+                        domain=domain,
+                        localedir=settings.TRANSLATIONS_DIR,
+                        languages=[language],
+                        fallback=False,
+                    )
+                except IOError:
+                    log.error('Translations for language {lang} for {domain} not found! '
+                              'Falling back to default language!'.format(lang=language, domain=domain))
+                    catalog = gettextlib.NullTranslations()
             translations[domain] = catalog
         all_translations[language] = translations
     return all_translations
