@@ -12,6 +12,7 @@ from datetime import datetime
 from time import sleep
 from traceback import format_exc
 
+import functools
 from pika.exceptions import ChannelClosed
 from pika.exceptions import ConnectionClosed
 from pyoko import Model, field, ListNode, LinkProxy
@@ -20,10 +21,13 @@ from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path, lazy_property
 from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_NS
+from pyoko.modelmeta import model_registry
 from zengine.client_queue import get_mq_connection
 from zengine.lib.cache import Cache
 from zengine.lib.translation import gettext_lazy as _
 import xml.etree.ElementTree as ET
+
+from zengine.lib.decorators import ROLE_GETTER_CHOICES, bg_job
 
 UnitModel = get_object_from_path(settings.UNIT_MODEL)
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
@@ -110,14 +114,13 @@ class BPMNParser(object):
         Returns:
             str. WF name.
         """
-        paths = ['bpmn:collaboration/bpmn:participant/',
+        paths = ['bpmn:process',
+                 'bpmn:collaboration/bpmn:participant/',
                  'bpmn:collaboration',
-                 'bpmn:process'
                  ]
-        name = None
         for path in paths:
             tag = self.root.find(path, NS)
-            if len(tag):
+            if tag is not None and len(tag):
                 name = tag[0].get('name')
                 if name:
                     return name
@@ -171,7 +174,7 @@ class BPMNWorkflow(Model):
             self.xml = diagram
             parser = BPMNParser(diagram.body)
             self.description = parser.get_description()
-            self.title = parser.get_name()
+            self.title = parser.get_name() or self.name.replace('_', ' ').title()
             self.save()
 
 
@@ -197,22 +200,31 @@ ROLE_SEARCH_DEPTH = (
 )
 
 
+def get_model_choices():
+    return [{'name': k, 'value': v.Meta.verbose_name} for k, v in model_registry.registry.items()]
+
+
+
+
+
 class Task(Model):
     """
 
     Task definition for workflows
 
     """
-    run = field.Boolean("Create tasks", default=False)
+    run = field.Boolean("Create tasks now!", default=False)
     wf = BPMNWorkflow()
     name = field.String(_("Name of task"))
-    abstract_role = AbstractRoleModel(null=True)
+    abstract_role = AbstractRoleModel("Abstract Role", null=True)
     role = RoleModel(null=True)
     unit = UnitModel(null=True)
-    search_depth = field.Integer(_("Get roles from"), choices=ROLE_SEARCH_DEPTH)
-    role_query_code = field.String(_("Role query method"), null=True)
-    object_query_code = field.String(_("Role query method"), null=True)
+    recursive_units = field.Boolean("Get roles from all sub-units")
+    get_roles_from = field.Integer(_("Get roles from"), choices=ROLE_GETTER_CHOICES)
+    role_query_code = field.String(_("Role query dict"), null=True)
+    object_query_code = field.String(_("Object query dict"), null=True)
     object_key = field.String(_("Subject ID"), null=True)
+    object_type = field.String(_("Object type"), null=True, choices=get_model_choices)
     start_date = field.DateTime(_("Start time"))
     finish_date = field.DateTime(_("Finish time"))
     repeat = field.Integer(_("Repeating period"), default=0, choices=JOB_REPEATING_PERIODS)
@@ -233,7 +245,14 @@ class Task(Model):
         roles = self.get_roles()
 
     def get_roles(self):
-        pass
+        if self.role:
+            return [self.role]
+        else:
+            roles = []
+            if self.role_query_code:
+                roles = RoleModel.objects.filter(**self.role_query_code)
+            if self.unit:
+                pass
 
     def create_periodic_tasks(self):
         pass
@@ -246,6 +265,7 @@ class Task(Model):
 
     def __unicode__(self):
         return '%s' % self.name
+
 
 
 class WFInstance(Model):
@@ -413,10 +433,10 @@ class WFCache(Cache):
         self.wf_state['role_id'] = self.current.role_id
         self.set(self.wf_state)
         if self.wf_state['name'] not in settings.EPHEMERAL_WORKFLOWS:
-            self.publish(job='sync_wf_cache',
+            self.publish(job='_zops_sync_wf_cache',
                          token=self.db_key)
 
-
+@bg_job("_zops_sync_wf_cache")
 def sync_wf_cache(current):
     """
     BG Job for storing wf state to DB
@@ -433,10 +453,13 @@ def sync_wf_cache(current):
             wfi.wf = BPMNWorkflow.objects.get(name=wf_state['name'])
         if not wfi.current_actor.exist:
             # we just started the wf
-            inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
-            inv.delete_other_invitations()
-            inv.state = 20
-            inv.save()
+            try:
+                inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
+                inv.delete_other_invitations()
+                inv.state = 20
+                inv.save()
+            except ObjectDoesNotExist:
+                current.log.exception("Invitation not found: %s" % wf_state)
         wfi.step = wf_state['step']
         wfi.name = wf_state['name']
         wfi.pool = wf_state['pool']
