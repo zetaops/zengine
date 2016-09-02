@@ -93,6 +93,8 @@ class CatalogData(object):
     def __call__(self, catalog, key):
         if isinstance(catalog, six.string_types):
             return self.ITEM_CACHE.get(catalog, {}).get(key) or self._fill_get_item_cache(catalog, key)
+        elif callable(catalog):
+            return self._get_from_static_tuple(catalog(), key)
         else:
             return self._get_from_static_tuple(catalog, key)
 
