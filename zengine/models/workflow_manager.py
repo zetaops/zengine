@@ -7,12 +7,15 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
+import types
 
 from datetime import datetime
 from time import sleep
 from traceback import format_exc
 
 import functools
+
+import six
 from pika.exceptions import ChannelClosed
 from pika.exceptions import ConnectionClosed
 from pyoko import Model, field, ListNode, LinkProxy
@@ -27,7 +30,7 @@ from zengine.lib.cache import Cache
 from zengine.lib.translation import gettext_lazy as _
 import xml.etree.ElementTree as ET
 
-from zengine.lib.decorators import ROLE_GETTER_CHOICES, bg_job
+from zengine.lib.decorators import ROLE_GETTER_CHOICES, bg_job, ROLE_GETTER_METHODS
 
 UnitModel = get_object_from_path(settings.UNIT_MODEL)
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
@@ -204,9 +207,6 @@ def get_model_choices():
     return [{'name': k, 'value': v.Meta.verbose_name} for k, v in model_registry.registry.items()]
 
 
-
-
-
 class Task(Model):
     """
 
@@ -219,7 +219,6 @@ class Task(Model):
     abstract_role = AbstractRoleModel("Abstract Role", null=True)
     role = RoleModel(null=True)
     unit = UnitModel(null=True)
-    recursive_units = field.Boolean("Get roles from all sub-units")
     get_roles_from = field.Integer(_("Get roles from"), choices=ROLE_GETTER_CHOICES)
     role_query_code = field.String(_("Role query dict"), null=True)
     object_query_code = field.String(_("Object query dict"), null=True)
@@ -230,6 +229,7 @@ class Task(Model):
     repeat = field.Integer(_("Repeating period"), default=0, choices=JOB_REPEATING_PERIODS)
     notification_density = field.Integer(_("Notification density"),
                                          choices=JOB_NOTIFICATION_DENSITY)
+    recursive_units = field.Boolean("Get roles from all sub-units")
 
     class Meta:
         verbose_name = "Workflow Task"
@@ -240,24 +240,94 @@ class Task(Model):
     def create_tasks(self):
         """
         creates all the task that defined by this wf task instance
+        will create a WFInstance per object
+        and per TaskInvitation for each role and WFInstnace
         """
-        WFInstance(wf=self.wf, task=self, name='')
         roles = self.get_roles()
+        wf_instances = self.create_wf_instances()
+        self.create_invitations(roles, wf_instances)
+
+    def create_invitations(self, roles, wf_instances):
+        """creates a TaskInvitation for each role for each WFInstnace"""
+        for wfi in wf_instances:
+            for role in roles:
+                TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
+                               start_date=self.start_date, finish_date=self.finish_date).save()
+
+    def create_wf_instances(self):
+        """ creates a WFInstnace for each object"""
+        return [WFInstance(wf=self.wf,
+                           task=self,
+                           wf_object=obj_key,
+                           name=self.wf.name,
+                           wf_object_type=self.object_type).save()
+                for obj_key in self.get_object_keys()]
+
+    def get_object_query_dict(self):
+        """returns objects keys according to self.object_query_code
+        which can be json encoded queryset filter dict or key=value set
+         in the following format: ```"key=val, key2 = val2 , key3= value with spaces"```
+
+        Returns:
+             dict. Queryset filtering dict
+        """
+        if isinstance(self.object_query_code, dict):
+            return self.object_query_code
+        else:
+            # comma separated, key=value pairs. wrapping spaces will be ignored
+            # eg: "key=val, key2 = val2 , key3= value with spaces"
+            return dict([map(str.strip, pair.split('='))
+                         for pair in self.object_query_code.split(',')])
+
+    def get_object_keys(self):
+        """returns object keys according to task definition
+        which can be explicitly selected one object (self.object_key) or
+        result of a queryset filter.
+
+        Returns:
+            list of object keys
+        """
+        if self.object_key:
+            return [self.object_key]
+        if self.object_query_code:
+            model = model_registry.get_model(self.object_type)
+            return [key for data, key in
+                    model.objects.filter(**self.get_object_query_dict()).data()]
 
     def get_roles(self):
+        """
+        Returns:
+            Role instances according to task definition.
+        """
         if self.role:
+            # return explicitly selected role
             return [self.role]
         else:
             roles = []
             if self.role_query_code:
+                #  use given "role_query_code"
                 roles = RoleModel.objects.filter(**self.role_query_code)
-            if self.unit:
-                pass
+            elif self.unit:
+                # get roles from selected unit or sub-units of it
+                if self.recursive_units:
+                    # this returns a list, we're converting it to a Role generator!
+                    roles = (RoleModel.objects.get(k) for k in UnitModel.get_user_keys())
+                else:
+                    roles = RoleModel.objects.filter(unit=self.unit)
+            elif self.get_roles_from:
+                # get roles from selected predefined "get_roles_from" method
+                roles = ROLE_GETTER_METHODS[self.get_roles_from]()
 
-    def create_periodic_tasks(self):
-        pass
+        if self.abstract_role:
+            # apply abstract_role filtering on roles we got
+            if isinstance(roles, (list, types.GeneratorType)):
+                roles = [a for a in roles if a.abstract_role == self.abstract_role]
+            else:
+                roles = roles.filter(abstract_role=self.abstract_role)
+        return roles
 
     def post_save(self):
+        """can be removed when a proper task manager admin interface implemented"""
         if self.run:
             self.run = False
             self.create_tasks()
@@ -265,7 +335,6 @@ class Task(Model):
 
     def __unicode__(self):
         return '%s' % self.name
-
 
 
 class WFInstance(Model):
@@ -280,6 +349,7 @@ class WFInstance(Model):
     subject = field.String(_("Subject ID"))
     current_actor = RoleModel("Current Actor")
     wf_object = field.String("Subject ID")
+    wf_object_type = field.String(_("Object type"), null=True, choices=get_model_choices)
     last_activation = field.DateTime("Last activation")
     finished = field.Boolean(default=False)
     started = field.Boolean(default=False)
@@ -295,6 +365,10 @@ class WFInstance(Model):
         verbose_name_plural = "Workflows Instances"
         search_fields = ['name']
         list_fields = ['name', 'current_actor']
+
+    def get_object(self):
+        model = model_registry.get_model(self.wf_object_type)
+        return model.objects.get(self.wf_object)
 
     def actor(self):
         return self.current_actor.user.full_name if self.current_actor.exist else '-'
@@ -342,6 +416,16 @@ class TaskInvitation(Model):
     search_data = field.String("Combined full-text search data")
     start_date = field.DateTime("Start time")
     finish_date = field.DateTime("Finish time")
+
+    def get_object_name(self):
+        return six.text_type(self.instance.get_object())
+
+    def pre_save(self):
+        self.title = "%s %s" % (self.name, self.get_object_name())
+        self.search_data = '\n'.join([self.wf_name,
+                                      self.title,
+                                      self.get_object_name()]
+                                     )
 
     def __unicode__(self):
         return "%s invitation for %s" % (self.name, self.role)
@@ -435,6 +519,7 @@ class WFCache(Cache):
         if self.wf_state['name'] not in settings.EPHEMERAL_WORKFLOWS:
             self.publish(job='_zops_sync_wf_cache',
                          token=self.db_key)
+
 
 @bg_job("_zops_sync_wf_cache")
 def sync_wf_cache(current):
