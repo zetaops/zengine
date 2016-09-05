@@ -1,0 +1,26 @@
+# Turkish translations for ZEngine
+# Copyright (C) 2016 ZetaOps Inc.
+# This file is distributed under the same license as the ZEngine project.
+#
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=2; plural=n != 1\n"
+
+#: views/i18n.py:14 views/i18n.py:17
+msgid "This is a translateable message."
+msgstr "Bu çevirilebilir bir mesajdır."
+
+#: views/i18n.py:19
+msgid "This message has not been translated."
+msgstr ""
+
+#: views/i18n.py:20 views/i18n.py:21
+msgid "One"
+msgid_plural "Many"
+msgstr[0] "Tek"
+msgstr[1] "Çok"
+
+#: views/i18n.py:22
+msgid "This message is marked, but not translated yet."
+msgstr "Bu mesaj işaretlendi, ancak henüz çevirilmedi."
+

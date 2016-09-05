@@ -10,11 +10,13 @@ Zengine's engine!
 from __future__ import division
 from __future__ import print_function, absolute_import, division
 
+import gettext
 import importlib
 import os
 import sys
 import traceback
 from copy import deepcopy
+import babel
 
 import lazy_object_proxy
 from SpiffWorkflow import Task
@@ -31,6 +33,7 @@ from zengine.config import settings
 from zengine.current import WFCurrent
 from zengine.lib.camunda_parser import InMemoryPackager
 from zengine.lib.exceptions import HTTPError
+from zengine.lib import translation
 from zengine.log import log
 
 
@@ -342,6 +345,7 @@ class ZEngine(object):
                 self.check_for_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
+                self.switch_lang()
                 self.run_activity()
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
@@ -357,6 +361,16 @@ class ZEngine(object):
             self.current._update_task(task)
             self.catch_lane_change()
             self.handle_wf_finalization()
+
+    def switch_lang(self):
+        """Switch to the language of the current user.
+
+        If the current language is already the specified one, nothing will be done.
+        """
+        locale = self.current.locale
+        translation.InstalledLocale.install_language(locale['locale_language'])
+        translation.InstalledLocale.install_locale(locale['locale_datetime'], 'datetime')
+        translation.InstalledLocale.install_locale(locale['locale_number'], 'number')
 
     def catch_lane_change(self):
         """

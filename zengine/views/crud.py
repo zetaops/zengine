@@ -20,7 +20,7 @@ from zengine import forms
 from zengine.forms import fields
 from zengine.lib.cache import Cache
 from zengine.lib.exceptions import HTTPError
-from zengine.lib.utils import date_to_solr
+from zengine.lib.utils import date_to_solr, gettext_lazy as _
 from zengine.log import log
 from zengine.signals import crud_post_save
 from zengine.views.base import BaseView
@@ -34,7 +34,7 @@ class ListForm(forms.JsonForm):
     Used by CrudMeta metaclass to create distinct
     copies for each subclass of CrudView.
     """
-    add = fields.Button("Ekle", cmd="add_edit_form")
+    add = fields.Button(_("Add"), cmd="add_edit_form")
 
 
 class ObjectForm(forms.JsonForm):
@@ -44,11 +44,11 @@ class ObjectForm(forms.JsonForm):
     Used by CrudMeta metaclass to create distinct
     copies for each subclass of CrudView.
     """
-    save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
-    save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
-    save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
+    save_edit = fields.Button(_(u"Save"), cmd="save::add_edit_form")
+    save_list = fields.Button(_(u"Save and List"), cmd="save::list")
+    save_as_new_edit = fields.Button(_(u"Save as New"),
                                          cmd="save_as_new::add_edit_form")
-    save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
+    save_as_new_list = fields.Button(_(u"Save as New and List"),
                                          cmd="save_as_new::list")
 
 class CrudMeta(type):
@@ -243,8 +243,8 @@ class CrudView(BaseView):
         allow_selection = False
         objects_per_page = 10
         object_actions = {
-            'delete': {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
-            'add_edit_form': {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal',
+            'delete': {'name': _(u'Delete'), 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
+            'add_edit_form': {'name': _(u'Edit'), 'cmd': 'add_edit_form', 'mode': 'normal',
                               'show_as': 'button'},
             'show': {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         }
@@ -253,12 +253,12 @@ class CrudView(BaseView):
         """
         Default ObjectForm for CrudViews. Can be overridden.
         """
-        save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
-        save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
+        save_edit = fields.Button(_(u"Save"), cmd="save::add_edit_form")
+        save_list = fields.Button(_(u"Save and List"), cmd="save::list")
         if settings.DEBUG:
-            save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
+            save_as_new_edit = fields.Button(_(u"Save as New"),
                                                  cmd="save_as_new::add_edit_form")
-            save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
+            save_as_new_list = fields.Button(_(u"Save as New and List"),
                                                  cmd="save_as_new::list")
 
 

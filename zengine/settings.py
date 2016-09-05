@@ -11,12 +11,27 @@ Zengine Default Project Settings
 from pyoko.settings import *
 import os.path
 
-#: Default lang
-#: Multi-language support not implemented yet.
-DEFAULT_LANG = 'en'
 
 #: Project base
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+#: Default language and localization formats
+DEFAULT_LANG = 'en'
+DEFAULT_LOCALIZATION_FORMAT = 'en_US'
+
+#: Available translations
+TRANSLATIONS = ['en', 'tr']
+
+# Localization formats that will be made available to the users
+LOCALIZATION_FORMATS = ['en_US', 'en_GB', 'tr_TR']
+
+#: The directory containing the translations
+TRANSLATIONS_DIR = os.path.join(BASE_DIR, 'locale')
+
+# The domains for translations, and the default languages of these domains.
+# Apps building on ZEngine should add a 'messages' key to this dictionary
+# with the value specifying the language their applications messages are in.
+TRANSLATION_DOMAINS = {'zengine': 'en'}
 
 #: Path of the activity modules which will be invoked by workflow tasks
 ACTIVITY_MODULES_IMPORT_PATHS = ['zengine.views']
