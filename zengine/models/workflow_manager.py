@@ -159,7 +159,7 @@ class BPMNWorkflow(Model):
         list_fields = ['name', ]
 
     def __unicode__(self):
-        return '%s' % self.name
+        return self.name
 
     def set_xml(self, diagram, force=False):
         """
@@ -239,9 +239,8 @@ class Task(Model):
 
     def create_tasks(self):
         """
-        creates all the task that defined by this wf task instance
         will create a WFInstance per object
-        and per TaskInvitation for each role and WFInstnace
+        and per TaskInvitation for each role and WFInstance
         """
         roles = self.get_roles()
         wf_instances = self.create_wf_instances()
@@ -395,8 +394,8 @@ OWNERSHIP_STATES = (
 )
 PROGRESS_STATES = (
     (10, 'Future'),  # work will be done in the future
-    (20, 'Waiting'),  # waiting for owner to start to work on it
-    (30, 'In Progress'),  # work in progress
+    (20, 'Waiting'),  # (Active) waiting for owner to start to work on it
+    (30, 'In Progress'),  # (Active) work in progress
     (40, 'Finished'),  # task completed
     (90, 'Expired'),  # task does not finished before it's due date
 )
@@ -409,8 +408,8 @@ class TaskInvitation(Model):
     """
     instance = WFInstance()
     role = RoleModel()
-    ownership = field.Integer(default=1, choices=OWNERSHIP_STATES)
-    progress = field.Integer(default=1, choices=PROGRESS_STATES)
+    ownership = field.Integer(default=10, choices=OWNERSHIP_STATES)
+    progress = field.Integer(default=10, choices=PROGRESS_STATES)
     wf_name = field.String("WF Name")
     title = field.String("Task Name")
     search_data = field.String("Combined full-text search data")

@@ -20,17 +20,17 @@ class Unit(Model):
 
     """
     name = field.String("İsim", index=True)
+
     # parent = LinkProxy('Unit', verbose_name='Parent Unit', reverse_name='sub_units')
 
     class Meta:
         verbose_name = "Unit"
         verbose_name_plural = "Units"
         search_fields = ['name']
-        list_fields = ['name',]
+        list_fields = ['name', ]
 
     def __unicode__(self):
         return '%s' % self.name
-
 
     @classmethod
     def get_user_keys(cls, unit_key):
@@ -38,7 +38,6 @@ class Unit(Model):
         for unit_key in cls.objects.filter(parent_id=unit_key).values_list('key', flatten=True):
             stack.extend(cls.get_user_keys(unit_key))
         return stack
-
 
 
 class Permission(Model):
@@ -180,6 +179,7 @@ class AbstractRole(Model):
     class Permissions(ListNode):
         permission = Permission()
 
+
 class Role(Model):
     """
     This model binds group of Permissions with a certain User.
@@ -193,7 +193,8 @@ class Role(Model):
         """
         verbose_name = "Rol"
         verbose_name_plural = "Roles"
-        crud_extra_actions = [{'name': 'Edit Permissions', 'wf': 'permissions', 'show_as': 'button'}]
+        crud_extra_actions = [
+            {'name': 'Edit Permissions', 'wf': 'permissions', 'show_as': 'button'}]
 
     def __unicode__(self):
         try:
@@ -250,3 +251,10 @@ class Role(Model):
                 self.Permissions(permission=p)
         if p:
             self.save()
+
+    def send_notification(self, title, message, typ=1, url=None):
+        """
+        sends a message to user of this role's private mq exchange
+
+        """
+        self.user.send_notification(title=title, message=message, typ=typ, url=url)

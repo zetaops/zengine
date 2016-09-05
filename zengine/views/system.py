@@ -7,18 +7,40 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from zengine.lib.decorators import view, bg_job
-from zengine.models import TaskInvitation
+from zengine.models import TaskInvitation, BPMNWorkflow
 
-
-# def sessid_to_userid(current):
-#     current.output['user_id'] = current.user_id.lower()
-#     current.output['sess_id'] = current.session.sess_id
-#     current.user.bind_private_channel(current.session.sess_id)
-#     current.output['sessid_to_userid'] = True
 
 @view()
 def mark_offline_user(current):
     current.user.is_online(False)
+
+
+@view()
+def get_task_types(current):
+    """
+           List task types for current user
+
+
+           .. code-block:: python
+
+               #  request:
+                   {
+                   'view': '_zops_get_task_types',
+                   }
+
+               #  response:
+                   {
+                   'task_types': [
+                       {'name': string, # wf name
+                        'title': string,  # title of workflow
+                        },]
+                        }
+    """
+    current.output['task_types'] = [{'name': bpmn_wf.name,
+                                     'title': bpmn_wf.title}
+                                    for bpmn_wf in BPMNWorkflow.objects.filter()
+                                    if current.has_permission(bpmn_wf.name)]
+
 
 @view()
 def get_tasks(current):
@@ -31,11 +53,13 @@ def get_tasks(current):
             #  request:
                 {
                 'view': '_zops_get_tasks',
+                'state': string, # one of these:
+                                 # "active", "future", "finished", "expired"
+                'inverted': boolean, # search on other people's tasks
                 'query': string, # optional. for searching on user's tasks
                 'wf_type': string, # optional. only show tasks of selected wf_type
                 'start_date': datetime, # optional. only show tasks starts after this date
                 'finish_date': datetime, # optional. only show tasks should end before this date
-                '
                 }
 
             #  response:
@@ -55,7 +79,28 @@ def get_tasks(current):
         """
     # TODO: Also return invitations for user's other roles
     # TODO: Handle automatic role switching
-    queryset = TaskInvitation.objects.filter(role_id=current.role_id)
+
+    STATE_DICT = {
+        'active': [20, 30],
+        'future': 10,
+        'finished': 40,
+        'expired': 90
+    }
+    state = STATE_DICT[current.input['state']]
+    if isinstance(state, list):
+        queryset = TaskInvitation.objects.filter(progress__in=state)
+    else:
+        queryset = TaskInvitation.objects.filter(progress=state)
+
+    if current.input['inverted']:
+        # show other user's tasks
+        allowed_workflows = [bpmn_wf.name for bpmn_wf in BPMNWorkflow.objects.filter()
+                             if current.has_permission(bpmn_wf.name)]
+        queryset = queryset.exclude(role_id=current.role_id).filter(wf_name__in=allowed_workflows)
+    else:
+        # show current user's tasks
+        queryset = queryset.filter(role_id=current.role_id)
+
     if current.input['query']:
         queryset = queryset.filter(search_data__contains=current.input['query'].lower())
     if current.input['wf_type']:
@@ -74,4 +119,3 @@ def get_tasks(current):
             'finish_date': inv.task.finish_date}
         for inv in queryset
         ]
-
