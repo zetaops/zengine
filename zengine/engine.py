@@ -104,7 +104,7 @@ class ZEngine(object):
                               })
         if self.current.lane_id:
             self.current.pool[self.current.lane_id] = self.current.role.key
-        self.wf_cache['pool'] = self.current.pool
+        self.wf_state['pool'] = self.current.pool
         self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
         self.current.wf_cache.save(self.wf_state)
 
@@ -116,11 +116,11 @@ class ZEngine(object):
         Returns:
             Context dict.
         """
-        context = {self.current.lane_id: self.current.user, 'self': self.current.user}
-        for lane_id, user_id in self.current.pool.items():
-            if user_id:
+        context = {self.current.lane_id: self.current.role, 'self': self.current.role}
+        for lane_id, role_id in self.current.pool.items():
+            if role_id:
                 context[lane_id] = lazy_object_proxy.Proxy(
-                    lambda: self.user_model(super_context).objects.get(user_id))
+                    lambda: self.role_model(super_context).objects.get(role_id))
         return context
 
     def load_workflow_from_cache(self):
