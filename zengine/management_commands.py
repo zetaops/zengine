@@ -277,6 +277,7 @@ class ExtractTranslations(Command):
             extractor.keywords.update({
                 'gettext_lazy': extractor.keywords['gettext'],
                 'ngettext_lazy': extractor.keywords['ngettext'],
+                '__': extractor.keywords['gettext'],  # double underscore for lazy
             })
             # Do the extraction
             _run_babel_command(extractor)
