@@ -43,6 +43,52 @@ def get_task_types(current):
 
 
 @view()
+def get_task_detail(current):
+    """
+           Show task details
+
+           .. code-block:: python
+
+               #  request:
+                   {
+                   'view': '_zops_get_task_detail',
+                   'key': key,
+                   }
+
+               #  response:
+                   {
+                   'task_title': string,
+                   'task_detail': string, # markdown formatted text
+                    }
+    """
+    current.output['task_title'] = "Sample Task Title"
+    current.output['task_detail'] = "Sample text"
+
+
+@view()
+def get_task_actions(current):
+    """
+           List task types for current user
+
+
+           .. code-block:: python
+
+               #  request:
+                   {
+                   'view': '_zops_get_task_actions',
+                   'key': key,
+                   }
+
+               #  response:
+                   {
+                   'key': key,
+                   'actions': [('name_string', 'cmd_string'),]
+                    }
+    """
+    current.output['actions'] = [('Task Details', '_zops_task_details'), ]
+
+
+@view()
 def get_tasks(current):
     """
         List task invitations of current user
@@ -65,7 +111,8 @@ def get_tasks(current):
             #  response:
                 {
                 'task_list': [
-                    {'token': string, # wf token (key of WFInstance)
+                    {'token': key, # wf token (key of WFInstance)
+                    {'key': key, # wf token (key of TaskInvitation)
                      'title': string,  # name of workflow
                      'wf_type': string,  # unread message count
                      'title': string,  # task title
