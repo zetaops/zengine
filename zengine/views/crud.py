@@ -7,6 +7,7 @@
 This module holds CrudView and related classes that helps building
 CRUDS (Create Read Update Delete Search) type of views.
 """
+from operator import attrgetter
 
 import six
 
@@ -24,7 +25,6 @@ from zengine.lib.utils import date_to_solr, gettext_lazy as _
 from zengine.log import log
 from zengine.signals import crud_post_save
 from zengine.views.base import BaseView
-
 
 
 class ListForm(forms.JsonForm):
@@ -172,8 +172,6 @@ def clear_model_list_cache(sender, *args, **kwargs):
     Invalidate permission cache on crud updates on Role and AbstractRole models
     """
     SelectBoxCache.flush(sender.model_class.__name__)
-
-
 
 
 @six.add_metaclass(CrudMeta)
@@ -391,8 +389,8 @@ class CrudView(BaseView):
                     self.object = self.model_class(self.current).objects.get(object_id)
                 except ObjectDoesNotExist:
                     raise HTTPError(404, "Possibly you are trying to retrieve a just deleted "
-                                       "object or object key (%s) does not belong to current model:"
-                                       " %s" % (object_id, self.model_class.__name__))
+                                         "object or object key (%s) does not belong to current model:"
+                                         " %s" % (object_id, self.model_class.__name__))
                 except:
                     raise
             # elif 'added_obj' in self.current.task_data:
@@ -489,13 +487,20 @@ class CrudView(BaseView):
     @obj_filter
     def _get_list_obj(self, obj, result):
         fields = self.object.Meta.list_fields
+
         if fields:
             for f in self.object.Meta.list_fields:
-                field = getattr(obj, f)
-                if callable(field):
-                    result['fields'].append(field())
+                field = getattr(obj, f, None)
+                field_str = ''
+                if isinstance(field, Model):
+                    field_str = six.text_type(field)
+                elif callable(field):
+                    field_str = field()
+                elif '.' in f:
+                    field_str = attrgetter(f)(obj)
                 else:
-                    result['fields'].append(obj.get_humane_value(f))
+                    field_str = obj.get_humane_value(f)
+                result['fields'].append(field_str)
         else:
             result['fields'] = [six.text_type(obj)]
 
@@ -713,8 +718,8 @@ class CrudView(BaseView):
             search_str = self.input.get('query', '')
             cache = SelectBoxCache(self.model_class.__name__, search_str)
             self.output['objects'] = cache.get() or cache.set(
-                    [{'key': obj.key, 'value': six.text_type(obj)}
-                     for obj in query])
+                [{'key': obj.key, 'value': six.text_type(obj)}
+                 for obj in query])
 
     @view_method
     def object_name(self):
@@ -731,7 +736,7 @@ class CrudView(BaseView):
         """
         self.set_client_cmd('show')
         obj_form = forms.JsonForm(self.object, current=self.current, models=False,
-            list_nodes=False)._serialize(readable=True)
+                                  list_nodes=False)._serialize(readable=True)
         obj_data = {}
         for d in obj_form:
             val = d['value']
@@ -743,10 +748,9 @@ class CrudView(BaseView):
 
             obj_data[key] = val
         self.form_out(forms.JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
-                                                 self.object)))
+                                                        self.object)))
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
-
 
     @view_method
     def add_edit_form(self):

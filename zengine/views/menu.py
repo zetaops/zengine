@@ -16,14 +16,15 @@ from pyoko.lib.utils import get_object_from_path
 from pyoko.lib.utils import lazy_property
 from pyoko.model import model_registry
 from zengine.auth.permissions import _get_workflows
-from zengine.views.base import BaseView
+from zengine.views.base import SysView
 from zengine.config import settings
 
 
-class Menu(BaseView):
+class Menu(SysView):
     """
     Menu view class
     """
+    PATH = '_zops_menu'
     def __init__(self, current):
         super(Menu, self).__init__(current)
         self.output['cmd'] = 'dashboard'

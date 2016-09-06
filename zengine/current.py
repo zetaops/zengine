@@ -17,21 +17,24 @@ from uuid import uuid4
 
 import lazy_object_proxy
 from SpiffWorkflow.specs import WorkflowSpec
-from beaker.session import Session
 
 from pyoko.lib.utils import get_object_from_path, lazy_property
 from zengine import signals
 from zengine.client_queue import ClientQueue
 from zengine.config import settings
-from zengine.lib.cache import WFCache
 from zengine.lib.utils import merge_truthy
 from zengine.lib import translation
+from zengine.lib.cache import Session
 from zengine.log import log
+from zengine.models import WFCache
+from zengine.models import WFInstance
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
     'body': settings.MESSAGES['lane_change_message_body'],
 }
+
+
 
 
 class Current(object):
@@ -45,7 +48,7 @@ class Current(object):
     def __init__(self, **kwargs):
 
         self.task_data = {'cmd': None}
-        self.session = {}
+        self.session = Session()
         self.headers = {}
         self.input = {}  # when we want to use engine functions independently,
         self.output = {}  # we need to create a fake current object
@@ -205,13 +208,13 @@ class WFCurrent(Current):
             self.new_token = True
             # log.info("TOKEN NEW: %s " % self.token)
 
-        self.wfcache = WFCache(self.token)
-        # log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
+        self.wf_cache = WFCache(self)
+        self.wf_instance = lazy_object_proxy.Proxy(lambda: self.wf_cache.get_instance())
         self.set_client_cmds()
 
     def get_wf_link(self):
         """
-        Create a "in app" anchor for accessing this workflow instance.
+        Create an "in app" anchor for accessing this workflow instance.
 
         Returns: String. Anchor link.
 

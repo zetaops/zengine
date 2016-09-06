@@ -116,7 +116,10 @@ class BaseTestClient(Worker):
 
         data['form'] = form_data
 
-        post_data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
+        post_data = {'data': data,
+                     '_zops_remote_ip': '127.0.0.1',
+                     '_zops_source': 'Remote',
+                     }
         log.info("PostData : %s" % post_data)
         print("PostData : %s" % post_data)
         return post_data
@@ -157,27 +160,27 @@ class BaseTestCase:
         Creates a new user and Role with all Permissions.
         """
 
-        if not '--ignore=fixture' in sys.argv:
-            if hasattr(self, 'fixture'):
-                print("\nREPORT:: Running test cases own fixture() method")
-                self.fixture()
-                sleep(2)
-
-            else:
-                fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
-                if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
-                    sys.LOADED_FIXTURES.append(fixture_guess)
-                    FlushDB(model='all', wait_sync=True,
-                            exclude=settings.TEST_FLUSHING_EXCLUDES).run()
-                    print("\nREPORT:: Test fixture will be loaded: %s" % fixture_guess)
-                    LoadData(path=fixture_guess, update=True).run()
-                    sleep(2)
-                else:
-                    print(
-                        "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
-
-        else:
-            print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
+        # if not '--ignore=fixture' in sys.argv:
+        #     if hasattr(self, 'fixture'):
+        #         print("\nREPORT:: Running test cases own fixture() method")
+        #         self.fixture()
+        #         sleep(2)
+        #
+        #     else:
+        #         fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
+        #         if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
+        #             sys.LOADED_FIXTURES.append(fixture_guess)
+        #             FlushDB(model='all', wait_sync=True,
+        #                     exclude=settings.TEST_FLUSHING_EXCLUDES).run()
+        #             print("\nREPORT:: Test fixture will be loaded: %s" % fixture_guess)
+        #             LoadData(path=fixture_guess, update=True).run()
+        #             sleep(2)
+        #         else:
+        #             print(
+        #                 "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+        #
+        # else:
+        #     print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
         # clear all caches
         if not hasattr(sys, 'cache_cleared'):
             sys.cache_cleared = True

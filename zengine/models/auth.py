@@ -7,8 +7,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from pyoko import Model, field, ListNode, LinkProxy
-from passlib.hash import pbkdf2_sha512
+from pyoko import Model, field, ListNode
+# from pyoko import LinkProxy
 from zengine.lib.cache import Cache
 from zengine.messaging.lib import BaseUser
 from zengine.lib.utils import gettext_lazy as _, gettext
@@ -22,7 +22,7 @@ class Unit(Model):
 
     """
     name = field.String(_(u"Name"), index=True)
-    parent = LinkProxy('Unit', verbose_name=_(u'Parent Unit'), reverse_name='sub_units')
+    # parent = LinkProxy('Unit', verbose_name=_(u'Parent Unit'), reverse_name='sub_units')
 
     class Meta:
         verbose_name = _(u"Unit")

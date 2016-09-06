@@ -6,6 +6,10 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import six
+from pyoko.conf import settings
+from zengine.lib.decorators import VIEW_METHODS
+from zengine.lib.exceptions import ConfigurationError
 
 NEXT_CMD_SPLITTER = '::'
 
@@ -130,3 +134,42 @@ class SimpleView(BaseView):
         view = "%s_view" % (self.cmd or self.DEFAULT_VIEW)
         if view in self.__class__.__dict__:
             self.__class__.__dict__[view](self)
+
+class ViewMeta(type):
+    """
+    Meta class that prepares CrudView's subclasses.
+
+    Handles passing of default "Meta" class attributes and
+    List/Object forms into subclasses.
+    """
+    registry = {}
+    _meta = None
+
+    def __new__(mcs, name, bases, attrs):
+        new_class = super(ViewMeta, mcs).__new__(mcs, name, bases, attrs)
+        if new_class.PATH:
+            if new_class.ENABLED:
+                VIEW_METHODS[new_class.PATH or new_class.__name__] = new_class
+        else:
+            if new_class.__name__ not in ['SysView', 'DevelView'] and new_class.PATH is not None:
+                raise ConfigurationError("\"%s\" does not have a PATH property."
+                                         " Class based system views should have a PATH" % new_class.__name__)
+
+        return new_class
+
+@six.add_metaclass(ViewMeta)
+class SysView(BaseView):
+    """
+    base class for non-wf system views
+    """
+    PATH = ''
+    ENABLED = True
+    pass
+
+class DevelView(SysView):
+    """
+    base class for non-wf system views
+    """
+    PATH = ''
+    ENABLED = settings.DEBUG
+    pass

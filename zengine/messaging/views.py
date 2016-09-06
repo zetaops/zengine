@@ -10,6 +10,7 @@ from pyoko.conf import settings
 from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from pyoko.lib.utils import get_object_from_path
+from zengine.lib.decorators import view
 from zengine.log import log
 from zengine.lib.exceptions import HTTPError
 from zengine.messaging.model import Channel, Attachment, Subscriber, Message, Favorite, \
@@ -95,7 +96,7 @@ def _paginate(self, current_page, query_set, per_page=10):
     query_set = query_set.set_params(rows=current_per_page, start=(current_page - 1) * per_page)
     return query_set, pagination_data
 
-
+@view()
 def create_message(current):
     """
     Creates a message for the given channel.
@@ -137,7 +138,7 @@ def create_message(current):
             Attachment(channel_id=msg['channel'], msg=msg_obj, name=atch['name'],
                        file=atch['content'], description=atch['description'], typ=typ).save()
 
-
+@view()
 def show_channel(current, waited=False):
     """
     Initial display of channel content.
@@ -187,7 +188,7 @@ def show_channel(current, waited=False):
     for msg in ch.get_last_messages():
         current.output['last_messages'].insert(0, msg.serialize(current.user))
 
-
+@view()
 def channel_history(current):
     """
         Get old messages for a channel. 20 messages per request
@@ -222,7 +223,7 @@ def channel_history(current):
     if current.output['messages']:
         current.output['messages'].pop(-1)
 
-
+@view()
 def report_last_seen_message(current):
     """
     Push timestamp of latest message of an ACTIVE channel.
@@ -256,7 +257,7 @@ def report_last_seen_message(current):
         'status': 'OK',
         'code': 200}
 
-
+@view()
 def list_channels(current):
     """
         List channel memberships of current user
@@ -300,7 +301,7 @@ def list_channels(current):
             log.exception("UNPAIRED DIRECT EXCHANGES!!!!")
             sbs.delete()
 
-
+@view()
 def unread_count(current):
     """
         Number of unread messages for current user
@@ -340,7 +341,7 @@ def unread_count(current):
         'messages': unread_msg
     }
 
-
+@view()
 def get_notifications(current):
     """
         Returns last N notifications for current user
@@ -392,7 +393,7 @@ def get_notifications(current):
             'message_key': msg.key,
             'timestamp': msg.updated_at})
 
-
+@view()
 def create_channel(current):
     """
         Create a public channel. Can be a broadcast channel or normal chat room.
@@ -440,7 +441,7 @@ def create_channel(current):
         'code': 201
     })
 
-
+@view()
 def add_members(current):
     """
         Subscribe member(s) to a channel
@@ -482,7 +483,7 @@ def add_members(current):
         'code': 201
     }
 
-
+@view()
 def add_unit_to_channel(current):
     """
         Subscribe users of a given unit to given channel
@@ -526,7 +527,7 @@ def add_unit_to_channel(current):
         'code': 201
     }
 
-
+@view()
 def search_user(current):
     """
         Search users for adding to a public room
@@ -561,7 +562,7 @@ def search_user(current):
         if user.key != current.user_id:
             current.output['results'].append((user.full_name, user.key, user.get_avatar_url()))
 
-
+@view()
 def search_unit(current):
     """
         Search on units for subscribing it's users to a channel
@@ -590,7 +591,7 @@ def search_unit(current):
                                                      contains=current.input['query']):
         current.output['results'].append((user.name, user.key))
 
-
+@view()
 def create_direct_channel(current):
     """
     Create a One-To-One channel between current and selected user.
@@ -629,7 +630,7 @@ def create_direct_channel(current):
         'code': 201
     })
 
-
+@view()
 def find_message(current):
     """
         Search in messages. If "channel_key" given, search will be limited to that channel,
@@ -677,7 +678,7 @@ def find_message(current):
     for msg in query_set:
         current.output['results'].append(msg.serialize(current.user))
 
-
+@view()
 def delete_channel(current):
     """
         Delete a channel
@@ -704,7 +705,7 @@ def delete_channel(current):
     Message.objects.filter(channel_id=ch_key).delete()
     current.output = {'status': 'Deleted', 'code': 200}
 
-
+@view()
 def edit_channel(current):
     """
         Update channel name or description
@@ -735,7 +736,7 @@ def edit_channel(current):
         sbs.save()
     current.output = {'status': 'OK', 'code': 200}
 
-
+@view()
 def pin_channel(current):
     """
         Pin a channel to top of channel list
@@ -762,7 +763,7 @@ def pin_channel(current):
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
 
-
+@view()
 def delete_message(current):
     """
         Delete a message
@@ -789,7 +790,7 @@ def delete_message(current):
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
 
-
+@view()
 def edit_message(current):
     """
     Edit a message a user own.
@@ -820,7 +821,7 @@ def edit_message(current):
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
 
-
+@view()
 def flag_message(current):
     """
     Flag inappropriate messages
@@ -844,7 +845,7 @@ def flag_message(current):
     FlaggedMessage.objects.get_or_create(user_id=current.user_id,
                                          message_id=current.input['key'])
 
-
+@view()
 def unflag_message(current):
     """
     remove flag of a message
@@ -869,7 +870,7 @@ def unflag_message(current):
     FlaggedMessage(current).objects.filter(user_id=current.user_id,
                                            message_id=current.input['key']).delete()
 
-
+@view()
 def get_message_actions(current):
     """
     Returns applicable actions for current user for given message key
@@ -894,7 +895,7 @@ def get_message_actions(current):
                       'actions': Message.objects.get(
                           current.input['key']).get_actions_for(current.user)}
 
-
+@view()
 def add_to_favorites(current):
     """
     Favorite a message
@@ -920,7 +921,7 @@ def add_to_favorites(current):
     fav, new = Favorite.objects.get_or_create(user_id=current.user_id, message=msg)
     current.output['favorite_key'] = fav.key
 
-
+@view()
 def remove_from_favorites(current):
     """
     Remove a message from favorites
@@ -947,7 +948,7 @@ def remove_from_favorites(current):
     except ObjectDoesNotExist:
         raise HTTPError(404, "")
 
-
+@view()
 def list_favorites(current):
     """
     List user's favorites. If "channel_key" given, will return favorites belong to that channel.

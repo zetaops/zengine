@@ -130,48 +130,15 @@ SESSION_OPTIONS = {
     'session.path': '/',
 }
 
-#: View URL list for non-workflow views.
-#:
-#: ('URI template', 'python path to view method/class'),
-VIEW_URLS = {
-    'dashboard': 'zengine.views.menu.Menu',
-    'sessid_to_userid': 'zengine.views.system.sessid_to_userid',
-    'mark_offline_user': 'zengine.views.system.mark_offline_user',
-    'ping': 'zengine.views.dev_utils.Ping',
-    '_zops_create_message': 'zengine.messaging.views.create_message',
-    '_zops_show_channel': 'zengine.messaging.views.show_channel',
-    '_zops_list_channels': 'zengine.messaging.views.list_channels',
-    '_zops_channel_history': 'zengine.messaging.views.channel_history',
-    '_zops_report_last_seen_message': 'zengine.messaging.views.report_last_seen_message',
-    '_zops_create_channel': 'zengine.messaging.views.create_channel',
-    '_zops_add_members': 'zengine.messaging.views.add_members',
-    '_zops_add_unit_to_channel': 'zengine.messaging.views.add_unit_to_channel',
-    '_zops_search_user': 'zengine.messaging.views.search_user',
-    '_zops_search_unit': 'zengine.messaging.views.search_unit',
-    '_zops_create_direct_channel': 'zengine.messaging.views.create_direct_channel',
-    '_zops_find_message': 'zengine.messaging.views.find_message',
-    '_zops_delete_message': 'zengine.messaging.views.delete_message',
-    '_zops_edit_message': 'zengine.messaging.views.edit_message',
-    '_zops_get_message_actions': 'zengine.messaging.views.get_message_actions',
-    '_zops_add_to_favorites': 'zengine.messaging.views.add_to_favorites',
-    '_zops_remove_from_favorites': 'zengine.messaging.views.remove_from_favorites',
-    '_zops_list_favorites': 'zengine.messaging.views.list_favorites',
-    '_zops_edit_channel': 'zengine.messaging.views.edit_channel',
-    '_zops_delete_channel': 'zengine.messaging.views.delete_channel',
-    '_zops_pin_channel': 'zengine.messaging.views.pin_channel',
-    '_zops_flag_message': 'zengine.messaging.views.flag_message',
-    '_zops_unflag_message': 'zengine.messaging.views.unflag_message',
-    '_zops_unread_count': 'zengine.messaging.views.unread_count',
-    '_zops_unread_notifications': 'zengine.messaging.views.unread_notifications',
-    # '_zops_': 'zengine.messaging.views.',
-}
+#: Given modules will be auto-imported at runtime
+#: This is needed for discovery of signal receivers, views and jobs defined under these modules
+AUTO_IMPORT_MODULES = [
+    'zengine.receivers',
+    'zengine.views.system',
+    'zengine.views.dev_utils',
+    'zengine.messaging.views',
+]
 
-if DEBUG:
-    VIEW_URLS.update({
-        'session_fixture': 'zengine.views.dev_utils.SessionFixture',
-        'db_stats': 'zengine.views.dev_utils.DBStats',
-        'reset_cache': 'zengine.views.dev_utils.ResetCache'
-    })
 
 #: Relation focused CRUD menus with category support.
 #:
@@ -207,6 +174,9 @@ MESSAGES = {
 
 }
 
+#: These WFs will not saved to DB
+EPHEMERAL_WORKFLOWS = ['crud', 'login', 'logout', 'edit_catalog_data']
+
 #: A manager object for DB stored catalog data.
 CATALOG_DATA_MANAGER = 'zengine.lib.catalog_data.catalog_data_manager'
 
@@ -234,10 +204,6 @@ MAX_NUM_DROPDOWN_LINKED_MODELS = 20
 
 #: Internal Server Error message description
 ERROR_MESSAGE_500 = 'Internal Server Error'
-
-#: These models will not flushed when running tests
-TEST_FLUSHING_EXCLUDES = 'Permission,User,Role'
-
 
 #: User search method of messaging subsystem will work on these fields
 MESSAGING_USER_SEARCH_FIELDS = ['username', 'name', 'surname']

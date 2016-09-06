@@ -2,22 +2,24 @@
 """
 """
 
-
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from pyoko.conf import settings
 from riak.client import binary_json_decoder
 from riak.util import bytes_to_str
 from six import text_type
 
 from zengine.lib.cache import ClearCache
+from zengine.views.base import DevelView, SysView
 
 
-class Ping(object):
+class Ping(SysView):
     """
     Simple ping view for health checks
     """
+    PATH = 'ping'
 
     def __init__(self, current):
         """
@@ -33,10 +35,11 @@ class Ping(object):
         }
 
 
-class DBStats(object):
+class DBStats(DevelView):
     """
     various stats
     """
+    PATH = 'db_stats'
 
     def __init__(self, current):
         import sys
@@ -64,10 +67,11 @@ class DBStats(object):
         }
 
 
-class SessionFixture(object):
+class SessionFixture(DevelView):
     """
     Export read keys
     """
+    PATH = 'session_fixture'
 
     def __init__(self, current):
         import sys
@@ -103,10 +107,12 @@ class SessionFixture(object):
         }
 
 
-class ResetCache(object):
+class ResetCache(DevelView):
     """
     Clears all cache entries
     """
+
+    PATH = 'reset_cache'
 
     def __init__(self, current):
         """
@@ -116,6 +122,7 @@ class ResetCache(object):
             resp: Response object.
         """
         current.output = {
-            'response': "Following cache entries are removed!\n\n" + text_type("\n").join(ClearCache().flush()),
+            'response': "Following cache entries are removed!\n\n" + text_type("\n").join(
+                ClearCache().flush()),
             'http_headers': (('Content-Type', 'text/plain'),),
         }
