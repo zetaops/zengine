@@ -13,6 +13,7 @@ from zengine.lib.cache import ClearCache
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 from zengine.wf_daemon import Worker
+from zengine.lib.json_interface import ZEngineJSONEncoder
 
 from zengine.models import User
 from zengine.messaging.model import Message
@@ -55,7 +56,7 @@ class ResponseWrapper(object):
         Pretty prints the response
         """
         pprint(self.code)
-        pprnt(self.json)
+        pprnt(self.json, cls=ZEngineJSONEncoder)
         if not self.json:
             pprint(self.content)
 

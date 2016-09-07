@@ -57,7 +57,7 @@ class TestCase(BaseTestCase):
         self.prepare_client('/change_language/', user=initial_user)
         self.client.post(locale_language='tr', locale_datetime='tr', locale_number='tr')
         # This user doesn't have any language preferences
-        test_user = User.objects.get(username='test_user2')
+        test_user = User.objects.get(username='test_user')
         self.prepare_client('/i18n/', user=test_user)
         resp = self.client.post()
         # Since no language preferences exist for this user, the engine should switch to the defaults
@@ -128,14 +128,14 @@ class TestCase(BaseTestCase):
         assert resp.json['plural'] == _MSG_EN_PLURAL
         assert resp.json['marked'] == _MSG_EN_MARKED
         assert resp.json['marked_translated'] == _MSG_EN_MARKED
-        # The datetimes should be in Great Britain English format
+        # The datetimes should be in British English format
         assert resp.json['datetime'] == '21 Jul 2016, 17:32:00'
         # The numbers should be in Turkish format
         assert resp.json['decimal'] == _MSG_TR_DECIMAL
 
     def test_load_user_prefs(self):
-        test_user = User.objects.get(username='test_user')
-        # 'test_user's localization preferences are set on his model as Turkish
+        test_user = User.objects.get(username='test_user3')
+        # 'test_user3's localization preferences are set on his model as Turkish
         self.prepare_client('/i18n/', user=test_user)
         resp = self.client.post()
         assert resp.json['message'] == _MSG_TR

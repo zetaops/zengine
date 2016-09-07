@@ -740,7 +740,9 @@ class CrudView(BaseView):
         obj_data = {}
         for d in obj_form:
             val = d['value']
-            key = d['title']
+            # Python doesn't allow custom JSON encoders for keys of dictionaries.
+            # If the title is a lazy translation, we must force the translation here.
+            key = six.text_type(d['title'])
             if d['type'] in ('button',) or d['title'] in ('Password', 'key'):
                 continue
             if d['type'] == 'file' and d['value'] and d['value'][-3:] in ('jpg', 'png'):
