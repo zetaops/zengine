@@ -28,11 +28,10 @@ class Unit(Model):
         verbose_name = _(u"Unit")
         verbose_name_plural = _(u"Units")
         search_fields = ['name']
-        list_fields = ['name',]
+        list_fields = ['name', ]
 
     def __unicode__(self):
         return '%s' % self.name
-
 
     @classmethod
     def get_user_keys(cls, unit_key):
@@ -80,7 +79,8 @@ class User(Model, BaseUser):
     password = field.String(_(u"Password"))
     superuser = field.Boolean(_(u"Super user"), default=False)
     avatar = field.File(_(u"Avatar"), random_name=True, required=False)
-    locale_language = field.String(_(u"Preferred Language"), index=False, default=settings.DEFAULT_LANG)
+    locale_language = field.String(_(u"Preferred Language"), index=False,
+                                   default=settings.DEFAULT_LANG)
     locale_datetime = field.String(_(u"Preferred Date and Time Format"), index=False,
                                    default=settings.DEFAULT_LOCALIZATION_FORMAT)
     locale_number = field.String(_(u"Preferred Number Format"), index=False,
@@ -186,6 +186,7 @@ class AbstractRole(Model):
     class Permissions(ListNode):
         permission = Permission()
 
+
 class Role(Model):
     """
     This model binds group of Permissions with a certain User.
@@ -199,7 +200,8 @@ class Role(Model):
         """
         verbose_name = _(u"Role")
         verbose_name_plural = _(u"Roles")
-        crud_extra_actions = [{'name': _(u'Edit Permissions'), 'wf': 'permissions', 'show_as': 'button'}]
+        crud_extra_actions = [
+            {'name': _(u'Edit Permissions'), 'wf': 'permissions', 'show_as': 'button'}]
 
     def __unicode__(self):
         try:
@@ -256,3 +258,10 @@ class Role(Model):
                 self.Permissions(permission=p)
         if p:
             self.save()
+
+    def send_notification(self, title, message, typ=1, url=None):
+        """
+        sends a message to user of this role's private mq exchange
+
+        """
+        self.user.send_notification(title=title, message=message, typ=typ, url=url)
