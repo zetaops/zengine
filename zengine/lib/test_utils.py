@@ -56,7 +56,10 @@ class ResponseWrapper(object):
         Pretty prints the response
         """
         pprint(self.code)
-        pprnt(self.json, cls=ZEngineJSONEncoder)
+        try:
+            pprnt(self.json)
+        except TypeError:  # If there is a custom type in the output (i.e. lazy translations)
+            print(json.dumps(self.json, cls=ZEngineJSONEncoder, indent=4, sort_keys=True))
         if not self.json:
             pprint(self.content)
 
