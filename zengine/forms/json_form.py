@@ -281,7 +281,7 @@ class JsonForm(ModelForm):
             if form_data.keys() != form_details['model']:
                 not_matching = filter(lambda x: x not in form_details['model'],
                                form_data.keys())
-                if not_matching:
+                if list(not_matching):  # Python 3 returns an iterable, consume the filter
                     raise FormValidationError("Form keys not match: %s" % not_matching)
             self.non_data_fields = form_details['non_data_fields']
         return self._deserialize(form_data)
@@ -297,7 +297,7 @@ class JsonForm(ModelForm):
         form['model']['form_key'] = cache.form_id
         cache.set(
             {
-                'model': form['model'].keys(),
+                'model': list(form['model'].keys()),  # In Python 3, dictionary keys are not serializable
                 'non_data_fields': self.non_data_fields
             }
         )

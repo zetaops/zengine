@@ -14,6 +14,22 @@ from babel import Locale, UnknownLocaleError, dates, numbers, lists
 from babel.support import LazyProxy
 from zengine.log import log
 from zengine.config import settings
+import six
+
+
+
+LazyProxy.__hash__ = lambda self: hash((iter(self._args), iter(self._kwargs.items())))
+"""Patch LazyProxy to make it consistently hashable.
+
+Assumes that LazyProxy will be used only with pure functions, or
+that even if the function is impure, the results of the function
+can be considered equal if the parameters are equal. This is the
+case for the purposes of the translation system, however other
+modules should take care using this class.
+
+The monkey patching is performed because inheriting LazyProxy causes
+infinite recursion due to the override of __getattr__ method of LazyProxy.
+"""
 
 
 DEFAULT_PREFS = {
@@ -148,7 +164,10 @@ def gettext(message, domain=DEFAULT_DOMAIN):
     Returns:
         unicode: The translated message.
     """
-    return InstalledLocale._active_catalogs[domain].ugettext(message)
+    if six.PY2:
+        return InstalledLocale._active_catalogs[domain].ugettext(message)
+    else:
+        return InstalledLocale._active_catalogs[domain].gettext(message)
 
 
 def gettext_lazy(message, domain=DEFAULT_DOMAIN):
@@ -215,7 +234,10 @@ def ngettext(singular, plural, n, domain=DEFAULT_DOMAIN):
     Returns:
         unicode: The correct pluralization, translated.
     """
-    return InstalledLocale._active_catalogs[domain].ungettext(singular, plural, n)
+    if six.PY2:
+        return InstalledLocale._active_catalogs[domain].ungettext(singular, plural, n)
+    else:
+        return InstalledLocale._active_catalogs[domain].ngettext(singular, plural, n)
 
 
 def ngettext_lazy(singular, plural, n, domain=DEFAULT_DOMAIN):

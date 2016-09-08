@@ -13,6 +13,7 @@ from zengine.lib.cache import ClearCache
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 from zengine.wf_daemon import Worker
+from zengine.lib.json_interface import ZEngineJSONEncoder
 
 from zengine.models import User
 from zengine.messaging.model import Message
@@ -55,7 +56,10 @@ class ResponseWrapper(object):
         Pretty prints the response
         """
         pprint(self.code)
-        pprnt(self.json)
+        try:
+            pprnt(self.json)
+        except TypeError:  # If there is a custom type in the output (i.e. lazy translations)
+            print(json.dumps(self.json, cls=ZEngineJSONEncoder, indent=4, sort_keys=True))
         if not self.json:
             pprint(self.content)
 
@@ -184,7 +188,7 @@ class BaseTestCase:
         # clear all caches
         if not hasattr(sys, 'cache_cleared'):
             sys.cache_cleared = True
-            print ClearCache.flush()
+            print(ClearCache.flush())
             print("\nREPORT:: Cache cleared")
 
     @classmethod
