@@ -87,7 +87,10 @@ class BPMNParser(object):
     def __init__(self, xml_content=None, xml_file=None):
         try:
             if xml_content:
-                import StringIO
+                try:
+                    import StringIO
+                except ImportError:  # Python 3
+                    from io import StringIO
                 self.root = ET.parse(StringIO.StringIO(xml_content))
             else:
                 self.root = ET.parse(xml_file)

@@ -188,7 +188,7 @@ class BaseTestCase:
         # clear all caches
         if not hasattr(sys, 'cache_cleared'):
             sys.cache_cleared = True
-            print ClearCache.flush()
+            print(ClearCache.flush())
             print("\nREPORT:: Cache cleared")
 
     @classmethod

@@ -61,7 +61,7 @@ class TestCase(BaseTestCase):
         # permissions but is not included in owners, so shouldn't even receive the join message
         with pytest.raises(ObjectDoesNotExist) as exc_info:
             token, user = self.get_user_token('test_user3')
-        assert exc_info.value.message.startswith('zengine_models_message')  # message doesn't exist
+        assert exc_info.value.args[0].startswith('zengine_models_message')  # message doesn't exist
         # This user has the necessary permissions and relations, should have recieved the invitation
         token, user = self.get_user_token('test_user2')
         assert token
