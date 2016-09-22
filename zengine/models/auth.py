@@ -90,6 +90,8 @@ class User(Model, BaseUser):
     class Meta:
         """ meta class
         """
+        verbose_name = _(u"User")
+        verbose_name_plural = _(u"Users")
         list_fields = ['username', 'superuser']
 
     def pre_save(self):
@@ -131,6 +133,7 @@ class AbstractRole(Model):
         verbose_name = _(u"Abstract Role")
         verbose_name_plural = _(u"Abstract Roles")
         search_fields = ['name']
+
 
     def __unicode__(self):
         return "%s" % self.name

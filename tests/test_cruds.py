@@ -10,6 +10,7 @@ from time import sleep
 
 import pytest
 
+from zengine.models import Role, Unit
 from zengine.lib.exceptions import FormValidationError
 from zengine.lib.test_utils import BaseTestCase, username
 
@@ -83,3 +84,16 @@ class TestCase(BaseTestCase):
         resp = self.client.post(model=model_name, cmd='list')
         resp.raw()
         assert num_of_objects == len(resp.json['objects']) - 1
+
+    def test_make_list_header(self):
+        """
+        test headers of object lists
+        """
+        Role.Meta.list_fields = ['user.username', 'user.unit']
+        self.prepare_client('/crud', username='super_user')
+        resp = self.client.post(model="Role")
+        assert Unit.Meta.verbose_name_plural in resp.json['objects'][0]
+        assert "Username" in resp.json['objects'][0]
+
+
+
