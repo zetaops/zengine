@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:collaboration id="Collaboration_1sbf6h7">
+    <bpmn:participant id="Admin" name="Admin" processRef="channel_management" />
+  </bpmn:collaboration>
+  <bpmn:process id="channel_management" name="Channel Management" isExecutable="false">
+    <bpmn:laneSet />
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_1m3hd9f</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="ChannelList" name="Channel List" camunda:assignee="channel_management.Channel_Management.channel_list">
+      <bpmn:incoming>SequenceFlow_1m3hd9f</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_1v70xxh</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_1lrq6rt</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_11n0hnf</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1mfddss</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="ChannelChoiceControl" name="Channel Choice Control" camunda:class="channel_management.Channel_Management.channel_choice_control">
+      <bpmn:incoming>SequenceFlow_1mfddss</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0rdup9m</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="SequenceFlow_1m3hd9f" sourceRef="StartEvent_1" targetRef="ChannelList" />
+    <bpmn:sequenceFlow id="SequenceFlow_00ypfg6" sourceRef="ExclusiveGateway_09pk2my" targetRef="CreateNewChannel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg=="create_new_channel"]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_12g24dr" sourceRef="ExclusiveGateway_09pk2my" targetRef="ChooseExistingChannel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg=="choose_existing_channel"]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_15myrjl" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="CreateNewChannel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg == "create_new_channel"]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_0dhjcfo" sourceRef="CreateNewChannel" targetRef="MoveToChannel" />
+    <bpmn:sequenceFlow id="SequenceFlow_180w4rj" sourceRef="ChooseExistingChannel" targetRef="MoveToChannel" />
+    <bpmn:sequenceFlow id="SequenceFlow_1vkx0er" sourceRef="MoveToChannel" targetRef="ExclusiveGateway_0ij4t1a" />
+    <bpmn:sequenceFlow id="SequenceFlow_0rdup9m" sourceRef="ChannelChoiceControl" targetRef="ExclusiveGateway_1tn0pc9" />
+    <bpmn:sequenceFlow id="SequenceFlow_0v4l6zb" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="ChooseExistingChannel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg== "choose_existing_channel"]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_1v70xxh" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="ChannelList" />
+    <bpmn:sequenceFlow id="SequenceFlow_1lrq6rt" sourceRef="MoveCompleteChannel" targetRef="ChannelList" />
+    <bpmn:sequenceFlow id="SequenceFlow_11n0hnf" sourceRef="MoveChosenSubscribers" targetRef="ChannelList" />
+    <bpmn:sequenceFlow id="SequenceFlow_1mfddss" sourceRef="ChannelList" targetRef="ChannelChoiceControl" />
+    <bpmn:sequenceFlow id="SequenceFlow_0y7jyof" sourceRef="ExclusiveGateway_0ij4t1a" targetRef="MoveCompleteChannel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">split_operation == False</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_184tbw3" sourceRef="ExclusiveGateway_0ij4t1a" targetRef="MoveChosenSubscribers">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">split_operation == True</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_0qnjqem" sourceRef="SplitChannel" targetRef="SubscriberChoiceControl" />
+    <bpmn:sequenceFlow id="SequenceFlow_0flan2m" sourceRef="SubscriberChoiceControl" targetRef="ExclusiveGateway_09pk2my" />
+    <bpmn:sequenceFlow id="SequenceFlow_0eslovq" sourceRef="ExclusiveGateway_09pk2my" targetRef="SplitChannel" />
+    <bpmn:exclusiveGateway id="ExclusiveGateway_1tn0pc9" default="SequenceFlow_1v70xxh">
+      <bpmn:incoming>SequenceFlow_0rdup9m</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0v4l6zb</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_15myrjl</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_1v70xxh</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_1rmbriy</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="MoveCompleteChannel" name="Move Complete Channel" camunda:class="channel_management.Channel_Management.move_complete_channel">
+      <bpmn:incoming>SequenceFlow_0y7jyof</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1lrq6rt</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="MoveChosenSubscribers" name="Move Chosen Subscribers" camunda:class="channel_management.Channel_Management.move_chosen_subscribers">
+      <bpmn:incoming>SequenceFlow_184tbw3</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_11n0hnf</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="ExclusiveGateway_0ij4t1a">
+      <bpmn:incoming>SequenceFlow_1vkx0er</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0y7jyof</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_184tbw3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="MoveToChannel" name="Find Target Channel" camunda:class="channel_management.Channel_Management.find_target_channel">
+      <bpmn:incoming>SequenceFlow_180w4rj</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_0dhjcfo</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1vkx0er</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="CreateNewChannel" name="Create New Channel" camunda:assignee="channel_management.Channel_Management.create_new_channel">
+      <bpmn:incoming>SequenceFlow_00ypfg6</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_15myrjl</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0dhjcfo</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="ChooseExistingChannel" name="Choose Existing Channel" camunda:assignee="channel_management.Channel_Management.choose_existing_channel">
+      <bpmn:incoming>SequenceFlow_12g24dr</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_0v4l6zb</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_180w4rj</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="ExclusiveGateway_09pk2my" default="SequenceFlow_0eslovq">
+      <bpmn:incoming>SequenceFlow_0flan2m</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_00ypfg6</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_12g24dr</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_0eslovq</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="SubscriberChoiceControl" name="Subscriber Choice Control" camunda:class="channel_management.Channel_Management.subscriber_choice_control">
+      <bpmn:incoming>SequenceFlow_0qnjqem</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0flan2m</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="SplitChannel" name="Split Channel" camunda:assignee="channel_management.Channel_Management.split_channel">
+      <bpmn:incoming>SequenceFlow_0eslovq</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_1farmfl</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0qnjqem</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="SequenceFlow_1rmbriy" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="FindChosenChannel">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg == "find_chosen_channel"]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_1farmfl" sourceRef="FindChosenChannel" targetRef="SplitChannel" />
+    <bpmn:serviceTask id="FindChosenChannel" name="Find Chosen Channel" camunda:class="channel_management.Channel_Management.find_chosen_channel">
+      <bpmn:incoming>SequenceFlow_1rmbriy</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1farmfl</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1sbf6h7">
+      <bpmndi:BPMNShape id="Participant_0mtcb7e_di" bpmnElement="Admin">
+        <dc:Bounds x="214" y="125" width="1330" height="627" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="262" y="399" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="235" y="435" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1m3hd9f_di" bpmnElement="SequenceFlow_1m3hd9f">
+        <di:waypoint xsi:type="dc:Point" x="298" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="312" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="260" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="UserTask_1v1qwby_di" bpmnElement="CreateNewChannel">
+        <dc:Bounds x="1051" y="229" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_1ozp78w_di" bpmnElement="ChooseExistingChannel">
+        <dc:Bounds x="1051" y="522" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_180w4rj_di" bpmnElement="SequenceFlow_180w4rj">
+        <di:waypoint xsi:type="dc:Point" x="1151" y="562" />
+        <di:waypoint xsi:type="dc:Point" x="1215" y="562" />
+        <di:waypoint xsi:type="dc:Point" x="1215" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1138" y="537" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0dhjcfo_di" bpmnElement="SequenceFlow_0dhjcfo">
+        <di:waypoint xsi:type="dc:Point" x="1151" y="269" />
+        <di:waypoint xsi:type="dc:Point" x="1215" y="269" />
+        <di:waypoint xsi:type="dc:Point" x="1215" y="377" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1138" y="244" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="UserTask_1deywdp_di" bpmnElement="ChannelList">
+        <dc:Bounds x="312" y="377" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_0o0w3u9_di" bpmnElement="MoveToChannel">
+        <dc:Bounds x="1165" y="377" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_1uj8gtx_di" bpmnElement="SplitChannel">
+        <dc:Bounds x="788" y="377" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ExclusiveGateway_09pk2my_di" bpmnElement="ExclusiveGateway_09pk2my" isMarkerVisible="true">
+        <dc:Bounds x="1076" y="392" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1056" y="442" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_00ypfg6_di" bpmnElement="SequenceFlow_00ypfg6">
+        <di:waypoint xsi:type="dc:Point" x="1101" y="392" />
+        <di:waypoint xsi:type="dc:Point" x="1101" y="344" />
+        <di:waypoint xsi:type="dc:Point" x="1101" y="309" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1071" y="358" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_12g24dr_di" bpmnElement="SequenceFlow_12g24dr">
+        <di:waypoint xsi:type="dc:Point" x="1101" y="442" />
+        <di:waypoint xsi:type="dc:Point" x="1101" y="481" />
+        <di:waypoint xsi:type="dc:Point" x="1101" y="522" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1071" y="451.5" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ExclusiveGateway_1tn0pc9_di" bpmnElement="ExclusiveGateway_1tn0pc9" isMarkerVisible="true">
+        <dc:Bounds x="572" y="392" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="552" y="442" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0v4l6zb_di" bpmnElement="SequenceFlow_0v4l6zb">
+        <di:waypoint xsi:type="dc:Point" x="601" y="438" />
+        <di:waypoint xsi:type="dc:Point" x="634" y="562" />
+        <di:waypoint xsi:type="dc:Point" x="1051" y="562" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="572.5" y="475" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_15myrjl_di" bpmnElement="SequenceFlow_15myrjl">
+        <di:waypoint xsi:type="dc:Point" x="597" y="392" />
+        <di:waypoint xsi:type="dc:Point" x="597" y="269" />
+        <di:waypoint xsi:type="dc:Point" x="1051" y="269" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="567" y="320.5" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_19ndzdp_di" bpmnElement="ChannelChoiceControl">
+        <dc:Bounds x="445" y="377" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1mfddss_di" bpmnElement="SequenceFlow_1mfddss">
+        <di:waypoint xsi:type="dc:Point" x="412" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="445" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="384" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0rdup9m_di" bpmnElement="SequenceFlow_0rdup9m">
+        <di:waypoint xsi:type="dc:Point" x="545" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="572" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="513.5" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1v70xxh_di" bpmnElement="SequenceFlow_1v70xxh">
+        <di:waypoint xsi:type="dc:Point" x="593" y="438" />
+        <di:waypoint xsi:type="dc:Point" x="569" y="562" />
+        <di:waypoint xsi:type="dc:Point" x="362" y="562" />
+        <di:waypoint xsi:type="dc:Point" x="362" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="420.5" y="537" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ExclusiveGateway_0ij4t1a_di" bpmnElement="ExclusiveGateway_0ij4t1a" isMarkerVisible="true">
+        <dc:Bounds x="1286" y="392" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1266" y="442" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1vkx0er_di" bpmnElement="SequenceFlow_1vkx0er">
+        <di:waypoint xsi:type="dc:Point" x="1265" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="1286" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1230.5" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0y7jyof_di" bpmnElement="SequenceFlow_0y7jyof">
+        <di:waypoint xsi:type="dc:Point" x="1311" y="392" />
+        <di:waypoint xsi:type="dc:Point" x="1311" y="319" />
+        <di:waypoint xsi:type="dc:Point" x="1353" y="319" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1281" y="345.5" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_1nogvo4_di" bpmnElement="MoveCompleteChannel">
+        <dc:Bounds x="1353" y="279" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_180udsa_di" bpmnElement="MoveChosenSubscribers">
+        <dc:Bounds x="1353" y="458" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_184tbw3_di" bpmnElement="SequenceFlow_184tbw3">
+        <di:waypoint xsi:type="dc:Point" x="1311" y="442" />
+        <di:waypoint xsi:type="dc:Point" x="1311" y="498" />
+        <di:waypoint xsi:type="dc:Point" x="1353" y="498" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1281" y="460" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1lrq6rt_di" bpmnElement="SequenceFlow_1lrq6rt">
+        <di:waypoint xsi:type="dc:Point" x="1403" y="279" />
+        <di:waypoint xsi:type="dc:Point" x="1403" y="162" />
+        <di:waypoint xsi:type="dc:Point" x="362" y="162" />
+        <di:waypoint xsi:type="dc:Point" x="362" y="377" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="837.5" y="137" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_11n0hnf_di" bpmnElement="SequenceFlow_11n0hnf">
+        <di:waypoint xsi:type="dc:Point" x="1403" y="538" />
+        <di:waypoint xsi:type="dc:Point" x="1403" y="689" />
+        <di:waypoint xsi:type="dc:Point" x="362" y="689" />
+        <di:waypoint xsi:type="dc:Point" x="362" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="837.5" y="664" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0qnjqem_di" bpmnElement="SequenceFlow_0qnjqem">
+        <di:waypoint xsi:type="dc:Point" x="888" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="919" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="858.5" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_14v1vcq_di" bpmnElement="SubscriberChoiceControl">
+        <dc:Bounds x="919" y="377" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0flan2m_di" bpmnElement="SequenceFlow_0flan2m">
+        <di:waypoint xsi:type="dc:Point" x="1019" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="1076" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1002.5" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0eslovq_di" bpmnElement="SequenceFlow_0eslovq">
+        <di:waypoint xsi:type="dc:Point" x="1101" y="442" />
+        <di:waypoint xsi:type="dc:Point" x="1101" y="497" />
+        <di:waypoint xsi:type="dc:Point" x="838" y="497" />
+        <di:waypoint xsi:type="dc:Point" x="838" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="924.5" y="472" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1rmbriy_di" bpmnElement="SequenceFlow_1rmbriy">
+        <di:waypoint xsi:type="dc:Point" x="622" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="650" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="591" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1farmfl_di" bpmnElement="SequenceFlow_1farmfl">
+        <di:waypoint xsi:type="dc:Point" x="750" y="417" />
+        <di:waypoint xsi:type="dc:Point" x="788" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="724" y="392" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_0u2k2tn_di" bpmnElement="FindChosenChannel">
+        <dc:Bounds x="650" y="377" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
