@@ -234,7 +234,7 @@ class WFCurrent(Current):
         """
         Invites the next lane's (possible) owner(s) to participate
         """
-        signals.lane_user_change.send(sender=self,
+        signals.lane_user_change.send(sender=self.user,
                                       current=self,
                                       old_lane=self.old_lane,
                                       possible_owners=possible_owners

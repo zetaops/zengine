@@ -150,7 +150,7 @@ class BaseUser(object):
                                                                                self.prv_exchange))
         mq_channel.queue_unbind(queue=sess_id, exchange=self.prv_exchange)
 
-    def send_notification(self, title, message, typ=1, url=None):
+    def send_notification(self, title, message, typ=1, url=None, sender=None):
         """
         sends message to users private mq exchange
         Args:
@@ -167,7 +167,8 @@ class BaseUser(object):
             body=message,
             title=title,
             typ=typ,
-            url=url
+            url=url,
+            sender=sender
         )
 
     def send_client_cmd(self, data, cmd=None, via_queue=None):

@@ -45,7 +45,9 @@ def send_message_for_lane_change(sender, *args, **kwargs):
         recipient.send_notification(title=msg_context['title'],
                                     message=msg_context['body'],
                                     typ=1, # info
-                                    url=current.get_wf_link()
+                                    url=current.get_wf_link(),
+                                    sender=sender
+
                                     )
 
 
