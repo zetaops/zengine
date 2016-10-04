@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:collaboration id="Collaboration_093m23v">
+    <bpmn:participant id="User" name="User" processRef="role_switching" />
+  </bpmn:collaboration>
+  <bpmn:process id="role_switching" name="Role Switching" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_1gzi57c</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="ListUserRoles" name="List User Roles" camunda:assignee="role_switching.RoleSwitching.list_user_roles">
+      <bpmn:incoming>SequenceFlow_1gzi57c</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0gd4kji</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="ChangeUserRole" name="Change User Role" camunda:class="role_switching.RoleSwitching.change_user_role">
+      <bpmn:incoming>SequenceFlow_0gd4kji</bpmn:incoming>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="SequenceFlow_1gzi57c" sourceRef="StartEvent_1" targetRef="ListUserRoles" />
+    <bpmn:sequenceFlow id="SequenceFlow_0gd4kji" sourceRef="ListUserRoles" targetRef="ChangeUserRole" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_093m23v">
+      <bpmndi:BPMNShape id="Participant_0myk4za_di" bpmnElement="User">
+        <dc:Bounds x="910" y="227" width="477" height="216" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="960" y="318" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="933" y="354" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_00yyfe1_di" bpmnElement="ListUserRoles">
+        <dc:Bounds x="1051" y="296" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_0f2i9d4_di" bpmnElement="ChangeUserRole">
+        <dc:Bounds x="1226" y="296" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1gzi57c_di" bpmnElement="SequenceFlow_1gzi57c">
+        <di:waypoint xsi:type="dc:Point" x="996" y="336" />
+        <di:waypoint xsi:type="dc:Point" x="1051" y="336" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="979" y="311" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0gd4kji_di" bpmnElement="SequenceFlow_0gd4kji">
+        <di:waypoint xsi:type="dc:Point" x="1151" y="336" />
+        <di:waypoint xsi:type="dc:Point" x="1226" y="336" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1144" y="311" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
