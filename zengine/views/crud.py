@@ -47,9 +47,10 @@ class ObjectForm(forms.JsonForm):
     save_edit = fields.Button(_(u"Save"), cmd="save::add_edit_form")
     save_list = fields.Button(_(u"Save and List"), cmd="save::list")
     save_as_new_edit = fields.Button(_(u"Save as New"),
-                                         cmd="save_as_new::add_edit_form")
+                                     cmd="save_as_new::add_edit_form")
     save_as_new_list = fields.Button(_(u"Save as New and List"),
-                                         cmd="save_as_new::list")
+                                     cmd="save_as_new::list")
+
 
 class CrudMeta(type):
     """
@@ -255,10 +256,9 @@ class CrudView(BaseView):
         save_list = fields.Button(_(u"Save and List"), cmd="save::list")
         if settings.DEBUG:
             save_as_new_edit = fields.Button(_(u"Save as New"),
-                                                 cmd="save_as_new::add_edit_form")
+                                             cmd="save_as_new::add_edit_form")
             save_as_new_list = fields.Button(_(u"Save as New and List"),
-                                                 cmd="save_as_new::list")
-
+                                             cmd="save_as_new::list")
 
     def __init__(self, current=None):
         self.FILTER_METHODS = []
@@ -640,8 +640,15 @@ class CrudView(BaseView):
         if not (self.Meta.allow_filters and model_class.Meta.list_filters):
             return
         self.output['meta']['allow_filters'] = True
+
+        filters = self.input.get('filters') if self.Meta.allow_filters else {}
+
         flt = []
         for field_name in model_class.Meta.list_filters:
+            chosen_filters = []
+            if field_name in filters:
+                chosen_filters = filters[field_name]['values']
+
             field = self.object._fields[field_name]
             f = {'field': field_name,
                  'verbose_name': field.title,
@@ -649,12 +656,22 @@ class CrudView(BaseView):
                  }
             if isinstance(field, (fields.Date, fields.DateTime)):
                 f['type'] = 'date'
+                if not chosen_filters: chosen_filters.extend((None, None))
+                f['values'] = chosen_filters
+
             elif field.choices:
                 f['values'] = [{'name': k, 'value': v} for v, k in
                                self.object.get_choices_for(field_name)]
+
+                if chosen_filters:
+                    for val in f['values']:
+                        if unicode(val['value']) in chosen_filters:
+                            val['selected'] = 'true'
+
             else:
                 f['values'] = [{'name': k, 'value': k} for k, v in
                                model_class.objects.distinct_values_of(field_name).items()]
+
             flt.append(f)
         self.output['list_filters'] = flt
 
