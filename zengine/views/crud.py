@@ -630,9 +630,7 @@ class CrudView(BaseView):
 
         flt = []
         for field_name in model_class.Meta.list_filters:
-            chosen_filters = []
-            if field_name in filters:
-                chosen_filters = filters[field_name]['values']
+            chosen_filters = filters.get(field_name, {}).get('values', [])
 
             field = self.object._fields[field_name]
             f = {'field': field_name,
@@ -641,17 +639,14 @@ class CrudView(BaseView):
                  }
             if isinstance(field, (fields.Date, fields.DateTime)):
                 f['type'] = 'date'
-                if not chosen_filters: chosen_filters.extend((None, None))
-                f['values'] = chosen_filters
+                f['values'] = chosen_filters or chosen_filters.extend((None, None))
 
             elif field.choices:
-                f['values'] = [{'name': k, 'value': v} for v, k in
+                f['values'] = [
+                    {'name': k,
+                     'value': v,
+                     'selected': 'true' if unicode(v) in chosen_filters else ''} for v, k in
                                self.object.get_choices_for(field_name)]
-
-                if chosen_filters:
-                    for val in f['values']:
-                        if unicode(val['value']) in chosen_filters:
-                            val['selected'] = 'true'
 
             else:
                 f['values'] = [{'name': k, 'value': k} for k, v in
