@@ -234,6 +234,9 @@ class Task(Model):
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
 
+    #         from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
+
+
     class Meta:
         verbose_name = "Workflow Task"
         verbose_name_plural = "Workflows Tasks"
@@ -253,17 +256,24 @@ class Task(Model):
         """creates a TaskInvitation for each role for each WFInstnace"""
         for wfi in wf_instances:
             for role in roles:
-                TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
+                TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name, progress=30,
                                start_date=self.start_date, finish_date=self.finish_date).save()
 
     def create_wf_instances(self):
         """ creates a WFInstnace for each object"""
-        return [WFInstance(wf=self.wf,
-                           task=self,
-                           wf_object=obj_key,
-                           name=self.wf.name,
-                           wf_object_type=self.object_type).save()
-                for obj_key in self.get_object_keys()]
+        obj_keys = self.get_object_keys()
+        if not obj_keys:
+            return [WFInstance(wf=self.wf,
+                               task=self,
+                               name=self.wf.name,
+                               wf_object_type=self.object_type).save()]
+        else:
+            return [WFInstance(wf=self.wf,
+                               task=self,
+                               wf_object=obj_key,
+                               name=self.wf.name,
+                               wf_object_type=self.object_type).save()
+                    for obj_key in obj_keys]
 
     def get_object_query_dict(self):
         """returns objects keys according to self.object_query_code
@@ -274,6 +284,7 @@ class Task(Model):
              dict. Queryset filtering dict
         """
         if isinstance(self.object_query_code, dict):
+            # _DATE_ _DATETIME_
             return self.object_query_code
         else:
             # comma separated, key=value pairs. wrapping spaces will be ignored
@@ -301,7 +312,7 @@ class Task(Model):
         Returns:
             Role instances according to task definition.
         """
-        if self.role:
+        if self.role.exist:
             # return explicitly selected role
             return [self.role]
         else:
@@ -309,23 +320,26 @@ class Task(Model):
             if self.role_query_code:
                 #  use given "role_query_code"
                 roles = RoleModel.objects.filter(**self.role_query_code)
-            elif self.unit:
+            elif self.unit.exist:
                 # get roles from selected unit or sub-units of it
                 if self.recursive_units:
                     # this returns a list, we're converting it to a Role generator!
-                    roles = (RoleModel.objects.get(k) for k in UnitModel.get_user_keys())
+                    roles = (RoleModel.objects.get(k) for k in UnitModel.get_role_keys(self.unit.key))
                 else:
                     roles = RoleModel.objects.filter(unit=self.unit)
             elif self.get_roles_from:
                 # get roles from selected predefined "get_roles_from" method
                 roles = ROLE_GETTER_METHODS[self.get_roles_from]()
 
-        if self.abstract_role:
+        if self.abstract_role.exist and roles:
             # apply abstract_role filtering on roles we got
             if isinstance(roles, (list, types.GeneratorType)):
                 roles = [a for a in roles if a.abstract_role == self.abstract_role]
             else:
                 roles = roles.filter(abstract_role=self.abstract_role)
+        else:
+            roles = RoleModel.objects.filter(abstract_role=self.abstract_role)
+
         return roles
 
     def post_save(self):
@@ -423,14 +437,13 @@ class TaskInvitation(Model):
         return six.text_type(self.instance.get_object())
 
     def pre_save(self):
-        self.title = "%s %s" % (self.name, self.get_object_name())
+        self.title = "%s" % self.wf_name
         self.search_data = '\n'.join([self.wf_name,
-                                      self.title,
-                                      self.get_object_name()]
+                                      self.title]
                                      )
 
     def __unicode__(self):
-        return "%s invitation for %s" % (self.name, self.role)
+        return "%s invitation for %s" % (self.wf_name, self.role)
 
     def delete_other_invitations(self):
         """
