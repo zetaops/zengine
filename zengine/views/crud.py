@@ -645,7 +645,7 @@ class CrudView(BaseView):
                 f['values'] = [
                     {'name': k,
                      'value': v,
-                     'selected': 'true' if unicode(v) in chosen_filters else ''} for v, k in
+                     'selected': True if unicode(v) in chosen_filters else False} for v, k in
                                self.object.get_choices_for(field_name)]
 
             else:
