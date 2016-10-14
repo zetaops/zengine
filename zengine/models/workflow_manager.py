@@ -206,6 +206,21 @@ ROLE_SEARCH_DEPTH = (
 )
 
 
+def get_progress(start, finish):
+    now = datetime.now()
+    dif_time_start = start - now
+    dif_time_finish = finish - now
+
+    if dif_time_start.days < 0 and dif_time_finish.days < 0:
+        return PROGRESS_STATES[3][0]
+    elif dif_time_start.days < 0 and dif_time_finish.days >= 1:
+        return PROGRESS_STATES[2][0]
+    elif dif_time_start.days >= 1 and dif_time_finish.days >= 1:
+        return PROGRESS_STATES[0][0]
+    else:
+        return PROGRESS_STATES[2][0]
+
+
 def get_model_choices():
     return [{'name': k, 'value': v.Meta.verbose_name} for k, v in model_registry.registry.items()]
 
@@ -234,9 +249,6 @@ class Task(Model):
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
 
-    #         from pyoko.fields import DATE_FORMAT, DATE_TIME_FORMAT
-
-
     class Meta:
         verbose_name = "Workflow Task"
         verbose_name_plural = "Workflows Tasks"
@@ -256,7 +268,9 @@ class Task(Model):
         """creates a TaskInvitation for each role for each WFInstnace"""
         for wfi in wf_instances:
             for role in roles:
-                TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name, progress=30,
+                TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
+                               progress=get_progress(start=self.start_date,
+                                                     finish=self.finish_date),
                                start_date=self.start_date, finish_date=self.finish_date).save()
 
     def create_wf_instances(self):
@@ -383,8 +397,11 @@ class WFInstance(Model):
         list_fields = ['name', 'current_actor']
 
     def get_object(self):
-        model = model_registry.get_model(self.wf_object_type)
-        return model.objects.get(self.wf_object)
+        if self.wf_object_type:
+            model = model_registry.get_model(self.wf_object_type)
+            return model.objects.get(self.wf_object)
+        else:
+            return ''
 
     def actor(self):
         return self.current_actor.user.full_name if self.current_actor.exist else '-'
