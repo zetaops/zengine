@@ -63,8 +63,11 @@ def get_task_detail(current):
                    'task_detail': string, # markdown formatted text
                     }
     """
-    current.output['task_title'] = TaskInvitation.objects.get(current.input['key']).title
-    # current.output['task_detail'] = "Sample text"
+    task_inv = TaskInvitation.objects.get(current.input['key'])
+    obj = task_inv.instance.get_object()
+    current.output['task_title'] = task_inv.instance.task.name
+    current.output['task_detail'] = """Açıklama: %s
+    Durum: %s""" % (obj.__unicode__() if obj else '', task_inv.progress)
 
 
 @view()
@@ -87,7 +90,8 @@ def get_task_actions(current):
                    'actions': [('name_string', 'cmd_string'),]
                     }
     """
-    current.output['actions'] = [('Task Details', '_zops_task_details'), ]
+    task_inv = TaskInvitation.objects.get(current.input['key'])
+    current.output['actions'] = [(task_inv.instance.name, task_inv.wf_name), ]
 
 
 @view()
@@ -120,8 +124,8 @@ def get_tasks(current):
                      'title': string,  # task title
                      'state': int,  # state of invitation
                                     # zengine.models.workflow_manager.TASK_STATES
-                     'start_date': datetime,  # start date
-                     'finish_date': datetime,  # end date
+                     'start_date': string,  # start date
+                     'finish_date': string,  # end date
 
                      },]
                 }
