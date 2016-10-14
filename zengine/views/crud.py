@@ -626,7 +626,7 @@ class CrudView(BaseView):
             return
         self.output['meta']['allow_filters'] = True
 
-        filters = self.input.get('filters') if self.Meta.allow_filters else {}
+        filters = self.input.get('filters', {}) if self.Meta.allow_filters else {}
 
         flt = []
         for field_name in model_class.Meta.list_filters:
