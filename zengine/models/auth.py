@@ -194,8 +194,9 @@ class Role(Model):
     """
     This model binds group of Permissions with a certain User.
     """
-    arole = AbstractRole()
+    abstract_role = AbstractRole()
     user = User()
+    unit = Unit()
 
     class Meta:
         """
