@@ -91,6 +91,7 @@ def get_task_actions(current):
                     }
     """
     task_inv = TaskInvitation.objects.get(current.input['key'])
+    current.output['key'] = task_inv.key
     current.output['actions'] = [(task_inv.instance.name, task_inv.wf_name), ]
 
 
