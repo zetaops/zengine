@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:process id="workflow_management" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_19oanlg</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="management" name="Workflow Management">
+      <bpmn:incoming>SequenceFlow_19oanlg</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0mfzvml</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_0j0n4xp">
+      <bpmn:incoming>SequenceFlow_0mfzvml</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_19oanlg" sourceRef="StartEvent_1" targetRef="management" />
+    <bpmn:sequenceFlow id="SequenceFlow_0mfzvml" sourceRef="management" targetRef="EndEvent_0j0n4xp" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="workflow_management">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="221" y="259" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="194" y="295" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_1ri5ggm_di" bpmnElement="management">
+        <dc:Bounds x="302" y="237" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_0j0n4xp_di" bpmnElement="EndEvent_0j0n4xp">
+        <dc:Bounds x="445" y="259" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="418" y="295" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_19oanlg_di" bpmnElement="SequenceFlow_19oanlg">
+        <di:waypoint xsi:type="dc:Point" x="257" y="277" />
+        <di:waypoint xsi:type="dc:Point" x="302" y="277" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="234.5" y="252" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0mfzvml_di" bpmnElement="SequenceFlow_0mfzvml">
+        <di:waypoint xsi:type="dc:Point" x="402" y="277" />
+        <di:waypoint xsi:type="dc:Point" x="445" y="277" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="378.5" y="252" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

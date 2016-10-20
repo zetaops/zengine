@@ -6,6 +6,8 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from pyoko.fields import DATE_FORMAT
+from datetime import datetime
 from zengine.lib.decorators import view, bg_job
 from zengine.models import TaskInvitation, BPMNWorkflow
 
@@ -61,8 +63,11 @@ def get_task_detail(current):
                    'task_detail': string, # markdown formatted text
                     }
     """
-    current.output['task_title'] = "Sample Task Title"
-    current.output['task_detail'] = "Sample text"
+    task_inv = TaskInvitation.objects.get(current.input['key'])
+    obj = task_inv.instance.get_object()
+    current.output['task_title'] = task_inv.instance.task.name
+    current.output['task_detail'] = """Explain: %s
+    State: %s""" % (obj.__unicode__() if obj else '', task_inv.progress)
 
 
 @view()
@@ -85,7 +90,9 @@ def get_task_actions(current):
                    'actions': [('name_string', 'cmd_string'),]
                     }
     """
-    current.output['actions'] = [('Task Details', '_zops_task_details'), ]
+    task_inv = TaskInvitation.objects.get(current.input['key'])
+    current.output['key'] = task_inv.key
+    current.output['actions'] = [(task_inv.instance.name, task_inv.wf_name), ]
 
 
 @view()
@@ -118,8 +125,8 @@ def get_tasks(current):
                      'title': string,  # task title
                      'state': int,  # state of invitation
                                     # zengine.models.workflow_manager.TASK_STATES
-                     'start_date': datetime,  # start date
-                     'finish_date': datetime,  # end date
+                     'start_date': string,  # start date
+                     'finish_date': string,  # end date
 
                      },]
                 }
@@ -139,7 +146,7 @@ def get_tasks(current):
     else:
         queryset = TaskInvitation.objects.filter(progress=state)
 
-    if current.input['inverted']:
+    if 'inverted' in current.input:
         # show other user's tasks
         allowed_workflows = [bpmn_wf.name for bpmn_wf in BPMNWorkflow.objects.filter()
                              if current.has_permission(bpmn_wf.name)]
@@ -148,21 +155,22 @@ def get_tasks(current):
         # show current user's tasks
         queryset = queryset.filter(role_id=current.role_id)
 
-    if current.input['query']:
+    if 'query' in current.input:
         queryset = queryset.filter(search_data__contains=current.input['query'].lower())
-    if current.input['wf_type']:
+    if 'wf_type' in current.input:
         queryset = queryset.filter(wf_name=current.input['wf_type'])
-    if current.input['start_date']:
-        queryset = queryset.filter(start_date__gte=current.input['start_date'])
-    if current.input['finish_date']:
-        queryset = queryset.filter(finish_date__lte=current.input['finish_date'])
+    if 'start_date' in current.input:
+        queryset = queryset.filter(start_date__gte=datetime.strptime(current.input['start_date'], "%d.%m.%Y"))
+    if 'finish_date' in current.input:
+        queryset = queryset.filter(finish_date__lte=datetime.strptime(current.input['finish_date'], "%d.%m.%Y"))
     current.output['task_list'] = [
         {
             'token': inv.instance.key,
+            'key': inv.key,
             'title': inv.title,
             'wf_type': inv.wf_name,
-            'state': inv.state,
-            'start_date': inv.task.start_date,
-            'finish_date': inv.task.finish_date}
+            'state': inv.progress,
+            'start_date': inv.instance.task.start_date.strftime(DATE_FORMAT),
+            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT)}
         for inv in queryset
         ]

@@ -114,7 +114,9 @@ class BaseTestClient(Worker):
             form_data = self.response_wrapper.form_data.copy()
         else:
             form_data = {}
-        data['path'] = self.path.replace('/', '')
+        if self.path:
+            data['path'] = self.path.replace('/', '')
+
         if 'form' in data:
             form_data.update(data['form'])
 
@@ -192,7 +194,7 @@ class BaseTestCase:
             print("\nREPORT:: Cache cleared")
 
     @classmethod
-    def prepare_client(cls, path, reset=False, user=None, login=None, token='', username=None):
+    def prepare_client(cls, path='', reset=False, user=None, login=None, token='', username=None):
         """
         Setups the path, logs in if necessary
 
