@@ -186,7 +186,7 @@ class Worker(object):
             if 'path' in data:
                 if data['path'] in VIEW_METHODS:
                     data['view'] = data['path']
-                elif 'view' not in data:
+                else:
                     data['wf'] = data['path']
             session = Session(self.sessid)
 
