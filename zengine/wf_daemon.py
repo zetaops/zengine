@@ -18,19 +18,21 @@ from zengine.client_queue import ClientQueue, BLOCKING_MQ_PARAMS
 from zengine.engine import ZEngine
 from zengine.current import Current
 from zengine.lib.cache import Session, KeepAlive
-from zengine.lib.exceptions import HTTPError
+from zengine.lib.exceptions import HTTPError, SecurityInfringementAttempt
+from zengine.lib.decorators import VIEW_METHODS, JOB_METHODS, runtime_importer
+
 from zengine.log import log
 import sys
-# receivers should be imported at right time, right place
-# they will not registered if not placed in a central location
-# but they can cause "cannot import settings" errors if imported too early
-from zengine.receivers import *
+
+runtime_importer()
 
 sys._zops_wf_state_log = ''
 
 wf_engine = ZEngine()
 
 LOGIN_REQUIRED_MESSAGE = {'error': "Login required", "code": 401}
+
+
 class Worker(object):
     """
     Workflow runner worker object
@@ -69,13 +71,29 @@ class Worker(object):
         log.info("Bind to queue named '%s' queue with exchange '%s'" % (self.INPUT_QUEUE_NAME,
                                                                         self.INPUT_EXCHANGE))
 
+
+
+    def clear_queue(self):
+        """
+        clear outs all messages from INPUT_QUEUE_NAME
+        """
+        def remove_message(ch, method, properties, body):
+            print("Removed message: %s" % body)
+        self.input_channel.basic_consume(remove_message, queue=self.INPUT_QUEUE_NAME, no_ack=True)
+        try:
+            self.input_channel.start_consuming()
+        except (KeyboardInterrupt, SystemExit):
+            log.info(" Exiting")
+            self.exit()
+
     def run(self):
         """
         actual consuming of incoming works starts here
         """
         self.input_channel.basic_consume(self.handle_message,
                                          queue=self.INPUT_QUEUE_NAME,
-                                         no_ack=True)
+                                         no_ack=True
+                                         )
         try:
             self.input_channel.start_consuming()
         except (KeyboardInterrupt, SystemExit):
@@ -100,6 +118,18 @@ class Worker(object):
             msg.update(LOGIN_REQUIRED_MESSAGE)
         return msg
 
+    def _handle_job(self, session, data, headers):
+        # security check for preventing external job execution attempts
+        if headers['source'] != 'Internal':
+            raise SecurityInfringementAttempt(
+                "Someone ({user}) from {ip} tried to inject a job {job}".format(user=session['user_id'], ip=headers['remote_ip'], job=data['job']))
+        self.current = Current(session=session, input=data)
+        self.current.headers = headers
+        # import method
+        # method = get_object_from_path(settings.BG_JOBS[data['job']])
+        # call view with current object
+        JOB_METHODS[data['job']](self.current)
+
     def _handle_view(self, session, data, headers):
         # create Current object
         self.current = Current(session=session, input=data)
@@ -114,10 +144,10 @@ class Worker(object):
             return LOGIN_REQUIRED_MESSAGE
 
         # import view
-        view = get_object_from_path(settings.VIEW_URLS[data['view']])
+        # view = get_object_from_path(settings.VIEW_URLS[data['view']])
 
         # call view with current object
-        view(self.current)
+        VIEW_METHODS[data['view']](self.current)
 
         # return output
         return self.current.output
@@ -144,6 +174,7 @@ class Worker(object):
             body: message body
         """
         input = {}
+        headers = {}
         try:
             self.sessid = method.routing_key
 
@@ -151,20 +182,26 @@ class Worker(object):
             data = input['data']
 
             # since this comes as "path" we dont know if it's view or workflow yet
-            #TODO: just a workaround till we modify ui to
+            # TODO: just a workaround till we modify ui to
             if 'path' in data:
-                if data['path'] in settings.VIEW_URLS:
+                if data['path'] in VIEW_METHODS:
                     data['view'] = data['path']
                 else:
                     data['wf'] = data['path']
             session = Session(self.sessid)
 
-            headers = {'remote_ip': input['_zops_remote_ip']}
+            headers = {'remote_ip': input['_zops_remote_ip'],
+                       'source': input['_zops_source']}
 
             if 'wf' in data:
                 output = self._handle_workflow(session, data, headers)
+            elif 'job' in data:
+
+                self._handle_job(session, data, headers)
+                return
             else:
                 output = self._handle_view(session, data, headers)
+
         except HTTPError as e:
             import sys
             if hasattr(sys, '_called_from_test'):
@@ -172,6 +209,8 @@ class Worker(object):
             output = {'cmd': 'error', 'error': self._prepare_error_msg(e.message), "code": e.code}
             log.exception("Http error occurred")
         except:
+            self.current = Current(session=session, input=data)
+            self.current.headers = headers
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
@@ -203,7 +242,6 @@ def run_workers(no_subprocess, watch_paths=None, is_background=False):
         # from watchdog.observers.fsevents import FSEventsObserver as Observer
         # from watchdog.observers.polling import PollingObserver as Observer
         from watchdog.events import FileSystemEventHandler
-
 
     def on_modified(event):
         if not is_background:

@@ -13,6 +13,7 @@ from zengine.lib.cache import ClearCache
 from zengine.lib.exceptions import HTTPError
 from zengine.log import log
 from zengine.wf_daemon import Worker
+from zengine.lib.json_interface import ZEngineJSONEncoder
 
 from zengine.models import User
 from zengine.messaging.model import Message
@@ -55,7 +56,10 @@ class ResponseWrapper(object):
         Pretty prints the response
         """
         pprint(self.code)
-        pprnt(self.json)
+        try:
+            pprnt(self.json)
+        except TypeError:  # If there is a custom type in the output (i.e. lazy translations)
+            print(json.dumps(self.json, cls=ZEngineJSONEncoder, indent=4, sort_keys=True))
         if not self.json:
             pprint(self.content)
 
@@ -110,13 +114,18 @@ class BaseTestClient(Worker):
             form_data = self.response_wrapper.form_data.copy()
         else:
             form_data = {}
-        data['path'] = self.path.replace('/', '')
+        if self.path:
+            data['path'] = self.path.replace('/', '')
+
         if 'form' in data:
             form_data.update(data['form'])
 
         data['form'] = form_data
 
-        post_data = {'data': data, '_zops_remote_ip': '127.0.0.1'}
+        post_data = {'data': data,
+                     '_zops_remote_ip': '127.0.0.1',
+                     '_zops_source': 'Remote',
+                     }
         log.info("PostData : %s" % post_data)
         print("PostData : %s" % post_data)
         return post_data
@@ -157,35 +166,35 @@ class BaseTestCase:
         Creates a new user and Role with all Permissions.
         """
 
-        if not '--ignore=fixture' in sys.argv:
-            if hasattr(self, 'fixture'):
-                print("\nREPORT:: Running test cases own fixture() method")
-                self.fixture()
-                sleep(2)
-
-            else:
-                fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
-                if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
-                    sys.LOADED_FIXTURES.append(fixture_guess)
-                    FlushDB(model='all', wait_sync=True,
-                            exclude=settings.TEST_FLUSHING_EXCLUDES).run()
-                    print("\nREPORT:: Test fixture will be loaded: %s" % fixture_guess)
-                    LoadData(path=fixture_guess, update=True).run()
-                    sleep(2)
-                else:
-                    print(
-                        "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
-
-        else:
-            print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
+        # if not '--ignore=fixture' in sys.argv:
+        #     if hasattr(self, 'fixture'):
+        #         print("\nREPORT:: Running test cases own fixture() method")
+        #         self.fixture()
+        #         sleep(2)
+        #
+        #     else:
+        #         fixture_guess = 'fixtures/%s.csv' % method.__self__.__module__.split('.test_')[1]
+        #         if os.path.exists(fixture_guess) and fixture_guess not in sys.LOADED_FIXTURES:
+        #             sys.LOADED_FIXTURES.append(fixture_guess)
+        #             FlushDB(model='all', wait_sync=True,
+        #                     exclude=settings.TEST_FLUSHING_EXCLUDES).run()
+        #             print("\nREPORT:: Test fixture will be loaded: %s" % fixture_guess)
+        #             LoadData(path=fixture_guess, update=True).run()
+        #             sleep(2)
+        #         else:
+        #             print(
+        #                 "\nREPORT:: Test case does not have a fixture file like %s" % fixture_guess)
+        #
+        # else:
+        #     print("\nREPORT:: Fixture loading disabled by user. (by --ignore=fixture)")
         # clear all caches
         if not hasattr(sys, 'cache_cleared'):
             sys.cache_cleared = True
-            print ClearCache.flush()
+            print(ClearCache.flush())
             print("\nREPORT:: Cache cleared")
 
     @classmethod
-    def prepare_client(cls, path, reset=False, user=None, login=None, token='', username=None):
+    def prepare_client(cls, path='', reset=False, user=None, login=None, token='', username=None):
         """
         Setups the path, logs in if necessary
 

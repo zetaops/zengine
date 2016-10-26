@@ -9,9 +9,11 @@ This BPMN parser module takes the following extension elements from Camunda's ou
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_NS
+from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
 from SpiffWorkflow.bpmn.storage.Packager import Packager
-from six import BytesIO
-
+from SpiffWorkflow.storage.Serializer import Serializer
+from six import StringIO
+import xml.etree.ElementTree as ET
 __author__ = "Evren Esat Ozkan"
 
 from SpiffWorkflow.bpmn.parser.BpmnParser import BpmnParser
@@ -185,6 +187,19 @@ class CamundaProcessParser(ProcessParser):
     def _parse_script(cls, elm):
         return elm.get('scriptFormat'), elm.text
 
+class ZopsSerializer(Serializer):
+    """
+    Deserialize direct XML -> Spec
+    """
+
+    def deserialize_workflow_spec(self, xml_content, filename):
+
+        parser = CamundaBMPNParser()
+        bpmn = ET.parse(StringIO(xml_content))
+        parser.add_bpmn_xml(bpmn, svg=None, filename='%s' % filename)
+        return parser.get_spec(filename)
+
+
 class InMemoryPackager(Packager):
     """
     Creates spiff's wf packages on the fly.
@@ -203,7 +218,7 @@ class InMemoryPackager(Packager):
         Returns:
             Workflow package (file like) object
         """
-        s = BytesIO()
+        s = StringIO()
         p = cls(s, workflow_name, meta_data=[])
         p.add_bpmn_files_by_glob(workflow_files)
         p.create_package()

@@ -7,10 +7,12 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from pyoko import Model, field, ListNode, LinkProxy
-from passlib.hash import pbkdf2_sha512
+from pyoko import Model, field, ListNode
+from pyoko import LinkProxy
 from zengine.lib.cache import Cache
 from zengine.messaging.lib import BaseUser
+from zengine.lib.utils import gettext_lazy as _, gettext
+from zengine.config import settings
 
 
 class Unit(Model):
@@ -19,18 +21,17 @@ class Unit(Model):
     Can be used to group users according to their physical or organizational position
 
     """
-    name = field.String("İsim", index=True)
-    parent = LinkProxy('Unit', verbose_name='Parent Unit', reverse_name='sub_units')
+    name = field.String(_(u"Name"), index=True)
+    parent = LinkProxy('Unit', verbose_name=_(u'Parent Unit'), reverse_name='sub_units')
 
     class Meta:
-        verbose_name = "Unit"
-        verbose_name_plural = "Units"
+        verbose_name = _(u"Unit")
+        verbose_name_plural = _(u"Units")
         search_fields = ['name']
-        list_fields = ['name',]
+        list_fields = ['name', ]
 
     def __unicode__(self):
         return '%s' % self.name
-
 
     @classmethod
     def get_user_keys(cls, unit_key):
@@ -40,17 +41,16 @@ class Unit(Model):
         return stack
 
 
-
 class Permission(Model):
     """
     Permission model
     """
-    name = field.String("Name", index=True)
-    code = field.String("Code Name", index=True)
-    description = field.String("Description", index=True)
+    name = field.String(_(u"Name"), index=True)
+    code = field.String(_(u"Code Name"), index=True)
+    description = field.String(_(u"Description"), index=True)
 
     def __unicode__(self):
-        return "Permission %s" % self.name
+        return gettext(u"Permission %s") % self.name
 
     def get_permitted_users(self):
         """
@@ -75,10 +75,16 @@ class User(Model, BaseUser):
     """
     Basic User model
     """
-    username = field.String("Username", index=True)
-    password = field.String("Password")
-    superuser = field.Boolean("Super user", default=False)
-    avatar = field.File("Avatar", random_name=True, required=False)
+    username = field.String(_(u"Username"), index=True)
+    password = field.String(_(u"Password"))
+    superuser = field.Boolean(_(u"Super user"), default=False)
+    avatar = field.File(_(u"Avatar"), random_name=True, required=False)
+    locale_language = field.String(_(u"Preferred Language"), index=False,
+                                   default=settings.DEFAULT_LANG)
+    locale_datetime = field.String(_(u"Preferred Date and Time Format"), index=False,
+                                   default=settings.DEFAULT_LOCALIZATION_FORMAT)
+    locale_number = field.String(_(u"Preferred Number Format"), index=False,
+                                 default=settings.DEFAULT_LOCALIZATION_FORMAT)
     unit = Unit()
 
     class Meta:
@@ -118,12 +124,12 @@ class AbstractRole(Model):
     """
     AbstractRoles are stand as a foundation for actual roles
     """
-    name = field.String("Name", index=True)
-    read_only = field.Boolean("Archived")
+    name = field.String(_(u"Name"), index=True)
+    read_only = field.Boolean(_(u"Archived"))
 
     class Meta:
-        verbose_name = "Abstract Role"
-        verbose_name_plural = "Abstract Roles"
+        verbose_name = _(u"Abstract Role")
+        verbose_name_plural = _(u"Abstract Roles")
         search_fields = ['name']
 
     def __unicode__(self):
@@ -180,20 +186,23 @@ class AbstractRole(Model):
     class Permissions(ListNode):
         permission = Permission()
 
+
 class Role(Model):
     """
     This model binds group of Permissions with a certain User.
     """
-    arole = AbstractRole()
+    abstract_role = AbstractRole()
     user = User()
+    unit = Unit()
 
     class Meta:
         """
         Meta class
         """
-        verbose_name = "Rol"
-        verbose_name_plural = "Roles"
-        crud_extra_actions = [{'name': 'Edit Permissions', 'wf': 'permissions', 'show_as': 'button'}]
+        verbose_name = _(u"Role")
+        verbose_name_plural = _(u"Roles")
+        crud_extra_actions = [
+            {'name': _(u'Edit Permissions'), 'wf': 'permissions', 'show_as': 'button'}]
 
     def __unicode__(self):
         try:
@@ -250,3 +259,10 @@ class Role(Model):
                 self.Permissions(permission=p)
         if p:
             self.save()
+
+    def send_notification(self, title, message, typ=1, url=None, sender=None):
+        """
+        sends a message to user of this role's private mq exchange
+
+        """
+        self.user.send_notification(title=title, message=message, typ=typ, url=url, sender=sender)

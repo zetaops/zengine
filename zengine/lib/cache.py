@@ -97,8 +97,8 @@ class Cache(object):
         :return: val
         """
         cache.set(self.key,
-                  (json.dumps(val) if self.serialize else val))
-        # lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
+                  (json.dumps(val) if self.serialize else val),
+                  lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
         return val
 
     def delete(self):
@@ -265,19 +265,6 @@ class KeepAlive(Cache):
         if not hasattr(self, 'key'):
             return
         return time.time() - float(self.get(0.0)) < self.SESSION_EXPIRE_TIME
-
-
-class WFCache(Cache):
-    """
-    Cache object for workflow instances.
-
-    Args:
-        wf_token: Token of the workflow instance.
-    """
-    PREFIX = 'WF'
-
-    def __init__(self, wf_token):
-        super(WFCache, self).__init__(wf_token)
 
 
 class ClearCache(Cache):

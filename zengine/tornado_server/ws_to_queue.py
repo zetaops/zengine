@@ -30,8 +30,9 @@ settings = type('settings', (object,), {
     'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),
     'MQ_USER': os.environ.get('MQ_USER', 'guest'),
     'MQ_PASS': os.environ.get('MQ_PASS', 'guest'),
-    'DEBUG': os.environ.get('DEBUG', False),
+    'DEBUG': bool(int(os.environ.get('DEBUG', 0))),
     'MQ_VHOST': os.environ.get('MQ_VHOST', '/'),
+    'ALLOWED_ORIGINS': os.environ.get('ALLOWED_ORIGINS', 'http://127.0.0.1'),
 })
 log = get_logger(settings)
 
@@ -137,8 +138,9 @@ class QueueManager(object):
         self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
                                       body=json_encode(dict(data={
-                                          'view': 'mark_offline_user',
+                                          'view': '_zops_mark_offline_user',
                                           'sess_id': sess_id,},
+                                          _zops_source= 'Internal',
                                           _zops_remote_ip='')))
 
     def unregister_websocket(self, sess_id):
@@ -158,7 +160,11 @@ class QueueManager(object):
         def _on_output_channel_creation(channel):
             def _on_output_queue_decleration(queue):
                 # differentiate and identify incoming message with registered consumer
-                channel.basic_consume(self.on_message, queue=sess_id, consumer_tag=sess_id)
+                channel.basic_consume(self.on_message,
+                                      queue=sess_id,
+                                      consumer_tag=sess_id,
+                                      # no_ack=True
+                                      )
                 log.debug("BINDED QUEUE TO WS Q.%s" % sess_id)
             self.out_channels[sess_id] = channel
 
@@ -176,20 +182,23 @@ class QueueManager(object):
         message = json_decode(message)
         message['_zops_sess_id'] = sess_id
         message['_zops_remote_ip'] = request.remote_ip
-        self.publish_incoming_message(message, sess_id)
-
-    def publish_incoming_message(self, message, sess_id):
+        message['_zops_source'] = 'Remote'
         self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
                                       body=json_encode(message))
 
     def on_message(self, channel, method, header, body):
         sess_id = method.consumer_tag
-        log.debug("WS RPLY for %s: %s" % (sess_id, body))
+        log.debug("WS RPLY for %s" % sess_id)
+        log.debug("WS BODY for %s" % body)
         try:
             if sess_id in self.websockets:
                 log.info("write msg to client")
                 self.websockets[sess_id].write_message(body)
+                log.debug("WS OBJ %s" % self.websockets[sess_id])
             channel.basic_ack(delivery_tag=method.delivery_tag)
         except RuntimeError:
-            log.exception("CANT WRITE TO HTTP OR WS: \n%s" % body)
+            log.exception("CANT WRITE TO HTTP OR WS: %s\n \n%s" % (sess_id, body))
+        except KeyError:
+            self.unregister_websocket(sess_id)
+            log.exception("CANT FIND WS OR HTTP: %s" % sess_id)

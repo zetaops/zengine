@@ -12,8 +12,10 @@
 def main_wf(current):
     current.task_data['from_main'] = True
     current.output['from_jumped'] = current.task_data.get('from_jumped')
+    assert current.workflow.name == 'jump_to_wf'
 
 
 def jumped_wf(current):
     current.output['from_main'] = current.task_data['from_main']
     current.task_data['from_jumped'] = True
+    assert current.workflow.name == 'jump_to_wf2'

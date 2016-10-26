@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='zengine',
-    version='0.7.4',
+    version='0.7.5',
     url='https://github.com/zetaops/zengine',
     license='GPL v3',
     packages=find_packages(exclude=['tests', 'tests.*']),
@@ -13,7 +13,7 @@ setup(
                 'permissions and extensible CRUD features',
     install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions', 'lazy_object_proxy',
                       'redis', 'enum34', 'werkzeug', 'celery', 'SpiffWorkflow', 'pyoko',
-                      'tornado', 'pika'],
+                      'tornado', 'pika', 'babel'],
     dependency_links=[
         'git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions',
         'git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow',

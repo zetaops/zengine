@@ -10,11 +10,13 @@ Zengine's engine!
 from __future__ import division
 from __future__ import print_function, absolute_import, division
 
+import gettext
 import importlib
 import os
 import sys
 import traceback
 from copy import deepcopy
+import babel
 
 import lazy_object_proxy
 from SpiffWorkflow import Task
@@ -23,18 +25,22 @@ from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
 from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
     CompactWorkflowSerializer
 from SpiffWorkflow.specs import WorkflowSpec
+from datetime import datetime
 
+from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
 from pyoko.model import super_context, model_registry
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.config import settings
 from zengine.current import WFCurrent
-from zengine.lib.camunda_parser import InMemoryPackager
+from zengine.lib.camunda_parser import InMemoryPackager, ZopsSerializer
 from zengine.lib.exceptions import HTTPError
+from zengine.lib import translation
 from zengine.log import log
 
 
 # crud_view = CrudView()
+from zengine.models import BPMNWorkflow
 
 
 class ZEngine(object):
@@ -62,7 +68,7 @@ class ZEngine(object):
         self.use_compact_serializer = True
         # self.current = None
         self.wf_activities = {}
-        self.wf_cache = {'in_external': False}
+        self.wf_state = {}
         self.workflow = BpmnWorkflow
         self.workflow_spec_cache = {}
         self.workflow_spec = WorkflowSpec()
@@ -92,15 +98,15 @@ class ZEngine(object):
                 del task_data[k]
         if 'cmd' in task_data:
             del task_data['cmd']
-        self.wf_cache.update({'wf_state': serialized_wf_instance,
+        self.wf_state.update({'step': serialized_wf_instance,
                               'data': task_data,
-                              'wf_name': self.current.workflow_name,
+                              'name': self.current.workflow_name,
                               })
-        if self.current.lane_name:
-            self.current.pool[self.current.lane_name] = self.current.role.key
-        self.wf_cache['pool'] = self.current.pool
+        if self.current.lane_id:
+            self.current.pool[self.current.lane_id] = self.current.role.key
+        self.wf_state['pool'] = self.current.pool
         self.current.log.debug("POOL Content before WF Save: %s" % self.current.pool)
-        self.current.wfcache.set(self.wf_cache)
+        self.current.wf_cache.save(self.wf_state)
 
     def get_pool_context(self):
         # TODO: Add in-process caching
@@ -110,13 +116,10 @@ class ZEngine(object):
         Returns:
             Context dict.
         """
-        context = {self.current.lane_name: self.current.role, 'self': self.current.role}
-        if self.current.lane_owners:
-            model_name = self.current.lane_owners.split('.')[0]
-            context[model_name] = model_registry.get_model(model_name)
-        for lane_name, role_id in self.current.pool.items():
+        context = {self.current.lane_id: self.current.role, 'self': self.current.role}
+        for lane_id, role_id in self.current.pool.items():
             if role_id:
-                context[lane_name] = lazy_object_proxy.Proxy(
+                context[lane_id] = lazy_object_proxy.Proxy(
                     lambda: self.role_model(super_context).objects.get(role_id))
         return context
 
@@ -126,11 +129,11 @@ class ZEngine(object):
         updates the self.current.task_data
         """
         if not self.current.new_token:
-            self.wf_cache = self.current.wfcache.get(self.wf_cache)
-            self.current.task_data = self.wf_cache['data']
+            self.wf_state = self.current.wf_cache.get(self.wf_state)
+            self.current.task_data = self.wf_state['data']
             self.current.set_client_cmds()
-            self.current.pool = self.wf_cache['pool']
-            return self.wf_cache['wf_state']
+            self.current.pool = self.wf_state['pool']
+            return self.wf_state['step']
 
     def _load_workflow(self):
         # gets the serialized wf data from cache and deserializes it
@@ -205,9 +208,14 @@ class ZEngine(object):
         """
         # TODO: convert from in-process to redis based caching
         if self.current.workflow_name not in self.workflow_spec_cache:
-            path = self.find_workflow_path()
-            spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
-            spec = BpmnSerializer().deserialize_workflow_spec(spec_package)
+            # path = self.find_workflow_path()
+            # spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
+            # spec = BpmnSerializer().deserialize_workflow_spec(spec_package)
+
+            self.current.wf_object = BPMNWorkflow.objects.get(name=self.current.workflow_name)
+            xml_content = self.current.wf_object.xml.body
+            spec = ZopsSerializer().deserialize_workflow_spec(xml_content, self.current.workflow_name)
+
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
@@ -217,11 +225,12 @@ class ZEngine(object):
         """
         if not self.current.task_type.startswith('Start'):
             if self.current.task_name.startswith('End') and not self.are_we_in_subprocess():
-                self.current.wfcache.delete()
+                self.wf_state['finished'] = True
+                self.wf_state['finish_date'] = datetime.now().strftime(
+                    settings.DATETIME_DEFAULT_FORMAT)
                 self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
                                                                  self.current.token))
-            else:
-                self.save_workflow_to_cache(self.serialize_workflow())
+            self.save_workflow_to_cache(self.serialize_workflow())
 
     def start_engine(self, **kwargs):
         """
@@ -235,11 +244,18 @@ class ZEngine(object):
 
         """
         self.current = WFCurrent(**kwargs)
+        self.wf_state = {'in_external': False, 'finished': False}
         if not self.current.new_token:
-            self.wf_cache = self.current.wfcache.get(self.wf_cache)
-            self.current.workflow_name = self.wf_cache['wf_name']
+            self.wf_state = self.current.wf_cache.get(self.wf_state)
+            self.current.workflow_name = self.wf_state['name']
+            # if we have a pre-selected object to work with,
+            # inserting it as current.input['id'] and task_data['object_id']
+            if 'subject' in self.wf_state:
+                self.current.input['id'] = self.wf_state['subject']
+                self.current.task_data['object_id'] = self.wf_state['subject']
         self.check_for_authentication()
         self.check_for_permission()
+
         self.workflow = self.load_or_create_workflow()
         log_msg = ("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
                    "\tWF: %s (Possible) TASK:%s\n"
@@ -268,7 +284,7 @@ class ZEngine(object):
         output += "\nCURRENT:"
         output += "\n\tACTIVITY: %s" % self.current.activity
         output += "\n\tPOOL: %s" % self.current.pool
-        output += "\n\tIN EXTERNAL: %s" % self.wf_cache['in_external']
+        output += "\n\tIN EXTERNAL: %s" % self.wf_state['in_external']
         output += "\n\tLANE: %s" % self.current.lane_name
         output += "\n\tTOKEN: %s" % self.current.token
         sys._zops_wf_state_log = output
@@ -278,41 +294,117 @@ class ZEngine(object):
         log.debug(self.generate_wf_state_log() + "\n= = = = = =\n")
 
     def switch_from_external_to_main_wf(self):
-        if self.wf_cache['in_external'] and self.current.task_type == 'Simple' and self.current.task_name == 'End':
-            main_wf = self.wf_cache['main_wf']
-            self.current.workflow_name = main_wf['wf_name']
-            self.workflow_spec = self.get_worfklow_spec()
-            self.workflow = self.deserialize_workflow(main_wf['wf_state'])
-            self.current.workflow = self.workflow
-            self.wf_cache['in_external'] = False
-            self.wf_cache['pool'] = main_wf['pool']
-            self.current.pool = self.wf_cache['pool']
-            self.current.task_name = None
-            self.current.task_type = None
-            self.current.task = None
-            self.run()
 
-    def switch_to_external_wf(self):
-        if (self.current.task_type == 'ServiceTask' and
-                    self.current.task.task_spec.type == 'external'):
-            log.debug("Entering to EXTERNAL WF")
-            main_wf = self.wf_cache.copy()
-            external_wf_name = self.current.task.task_spec.topic
-            self.current.workflow_name = external_wf_name
-            self.workflow_spec = self.get_worfklow_spec()
-            self.workflow = self.create_workflow()
-            self.current.workflow = self.workflow
+        """
+        Main workflow switcher.
+
+        This method recreates main workflow from `main wf` dict which
+        was set by external workflow swicther previously.
+
+        """
+
+        # in external assigned as True in switch_to_external_wf.
+        # external_wf should finish EndEvent and it's name should be
+        # also EndEvent for switching again to main wf.
+        if self.wf_state['in_external'] and self.current.task_type == 'EndEvent' and \
+                self.current.task_name == 'EndEvent':
+
+            # main_wf information was copied in switch_to_external_wf and it takes this information.
+            main_wf = self.wf_state['main_wf']
+
+            # main_wf_name is assigned to current workflow name again.
+            self.current.workflow_name = main_wf['name']
+
+            # For external WF, check permission and authentication. But after cleaning current task.
+            self._clear_current_task()
+
+            # check for auth and perm. current task cleared, do against new workflow_name
             self.check_for_authentication()
             self.check_for_permission()
 
-            self.wf_cache = {'main_wf': main_wf, 'in_external': True}
+            # WF knowledge is taken for main wf.
+            self.workflow_spec = self.get_worfklow_spec()
+
+            # WF instance is started again where leave off.
+            self.workflow = self.deserialize_workflow(main_wf['step'])
+
+            # Current WF is this WF instance.
+            self.current.workflow = self.workflow
+
+            # in_external is assigned as False
+            self.wf_state['in_external'] = False
+
+            # finished is assigned as False, because still in progress.
+            self.wf_state['finished'] = False
+
+            # pool info of main_wf is assigned.
+            self.wf_state['pool'] = main_wf['pool']
+            self.current.pool = self.wf_state['pool']
+
+            # With main_wf is executed.
+            self.run()
+
+    def switch_to_external_wf(self):
+        """
+        External workflow switcher.
+
+        This method copies main workflow information into
+        a temporary dict `main_wf` and makes external workflow
+        acting as main workflow.
+
+        """
+
+        # External WF name should be stated at main wf diagram and type should be service task.
+        if (self.current.task_type == 'ServiceTask' and
+                self.current.task.task_spec.type == 'external'):
+
+            log.debug("Entering to EXTERNAL WF")
+
+            # Main wf information is copied to main_wf.
+            main_wf = self.wf_state.copy()
+
+            # workflow name from main wf diagram is assigned to current workflow name.
+            self.current.workflow_name = self.current.task.task_spec.topic
+
+            # For external WF, check permission and authentication. But after cleaning current task.
+            self._clear_current_task()
+
+            # check for auth and perm. current task cleared, do against new workflow_name
+            self.check_for_authentication()
+            self.check_for_permission()
+
+            # wf knowledge is taken for external wf.
+            self.workflow_spec = self.get_worfklow_spec()
+            # New WF instance is created for external wf.
+            self.workflow = self.create_workflow()
+            # Current WF is this WF instance.
+            self.current.workflow = self.workflow
+            # main_wf: main wf information.
+            # in_external: it states external wf in progress.
+            # finished: it shows that main wf didn't finish still progress in external wf.
+            self.wf_state = {'main_wf': main_wf, 'in_external': True, 'finished': False}
+
+    def _clear_current_task(self):
+
+        """
+        Clear tasks related attributes, checks permissions
+        While switching WF to WF, authentication and permissions are checked for new WF.
+        """
+        self.current.task_name = None
+        self.current.task_type = None
+        self.current.task = None
+
 
     def _should_we_run(self):
         not_a_user_task = self.current.task_type != 'UserTask'
-        wf_not_finished = not (self.current.task_name == 'End' and self.current.task_type == 'Simple')
-        if not wf_not_finished and self.are_we_in_subprocess():
-            wf_not_finished = True
-        return self.current.flow_enabled and not_a_user_task and wf_not_finished
+        wf_in_progress = not (self.current.task_name == 'End' and
+                               self.current.task_type == 'Simple')
+        if wf_in_progress and self.wf_state['finished']:
+            wf_in_progress = False
+
+        if not wf_in_progress and self.are_we_in_subprocess():
+            wf_in_progress = True
+        return self.current.flow_enabled and not_a_user_task and wf_in_progress
 
     def run(self):
         """
@@ -342,11 +434,13 @@ class ZEngine(object):
                 self.check_for_permission()
                 self.check_for_lane_permission()
                 self.log_wf_state()
+                self.switch_lang()
                 self.run_activity()
                 self.parse_workflow_messages()
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_or_delete_workflow()
                 self.switch_to_external_wf()
+
             if task is None:
                 break
         self.switch_from_external_to_main_wf()
@@ -358,6 +452,16 @@ class ZEngine(object):
             self.catch_lane_change()
             self.handle_wf_finalization()
 
+    def switch_lang(self):
+        """Switch to the language of the current user.
+
+        If the current language is already the specified one, nothing will be done.
+        """
+        locale = self.current.locale
+        translation.InstalledLocale.install_language(locale['locale_language'])
+        translation.InstalledLocale.install_locale(locale['locale_datetime'], 'datetime')
+        translation.InstalledLocale.install_locale(locale['locale_number'], 'number')
+
     def catch_lane_change(self):
         """
         trigger a lane_user_change signal if we switched to a new lane
@@ -366,8 +470,8 @@ class ZEngine(object):
         if self.current.lane_name:
             if self.current.old_lane and self.current.lane_name != self.current.old_lane:
                 # if lane_name not found in pool or it's user different from the current(old) user
-                if (self.current.lane_name not in self.current.pool or
-                            self.current.pool[self.current.lane_name] != self.current.role_id):
+                if (self.current.lane_id not in self.current.pool or
+                            self.current.pool[self.current.lane_id] != self.current.user_id):
                     self.current.log.info("LANE CHANGE : %s >> %s" % (self.current.old_lane,
                                                                       self.current.lane_name))
                     if self.current.lane_auto_sendoff:
@@ -542,7 +646,7 @@ class ZEngine(object):
             HTTPError: if user doesn't have required permissions.
         """
         if self.current.task:
-            lane = getattr(self.current.spec, 'lane_id', None) or ''
+            lane = self.current.lane_id
             permission = "%s.%s.%s" % (self.current.workflow_name, lane, self.current.task_name)
         else:
             permission = self.current.workflow_name

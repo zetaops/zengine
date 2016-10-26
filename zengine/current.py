@@ -17,19 +17,24 @@ from uuid import uuid4
 
 import lazy_object_proxy
 from SpiffWorkflow.specs import WorkflowSpec
-from beaker.session import Session
 
 from pyoko.lib.utils import get_object_from_path, lazy_property
 from zengine import signals
 from zengine.client_queue import ClientQueue
 from zengine.config import settings
-from zengine.lib.cache import WFCache
+from zengine.lib.utils import merge_truthy
+from zengine.lib import translation
+from zengine.lib.cache import Session
 from zengine.log import log
+from zengine.models import WFCache
+from zengine.models import WFInstance
 
 DEFAULT_LANE_CHANGE_MSG = {
     'title': settings.MESSAGES['lane_change_message_title'],
     'body': settings.MESSAGES['lane_change_message_body'],
 }
+
+
 
 
 class Current(object):
@@ -43,7 +48,7 @@ class Current(object):
     def __init__(self, **kwargs):
 
         self.task_data = {'cmd': None}
-        self.session = {}
+        self.session = Session()
         self.headers = {}
         self.input = {}  # when we want to use engine functions independently,
         self.output = {}  # we need to create a fake current object
@@ -62,7 +67,6 @@ class Current(object):
         self.user_id = self.session.get('user_id')
         self.role_id = self.session.get('role_id')
 
-        self.lang_code = self.input.get('lang_code', settings.DEFAULT_LANG)
         self.log = log
         self.pool = {}
         AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
@@ -80,6 +84,24 @@ class Current(object):
         Returns: ClientQueue
         """
         return ClientQueue(self.user_id, self.session.key)
+
+    @lazy_property
+    def locale(self):
+        locale_types = translation.DEFAULT_PREFS.keys()
+        # Check the session for preference.
+        locale_prefs = {ltype: self.session.get(ltype) for ltype in locale_types}
+        # If preference in session is missing, read it from user model
+        if not all(locale_prefs.values()):
+            user = self.auth.get_user()
+            # Read the preferences from user model
+            locale_prefs = merge_truthy(locale_prefs, {ltype: getattr(user, ltype) for ltype in locale_types})
+            # If preference in user model is missing too (or anonymous user), use the default
+            if not all(locale_prefs.values()):
+                locale_prefs = merge_truthy(locale_prefs, translation.DEFAULT_PREFS)
+            # Save the preferences that are used to the session
+            for k, v in locale_prefs.items():
+                self.session[k] = v
+        return locale_prefs
 
     def write_output(self, msg, json_msg=None):
         """
@@ -176,6 +198,7 @@ class WFCurrent(Current):
         self.old_lane = ''
         self.lane_owners = None
         self.lane_name = ''
+        self.lane_id = ''
 
         if 'token' in self.input:
             self.token = self.input['token']
@@ -186,13 +209,13 @@ class WFCurrent(Current):
             self.new_token = True
             # log.info("TOKEN NEW: %s " % self.token)
 
-        self.wfcache = WFCache(self.token)
-        # log.debug("\n\nWF_CACHE: %s" % self.wfcache.get())
+        self.wf_cache = WFCache(self)
+        self.wf_instance = lazy_object_proxy.Proxy(lambda: self.wf_cache.get_instance())
         self.set_client_cmds()
 
     def get_wf_link(self):
         """
-        Create a "in app" anchor for accessing this workflow instance.
+        Create an "in app" anchor for accessing this workflow instance.
 
         Returns: String. Anchor link.
 
@@ -211,7 +234,7 @@ class WFCurrent(Current):
         """
         Invites the next lane's (possible) owner(s) to participate
         """
-        signals.lane_user_change.send(sender=self,
+        signals.lane_user_change.send(sender=self.user,
                                       current=self,
                                       old_lane=self.old_lane,
                                       possible_owners=possible_owners
@@ -222,6 +245,7 @@ class WFCurrent(Current):
         if 'lane_data' in self.spec.data:
             lane_data = self.spec.data['lane_data']
             self.lane_name = lane_data['name']
+            self.lane_id = self.spec.lane_id or ''
             # If there is a lane, create the permission for it
             if self.spec.lane_id:
                 self.lane_permission = '{}.{}'.format(self.workflow_name, self.spec.lane_id)

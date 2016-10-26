@@ -6,13 +6,22 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-import six
+import glob
 
-from pyoko.db.adapter.db_riak import BlockSave
+import six
+import os
+import sys
+import tempfile
+from distutils.errors import DistutilsError
+
+from pyoko.db.adapter.db_riak import BlockSave, BlockDelete
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path
 from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
+from babel.messages import frontend as babel_frontend
+from babel.messages.extract import DEFAULT_KEYWORDS as BABEL_DEFAULT_KEYWORDS
+
 
 
 class UpdatePermissions(Command):
@@ -77,7 +86,7 @@ class UpdatePermissions(Command):
             if not self.manager.args.dry:
                 SelectBoxCache.flush(model.__name__)
             report += 'Total %s perms exists.' % (len(existing_perms) + len(new_perms))
-            report = "\n + " + "\n + ".join([p.name for p in new_perms]) + report
+            report = "\n + " + "\n + ".join([p.name or p.code for p in new_perms]) + report
         if self.manager.args.dry:
             print("\n~~~~~~~~~~~~~~ DRY RUN ~~~~~~~~~~~~~~\n")
         print(report + "\n")
@@ -194,6 +203,156 @@ class RunWorker(Command):
             worker.run()
 
 
+class ExtractTranslations(Command):
+    """Extract the translations from the source directories and update language-specific .po files."""
+    CMD_NAME = 'extract_translations'
+    HELP = 'Extract the translations from the source directories and update language-specific .po files.'
+    PARAMS = [
+        {'name': 'source', 'action': 'append',
+         'help': "The source directory corresponding to a domain, in the form of '<domain>:<directory>'."},
+        {'name': 'project', 'help': 'The name of the project.'},
+        {'name': 'copyright', 'help': 'The holder of the projects copyright.'},
+        {'name': 'version', 'help': 'Version of the project.'},
+        {'name': 'contact', 'help': 'The contact address for translations.'}
+    ]
+
+    def run(self):
+        domains = dict(map(self._prepare_domain, self.manager.args.source))
+        self._validate_domains(domains)
+        self._extract_translations(domains)
+        self._init_update_po_files(domains)
+        self._cleanup(domains)
+
+    @staticmethod
+    def _prepare_domain(mapping):
+        """Prepare a helper dictionary for the domain to temporarily hold some information."""
+        # Parse the domain-directory mapping
+        try:
+            domain, dir = mapping.split(':')
+        except ValueError:
+            print("Please provide the sources in the form of '<domain>:<directory>'")
+            sys.exit(1)
+
+        try:
+            default_language = settings.TRANSLATION_DOMAINS[domain]
+        except KeyError:
+            print("Unknown domain {domain}, check the settings file to make sure"
+                  " this domain is set in TRANSLATION_DOMAINS".format(domain=domain))
+            sys.exit(1)
+        # Create a temporary file to hold the `.pot` file for this domain
+        handle, path = tempfile.mkstemp(prefix='zengine_i18n_', suffix='.pot')
+        return (domain, {
+            'default': default_language,
+            'pot': path,
+            'source': dir,
+        })
+
+    @staticmethod
+    def _validate_domains(domains):
+        """Check that all domains specified in the settings was provided in the options."""
+        missing = set(settings.TRANSLATION_DOMAINS.keys()) - set(domains.keys())
+        if missing:
+            print('The following domains have been set in the configuration, '
+                  'but their sources were not provided, use the `--source` '
+                  'option to specify their sources: {domains}'.format(domains=', '.join(missing)))
+            sys.exit(1)
+
+    def _extract_translations(self, domains):
+        """Extract the translations into `.pot` files"""
+        for domain, options in domains.items():
+            # Create the extractor
+            extractor = babel_frontend.extract_messages()
+            extractor.initialize_options()
+            # The temporary location to write the `.pot` file
+            extractor.output_file = options['pot']
+            # Add the comments marked with 'tn:' to the translation file for translators to read. Strip the marker.
+            extractor.add_comments = ['tn:']
+            extractor.strip_comments = True
+            # The directory where the sources for this domain are located
+            extractor.input_paths = [options['source']]
+            # Pass the metadata to the translator
+            extractor.msgid_bugs_address = self.manager.args.contact
+            extractor.copyright_holder = self.manager.args.copyright
+            extractor.version = self.manager.args.version
+            extractor.project = self.manager.args.project
+            extractor.finalize_options()
+            # Add keywords for lazy translation functions, based on their non-lazy variants
+            extractor.keywords.update({
+                'gettext_lazy': extractor.keywords['gettext'],
+                'ngettext_lazy': extractor.keywords['ngettext'],
+                '__': extractor.keywords['gettext'],  # double underscore for lazy
+            })
+            # Do the extraction
+            _run_babel_command(extractor)
+
+    def _init_update_po_files(self, domains):
+        """Update or initialize the `.po` translation files"""
+        for language in settings.TRANSLATIONS:
+            for domain, options in domains.items():
+                if language == options['default']: continue  # Default language of the domain doesn't need translations
+                if os.path.isfile(_po_path(language, domain)):
+                    # If the translation already exists, update it, keeping the parts already translated
+                    self._update_po_file(language, domain, options['pot'])
+                else:
+                    # The translation doesn't exist, create a new translation file
+                    self._init_po_file(language, domain, options['pot'])
+
+    def _update_po_file(self, language, domain, pot_path):
+        print('Updating po file for {language} in domain {domain}'.format(language=language, domain=domain))
+        updater = babel_frontend.update_catalog()
+        _setup_babel_command(updater, domain, language, pot_path)
+        _run_babel_command(updater)
+
+    def _init_po_file(self, language, domain, pot_path):
+        print('Creating po file for {language} in domain {domain}'.format(language=language, domain=domain))
+        initializer = babel_frontend.init_catalog()
+        _setup_babel_command(initializer, domain, language, pot_path)
+        _run_babel_command(initializer)
+
+    def _cleanup(self, domains):
+        """Remove the temporary '.pot' files that were created for the domains."""
+        for option in domains.values():
+            try:
+                os.remove(option['pot'])
+            except (IOError, OSError):
+                # It is not a problem if we can't actually remove the temporary file
+                pass
+
+
+class CompileTranslations(Command):
+    """Compile the .po translation files into .mo files, which will be loaded by the workers."""
+    CMD_NAME = 'compile_translations'
+    HELP = 'Compile the .po translation files into .mo files, which will be loaded by the workers.'
+
+    def run(self):
+        for language in settings.TRANSLATIONS:
+            for domain, default_lang in settings.TRANSLATION_DOMAINS.items():
+                if language == default_lang: continue  # Default language of the domain doesn't need translations
+                print('Compiling po file for {language} in domain {domain}'.format(language=language, domain=domain))
+                compiler = babel_frontend.compile_catalog()
+                _setup_babel_command(compiler, domain, language, _po_path(language, domain))
+                _run_babel_command(compiler)
+
+
+def _run_babel_command(babel):
+    try:
+        babel.run()
+    except DistutilsError as err:  # The extractor throws Distutils errors
+        print(str(err))
+        sys.exit(1)
+
+
+def _setup_babel_command(babel, domain, language, input_file):
+    babel.initialize_options()
+    babel.domain = domain
+    babel.locale = language
+    babel.input_file = input_file
+    babel.directory = babel.output_dir = settings.TRANSLATIONS_DIR
+    babel.finalize_options()
+
+
+def _po_path(language, domain):
+    return os.path.join(settings.TRANSLATIONS_DIR, language, 'LC_MESSAGES', '{domain}.po'.format(domain=domain))
 
 
 class PrepareMQ(Command):
@@ -232,16 +391,144 @@ class PrepareMQ(Command):
             ch.create_exchange()
 
 
+class ClearQueues(Command):
+    """
+    Creates necessary exchanges, queues and bindings
+    """
+    CMD_NAME = 'clear_queues'
+    HELP = 'Clears various system queues'
+
+    def run(self):
+        self.clear_input_queue()
+
+    def clear_input_queue(self):
+        from zengine.wf_daemon import Worker
+        worker = Worker()
+        worker.clear_queue()
+
+
+
+class ListSysViews(Command):
+    """
+    Lists non-workflow system and development views
+    """
+    CMD_NAME = 'list_views'
+    HELP = 'Lists non-workflow system and development views'
+
+    def run(self):
+        self.list_system_views()
+
+    def list_system_views(self):
+        settings.DEBUG = True
+        exec ('from %s import *' % settings.MODELS_MODULE)
+        from zengine.lib.decorators import VIEW_METHODS, runtime_importer
+        import inspect
+        runtime_importer()
+        by_file = defaultdict(list)
+        for k, v in VIEW_METHODS.items():
+            by_file[inspect.getfile(v)].append(k)
+        for file, views in by_file.items():
+            print("|_ %s" % file)
+            for view in views:
+                print("  |_   %s" % view)
+
+
+
+
 class LoadDiagrams(Command):
     """
     Loads wf diagrams from disk to DB
     """
+
     CMD_NAME = 'load_diagrams'
     HELP = 'Loads workflow diagrams from diagrams folder to DB'
+    PARAMS = [
+        {'name': 'wf_path', 'default': None,
+         'help': 'Only update given BPMN diagram'},
+
+        {'name': 'clear', 'action': 'store_true',
+         'help': 'Clear all TaskManager related models'},
+
+        {'name': 'force', 'action': 'store_true',
+         'help': "(Re)Load BPMN file even if it doesn't updated or"
+                 " there are active WFInstances exists."},
+    ]
 
     def run(self):
-        self.get_workflows()
+        """
+        read workflows, checks if it's updated,
+        tries to update if there aren't any running instances of that wf
+        """
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, RunningInstancesExist
 
+        if self.manager.args.clear:
+            self._clear_models()
+            return
+
+        if self.manager.args.wf_path:
+            paths = self.get_wf_from_path(self.manager.args.wf_path)
+        else:
+            paths = self.get_workflows()
+        count = 0
+        for wf_name, content in paths:
+            wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name)
+            content = self._tmp_fix_diagram(content)
+            diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
+            if wf_is_new or diagram_is_updated or self.manager.args.force:
+                count += 1
+                print("%s created or updated" % wf_name.upper())
+                try:
+                    wf.set_xml(diagram, self.manager.args.force)
+                except RunningInstancesExist as e:
+                    print(e.message)
+                    print("Give \"--force\" parameter to enforce")
+        print("%s BPMN file loaded" % count)
+
+    def _clear_models(self):
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance, \
+            TaskInvitation
+        print("Workflow related models will be cleared")
+        c = len(DiagramXML.objects.delete())
+        print("%s DiagramXML object deleted" % c)
+        c = len(BPMNWorkflow.objects.delete())
+        print("%s BPMNWorkflow object deleted" % c)
+        c = len(WFInstance.objects.delete())
+        print("%s WFInstance object deleted" % c)
+        c = len(TaskInvitation.objects.delete())
+        print("%s TaskInvitation object deleted" % c)
+
+    def _tmp_fix_diagram(self, content):
+        # Temporary solution for easier transition from old to new xml format
+        # TODO: Will be removed after all diagrams converted.
+        return content.replace(
+            'targetNamespace="http://activiti.org/bpmn"',
+            'targetNamespace="http://bpmn.io/schema/bpmn"'
+        ).replace(
+            'xmlns:camunda="http://activiti.org/bpmn"',
+            'xmlns:camunda="http://camunda.org/schema/1.0/bpmn"'
+        )
+
+    def get_wf_from_path(self, path):
+        """
+        load xml from given path
+        Args:
+            path: diagram path
+
+        Returns:
+
+        """
+        with open(path) as fp:
+            content = fp.read()
+        return [(os.path.basename(os.path.splitext(path)[0]), content), ]
 
     def get_workflows(self):
-        pass
+        """
+        Scans and loads all wf found under WORKFLOW_PACKAGES_PATHS
+
+        Yields: XML content of diagram file
+
+        """
+        for pth in settings.WORKFLOW_PACKAGES_PATHS:
+            for f in glob.glob("%s/*.bpmn" % pth):
+                with open(f) as fp:
+                    yield os.path.basename(os.path.splitext(f)[0]), fp.read()

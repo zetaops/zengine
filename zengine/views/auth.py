@@ -13,6 +13,7 @@ from pyoko import fields
 from pyoko.exceptions import ObjectDoesNotExist
 from zengine.forms.json_form import JsonForm
 from zengine.lib.cache import UserSessionID, KeepAlive, Session
+from zengine.lib import translation
 from zengine.log import log
 from zengine.views.base import SimpleView
 
@@ -66,6 +67,9 @@ class Login(SimpleView):
         user_sess = UserSessionID(self.current.user_id)
         user_sess.set(self.current.session.sess_id)
         self.current.user.is_online(True)
+        # Clean up the locale from session to allow it to be re-read from the user preferences after login
+        for k in translation.DEFAULT_PREFS.keys():
+            self.current.session[k] = ''
 
     def terminate_existing_login(self):
         existing_sess_id = UserSessionID(self.current.user_id).get()

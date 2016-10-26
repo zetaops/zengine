@@ -13,3 +13,7 @@ def test_update_permissions():
     # TODO: Add cleanup for both Permission and User models
     # TODO: Add assertation
     ManagementCommands(args=['update_permissions'])
+
+def test_load_load_diagrams():
+    ManagementCommands(args=['load_diagrams'])
+    #ManagementCommands(args=['load_diagrams', '--wf_path', './diagrams/multi_user2.bpmn'])

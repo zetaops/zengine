@@ -12,7 +12,7 @@ from pyoko.conf import settings
 import pika
 import time
 from pika.exceptions import ConnectionClosed, ChannelClosed
-
+from zengine.lib.json_interface import ZEngineJSONEncoder
 
 
 BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
@@ -67,7 +67,7 @@ class ClientQueue(object):
             sess_id string: Session id
             message dict: Message object.
         """
-        msg = json.dumps(message)
+        msg = json.dumps(message, cls=ZEngineJSONEncoder)
         log.debug("Sending following message to %s queue through default exchange:\n%s" % (
             sess_id, msg))
         self.get_channel().publish(exchange='', routing_key=sess_id, body=msg)
@@ -82,7 +82,7 @@ class ClientQueue(object):
 
         """
         exchange = 'prv_%s' % user_id.lower()
-        msg = json.dumps(message)
+        msg = json.dumps(message, cls=ZEngineJSONEncoder)
         log.debug("Sending following users \"%s\" exchange:\n%s " % (exchange, msg))
         self.get_channel().publish(exchange=exchange, routing_key='', body=msg)
 

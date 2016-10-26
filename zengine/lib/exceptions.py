@@ -1,28 +1,36 @@
+class ZengineError(Exception):
+    """ pass """
+    pass
 
-class SuspiciousOperation(Exception):
+class SuspiciousOperation(ZengineError):
     """The user did something suspicious"""
+    pass
 
+class SecurityInfringementAttempt(ZengineError):
+    """Someone tried to do something nasty"""
+    pass
 
-
-
-class PermissionDenied(Exception):
+class PermissionDenied(ZengineError):
     """The user did not have permission to do that"""
     pass
 
 
-class ViewDoesNotExist(Exception):
+class ViewDoesNotExist(ZengineError):
     """The requested view does not exist"""
     pass
 
-class ZengineError(Exception):
-    """ pass """
-    pass
 
 class FormValidationError(ZengineError):
     """ pass """
     pass
 
-class HTTPError(Exception):
+
+class ConfigurationError(ZengineError):
+    """ pass """
+    pass
+
+
+class HTTPError(ZengineError):
     """Exception thrown for an unsuccessful HTTP request.
 
     Attributes:
@@ -30,6 +38,7 @@ class HTTPError(Exception):
     * ``code`` - HTTP error integer error code, e.g. 404.  Error code 599 is
       used when no HTTP response was received, e.g. for a timeout.
     """
+
     def __init__(self, code, message=None):
         self.code = code
         self.message = message

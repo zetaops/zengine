@@ -14,6 +14,15 @@ Permission related
 
   ``redis-cli flushall``
 
+Decorator usage
+-------------------
+- When you use a decorator from ``zengine.lib.decorators`` make sure the modules that contain decorated methods imported at runtime.
+        - Module paths listed under ``settings.AUTO_IMPORT_MODULES`` are auto imported at runtime.
+        - Modules that contain data model definitions are most likely imported by
+
+
+  ``redis-cli flushall``
+
 
 Pyoko / DB Related
 -------------------

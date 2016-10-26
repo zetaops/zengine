@@ -14,3 +14,6 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 ACTIVITY_MODULES_IMPORT_PATHS += ['tests.views']
 
 WORKFLOW_PACKAGES_PATHS += [os.path.join(BASE_DIR, 'diagrams')]
+
+TRANSLATIONS_DIR = os.path.join(BASE_DIR, 'locale')
+TRANSLATION_DOMAINS['messages'] = 'en'

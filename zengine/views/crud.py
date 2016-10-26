@@ -7,6 +7,7 @@
 This module holds CrudView and related classes that helps building
 CRUDS (Create Read Update Delete Search) type of views.
 """
+from operator import attrgetter
 
 import six
 
@@ -20,11 +21,10 @@ from zengine import forms
 from zengine.forms import fields
 from zengine.lib.cache import Cache
 from zengine.lib.exceptions import HTTPError
-from zengine.lib.utils import date_to_solr
+from zengine.lib.utils import date_to_solr, gettext_lazy as _
 from zengine.log import log
 from zengine.signals import crud_post_save
 from zengine.views.base import BaseView
-
 
 
 class ListForm(forms.JsonForm):
@@ -34,7 +34,7 @@ class ListForm(forms.JsonForm):
     Used by CrudMeta metaclass to create distinct
     copies for each subclass of CrudView.
     """
-    add = fields.Button("Ekle", cmd="add_edit_form")
+    add = fields.Button(_("Add"), cmd="add_edit_form")
 
 
 class ObjectForm(forms.JsonForm):
@@ -44,12 +44,13 @@ class ObjectForm(forms.JsonForm):
     Used by CrudMeta metaclass to create distinct
     copies for each subclass of CrudView.
     """
-    save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
-    save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
-    save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
-                                         cmd="save_as_new::add_edit_form")
-    save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
-                                         cmd="save_as_new::list")
+    save_edit = fields.Button(_(u"Save"), cmd="save::add_edit_form")
+    save_list = fields.Button(_(u"Save and List"), cmd="save::list")
+    save_as_new_edit = fields.Button(_(u"Save as New"),
+                                     cmd="save_as_new::add_edit_form")
+    save_as_new_list = fields.Button(_(u"Save as New and List"),
+                                     cmd="save_as_new::list")
+
 
 class CrudMeta(type):
     """
@@ -174,8 +175,6 @@ def clear_model_list_cache(sender, *args, **kwargs):
     SelectBoxCache.flush(sender.model_class.__name__)
 
 
-
-
 @six.add_metaclass(CrudMeta)
 class CrudView(BaseView):
     """
@@ -243,8 +242,8 @@ class CrudView(BaseView):
         allow_selection = False
         objects_per_page = 10
         object_actions = {
-            'delete': {'name': 'Sil', 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
-            'add_edit_form': {'name': 'Düzenle', 'cmd': 'add_edit_form', 'mode': 'normal',
+            'delete': {'name': _(u'Delete'), 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
+            'add_edit_form': {'name': _(u'Edit'), 'cmd': 'add_edit_form', 'mode': 'normal',
                               'show_as': 'button'},
             'show': {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
         }
@@ -253,14 +252,13 @@ class CrudView(BaseView):
         """
         Default ObjectForm for CrudViews. Can be overridden.
         """
-        save_edit = fields.Button("Kaydet", cmd="save::add_edit_form")
-        save_list = fields.Button("Kaydet ve Listele", cmd="save::list")
+        save_edit = fields.Button(_(u"Save"), cmd="save::add_edit_form")
+        save_list = fields.Button(_(u"Save and List"), cmd="save::list")
         if settings.DEBUG:
-            save_as_new_edit = fields.Button("Yeni Olarak Kaydet",
-                                                 cmd="save_as_new::add_edit_form")
-            save_as_new_list = fields.Button("Yeni Olarak Kaydet ve Listele",
-                                                 cmd="save_as_new::list")
-
+            save_as_new_edit = fields.Button(_(u"Save as New"),
+                                             cmd="save_as_new::add_edit_form")
+            save_as_new_list = fields.Button(_(u"Save as New and List"),
+                                             cmd="save_as_new::list")
 
     def __init__(self, current=None):
         self.FILTER_METHODS = []
@@ -391,8 +389,8 @@ class CrudView(BaseView):
                     self.object = self.model_class(self.current).objects.get(object_id)
                 except ObjectDoesNotExist:
                     raise HTTPError(404, "Possibly you are trying to retrieve a just deleted "
-                                       "object or object key (%s) does not belong to current model:"
-                                       " %s" % (object_id, self.model_class.__name__))
+                                         "object or object key (%s) does not belong to current model:"
+                                         " %s" % (object_id, self.model_class.__name__))
                 except:
                     raise
             # elif 'added_obj' in self.current.task_data:
@@ -489,13 +487,20 @@ class CrudView(BaseView):
     @obj_filter
     def _get_list_obj(self, obj, result):
         fields = self.object.Meta.list_fields
+
         if fields:
             for f in self.object.Meta.list_fields:
-                field = getattr(obj, f)
-                if callable(field):
-                    result['fields'].append(field())
+                field = getattr(obj, f, None)
+                field_str = ''
+                if isinstance(field, Model):
+                    field_str = six.text_type(field)
+                elif callable(field):
+                    field_str = field()
+                elif '.' in f:
+                    field_str = attrgetter(f)(obj)
                 else:
-                    result['fields'].append(obj.get_humane_value(f))
+                    field_str = obj.get_humane_value(f)
+                result['fields'].append(field_str)
         else:
             result['fields'] = [six.text_type(obj)]
 
@@ -620,8 +625,13 @@ class CrudView(BaseView):
         if not (self.Meta.allow_filters and model_class.Meta.list_filters):
             return
         self.output['meta']['allow_filters'] = True
+
+        filters = self.input.get('filters', {}) if self.Meta.allow_filters else {}
+
         flt = []
         for field_name in model_class.Meta.list_filters:
+            chosen_filters = filters.get(field_name, {}).get('values', [])
+
             field = self.object._fields[field_name]
             f = {'field': field_name,
                  'verbose_name': field.title,
@@ -629,12 +639,19 @@ class CrudView(BaseView):
                  }
             if isinstance(field, (fields.Date, fields.DateTime)):
                 f['type'] = 'date'
+                f['values'] = chosen_filters or chosen_filters.extend((None, None))
+
             elif field.choices:
-                f['values'] = [{'name': k, 'value': v} for v, k in
+                f['values'] = [
+                    {'name': k,
+                     'value': v,
+                     'selected': True if unicode(v) in chosen_filters else False} for v, k in
                                self.object.get_choices_for(field_name)]
+
             else:
                 f['values'] = [{'name': k, 'value': k} for k, v in
                                model_class.objects.distinct_values_of(field_name).items()]
+
             flt.append(f)
         self.output['list_filters'] = flt
 
@@ -713,8 +730,8 @@ class CrudView(BaseView):
             search_str = self.input.get('query', '')
             cache = SelectBoxCache(self.model_class.__name__, search_str)
             self.output['objects'] = cache.get() or cache.set(
-                    [{'key': obj.key, 'value': six.text_type(obj)}
-                     for obj in query])
+                [{'key': obj.key, 'value': six.text_type(obj)}
+                 for obj in query])
 
     @view_method
     def object_name(self):
@@ -731,11 +748,13 @@ class CrudView(BaseView):
         """
         self.set_client_cmd('show')
         obj_form = forms.JsonForm(self.object, current=self.current, models=False,
-            list_nodes=False)._serialize(readable=True)
+                                  list_nodes=False)._serialize(readable=True)
         obj_data = {}
         for d in obj_form:
             val = d['value']
-            key = d['title']
+            # Python doesn't allow custom JSON encoders for keys of dictionaries.
+            # If the title is a lazy translation, we must force the translation here.
+            key = six.text_type(d['title'])
             if d['type'] in ('button',) or d['title'] in ('Password', 'key'):
                 continue
             if d['type'] == 'file' and d['value'] and d['value'][-3:] in ('jpg', 'png'):
@@ -743,10 +762,9 @@ class CrudView(BaseView):
 
             obj_data[key] = val
         self.form_out(forms.JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
-                                                 self.object)))
+                                                        self.object)))
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
-
 
     @view_method
     def add_edit_form(self):
