@@ -30,8 +30,9 @@ settings = type('settings', (object,), {
     'MQ_PORT': int(os.environ.get('MQ_PORT', '5672')),
     'MQ_USER': os.environ.get('MQ_USER', 'guest'),
     'MQ_PASS': os.environ.get('MQ_PASS', 'guest'),
-    'DEBUG': os.environ.get('DEBUG', False),
+    'DEBUG': bool(int(os.environ.get('DEBUG', 0))),
     'MQ_VHOST': os.environ.get('MQ_VHOST', '/'),
+    'ALLOWED_ORIGINS': os.environ.get('ALLOWED_ORIGINS', 'http://127.0.0.1'),
 })
 log = get_logger(settings)
 
