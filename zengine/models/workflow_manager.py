@@ -237,7 +237,7 @@ class Task(Model):
     abstract_role = AbstractRoleModel("Abstract Role", null=True)
     role = RoleModel(null=True)
     unit = UnitModel(null=True)
-    get_roles_from = field.Integer(_("Get roles from"), choices=ROLE_GETTER_CHOICES)
+    get_roles_from = field.String(_("Get roles from"), choices=ROLE_GETTER_CHOICES)
     role_query_code = field.String(_("Role query dict"), null=True)
     object_query_code = field.String(_("Object query dict"), null=True)
     object_key = field.String(_("Subject ID"), null=True)
@@ -261,33 +261,68 @@ class Task(Model):
         and per TaskInvitation for each role and WFInstance
         """
         roles = self.get_roles()
-        wf_instances = self.create_wf_instances()
-        self.create_invitations(roles, wf_instances)
+        wf_instances = self.create_wf_instances(roles)
+        self.create_invitations(wf_instances, roles)
 
-    def create_invitations(self, roles, wf_instances):
+    def create_invitations(self, wf_instances, roles):
         """creates a TaskInvitation for each role for each WFInstnace"""
-        for wfi in wf_instances:
-            for role in roles:
+        if self.get_roles_from and self.object_type:
+            # WFInstance will go to all roles
+            for wfi in wf_instances:
+                for role in roles:
+                    TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
+                                   progress=get_progress(start=self.start_date,
+                                                         finish=self.finish_date),
+                                   start_date=self.start_date, finish_date=self.finish_date).save()
+        else:
+            for wfi in wf_instances:
+                role = wfi.current_actor
                 TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
                                progress=get_progress(start=self.start_date,
                                                      finish=self.finish_date),
                                start_date=self.start_date, finish_date=self.finish_date).save()
 
-    def create_wf_instances(self):
+    def create_wf_instances(self, roles):
         """ creates a WFInstnace for each object"""
-        obj_keys = self.get_object_keys()
-        if not obj_keys:
-            return [WFInstance(wf=self.wf,
-                               task=self,
-                               name=self.wf.name,
-                               wf_object_type=self.object_type).save()]
-        else:
-            return [WFInstance(wf=self.wf,
-                               task=self,
-                               wf_object=obj_key,
-                               name=self.wf.name,
-                               wf_object_type=self.object_type).save()
-                    for obj_key in obj_keys]
+        wfi = []
+        if self.get_roles_from and self.object_type:
+            return self.get_wf_instance(roles)
+        for role in roles:
+            obj_keys = self.get_object_keys(role)
+            if not obj_keys:
+                if wfi and self.get_roles_from:
+                    wf = wfi[0]
+                    wf.current_actor = role
+                    wfi += [wf]
+                else:
+                    wfi += [WFInstance(wf=self.wf,
+                                       current_actor=role,
+                                       task=self,
+                                       name=self.wf.name,
+                                       wf_object_type=self.object_type).save()]
+            else:
+                wfi += [WFInstance(wf=self.wf,
+                                   current_actor=role,
+                                   task=self,
+                                   wf_object=obj_key,
+                                   name=self.wf.name,
+                                   wf_object_type=self.object_type).save()
+                        for obj_key in obj_keys]
+        return wfi
+
+    def get_wf_instance(self, roles):
+        """
+        :param roles: get_form_roles "Test Users"
+        :return: WFInstance objects array
+        """
+        obj_keys = self.get_object_keys(roles[0])
+
+        return [WFInstance(wf=self.wf,
+                           task=self,
+                           wf_object=obj_key,
+                           name=self.wf.name,
+                           wf_object_type=self.object_type).save()
+                for obj_key in obj_keys]
 
     def get_object_query_dict(self):
         """returns objects keys according to self.object_query_code
@@ -306,7 +341,7 @@ class Task(Model):
             return dict([map(str.strip, pair.split('='))
                          for pair in self.object_query_code.split(',')])
 
-    def get_object_keys(self):
+    def get_object_keys(self, role):
         """returns object keys according to task definition
         which can be explicitly selected one object (self.object_key) or
         result of a queryset filter.
@@ -318,8 +353,35 @@ class Task(Model):
             return [self.object_key]
         if self.object_query_code:
             model = model_registry.get_model(self.object_type)
-            return [key for data, key in
-                    model.objects.filter(**self.get_object_query_dict()).data()]
+            return [m.key for m in
+                    self.get_model_objects(model, role, **self.get_object_query_dict())]
+
+    def get_model_objects(self, model, query_role, **kw):
+            """
+            model based on the search query in self.object.query.code
+            Example:
+                model: 'Program'
+                query_role: 'Test User Role'
+                **kw: {'role':'role'}
+            :return: model object datas
+            """
+            query_dict = {}
+            for k, v in kw.items():
+                if not type(v) == int:
+                    parse = v.split('.')
+                else:
+                    parse = [v]
+
+                if parse[0] == 'role':
+                    query_dict[k] = query_role
+                    for i in range(1, len(parse)):
+                        query_dict[k] += query_dict[k].__getattribute__(parse[i])
+                else:
+                    query_dict[k] = parse[0]
+                    for i in range(1, len(parse)):
+                        query_dict[k] += query_dict[k].__getattribute__(parse[i])
+
+            return model.objects.filter(**query_dict)
 
     def get_roles(self):
         """
@@ -343,7 +405,7 @@ class Task(Model):
                     roles = RoleModel.objects.filter(unit=self.unit)
             elif self.get_roles_from:
                 # get roles from selected predefined "get_roles_from" method
-                roles = ROLE_GETTER_METHODS[self.get_roles_from]()
+                return ROLE_GETTER_METHODS[self.get_roles_from](RoleModel)
 
         if self.abstract_role.exist and roles:
             # apply abstract_role filtering on roles we got

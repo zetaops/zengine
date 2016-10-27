@@ -9,6 +9,7 @@
 
 
 from zengine.lib.test_utils import BaseTestCase
+from zengine.lib.decorators import ROLE_GETTER_CHOICES
 from .models import Task, BPMNWorkflow, Unit, AbstractRole, User, TaskInvitation, WFInstance, Role, Teacher, Exam
 from datetime import datetime, timedelta
 import time
@@ -167,3 +168,103 @@ class TestCase(BaseTestCase):
         task_inv = TaskInvitation.objects.get(key=key)
         task_inv.blocking_delete()
         wf_instance.blocking_delete()
+
+    def test_object_and_query_task_manager(self):
+
+        Task.objects.filter()._clear()
+        WFInstance.objects.filter()._clear()
+        TaskInvitation.objects.filter()._clear()
+
+        # create test task manager object with unit, abstract_role, object_type and object_query_code
+        task = Task()
+        task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        task.name = task.wf.title
+        task.unit = Unit.objects.get(name="Test Unit")
+        task.abstract_role = AbstractRole.objects.get(name='Test AbstractRole')
+        task.object_type = 'Program'   # Program model
+        task.object_query_code = {'role': 'role'}
+        task.start_date = datetime.strptime('10.10.2016', '%d.%m.%Y')
+        task.finish_date = datetime.strptime('12.10.2016', '%d.%m.%Y')
+        task.run = True
+        task.save()
+
+        time.sleep(1)
+
+        # expected task manager objects numbers
+        assert len(Task.objects.filter()) == 1
+        assert len(WFInstance.objects.filter()) == 5
+        assert len(TaskInvitation.objects.filter()) == 5
+
+        Task.objects.filter().delete()
+        WFInstance.objects.filter().delete()
+        TaskInvitation.objects.filter().delete()
+
+    def test_abstractrole_and_unit_task_manager(self):
+
+        # create test task manager object with unit and abstract_role
+        task = Task()
+        task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        task.name = task.wf.title
+        task.unit = Unit.objects.get(name='Test Unit 2')
+        task.abstract_role = AbstractRole.objects.get(name='Test AbstractRole 2')
+        task.start_date = datetime.strptime('10.10.2016', '%d.%m.%Y')
+        task.finish_date = datetime.strptime('12.10.2016', '%d.%m.%Y')
+        task.run = True
+        task.save()
+
+        time.sleep(1)
+
+        # expected task manager objects numbers
+        assert len(Task.objects.filter()) == 1
+        assert len(WFInstance.objects.filter()) == 2
+        assert len(TaskInvitation.objects.filter()) == 2
+
+        Task.objects.filter().delete()
+        WFInstance.objects.filter().delete()
+        TaskInvitation.objects.filter().delete()
+
+    def test_wf_and_role_getter_task_manager(self):
+
+        # create test task manager object with wf and role_getter object
+        task = Task()
+        task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        task.name = task.wf.title
+        task.get_roles_from = 'get_test_role'
+        task.start_date = datetime.strptime('10.10.2016', '%d.%m.%Y')
+        task.finish_date = datetime.strptime('12.10.2016', '%d.%m.%Y')
+        task.run = True
+        task.save()
+
+        time.sleep(1)
+
+        # expected task manager objects numbers
+        assert len(Task.objects.filter()) == 1
+        assert len(WFInstance.objects.filter()) == 1
+        assert len(TaskInvitation.objects.filter()) == 2
+
+        Task.objects.filter().delete()
+        WFInstance.objects.filter().delete()
+        TaskInvitation.objects.filter().delete()
+
+    def test_role_getter_object_and_query_task_manager(self):
+        # create test task manager object with wf, object_type, object_query_code and role_getter object
+        task = Task()
+        task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        task.name = task.wf.title
+        task.get_roles_from = 'get_test_role'
+        task.object_type = 'Program'   # Program model
+        task.object_query_code = {'type': 1} # Program.objects.filter(type = 1)
+        task.start_date = datetime.strptime('10.10.2016', '%d.%m.%Y')
+        task.finish_date = datetime.strptime('12.10.2016', '%d.%m.%Y')
+        task.run = True
+        task.save()
+
+        time.sleep(1)
+
+        assert len(Task.objects.filter()) == 1
+        assert len(WFInstance.objects.filter()) == 3
+        assert len(TaskInvitation.objects.filter()) == 6
+
+        Task.objects.filter()._clear()
+        WFInstance.objects.filter()._clear()
+        TaskInvitation.objects.filter()._clear()
