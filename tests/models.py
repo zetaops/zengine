@@ -7,6 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from zengine.models import *
+from zengine.lib.decorators import role_getter
 
 
 class Project(Model):
@@ -43,3 +44,25 @@ class Exam(Model):
 
     def __unicode__(self):
         return "%s %s" % (self.teacher.name, self.teacher.surname)
+
+
+class Program(Model):
+    class Meta:
+        search_fields = ['role']
+
+    name = field.String()
+    role = Role()
+    type = field.Integer()
+
+    def __unicode__(self):
+        return "%s" % self.name
+
+    @classmethod
+    @role_getter("Test Roles")
+    def get_test_role(cls):
+        """
+            getting roles with same abstract role
+        :return: roles
+        """
+        abstract_role = AbstractRole.objects.get(name='Test AbstractRole')
+        return cls.objects.filter(abstract_role=abstract_role)
