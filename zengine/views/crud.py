@@ -641,6 +641,13 @@ class CrudView(BaseView):
                 f['type'] = 'date'
                 f['values'] = chosen_filters or chosen_filters.extend((None, None))
 
+            elif isinstance(field, fields.Boolean):
+                if not chosen_filters:
+                    f['values'] = [{'name': k, "value": k, "selected": False} for k in ("true", "false")]
+                else:
+                    f['values'] = [{'name': k, "value": k, 'selected': (lambda val: True if val == k else False)\
+                        (chosen_filters[0])} for k in ("true", "false")]
+
             elif field.choices:
                 f['values'] = [
                     {'name': k,
@@ -649,11 +656,8 @@ class CrudView(BaseView):
                                self.object.get_choices_for(field_name)]
 
             else:
-                if not chosen_filters:
-                    f['values'] = [{'name': k, "value": k, "selected": False} for k in ("true", "false")]
-                else:
-                    f['values'] = [{'name': k, "value": k, 'selected': (lambda val: True if val == k else False) \
-                        (chosen_filters[0])} for k in ("true", "false")]
+                f['values'] = [{'name': k, 'value': k} for k, v in
+                               model_class.objects.distinct_values_of(field_name).items()]
 
             flt.append(f)
         self.output['list_filters'] = flt
