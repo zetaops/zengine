@@ -193,7 +193,7 @@ DEFAULT_OBJECT_CATEGORY_NAME = 'Object Tasks'
 DATE_DEFAULT_FORMAT = "%d.%m.%Y"
 
 #: Default datetime format
-DATETIME_DEFAULT_FORMAT = "%d.%m.%Y %H:%S"
+DATETIME_DEFAULT_FORMAT = "%d.%m.%YT%H:%M:%S.%fZ"
 
 #: Permission provider.
 #: UpdatePermissions command uses this object to get available permmissions
