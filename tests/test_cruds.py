@@ -94,6 +94,5 @@ class TestCase(BaseTestCase):
         resp = self.client.post(model="Role")
         assert Unit.Meta.verbose_name_plural in resp.json['objects'][0]
         assert "Username" in resp.json['objects'][0]
-
-
+        assert len(resp.json['objects']) - 1 == Role.objects.count()
 
