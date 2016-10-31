@@ -216,8 +216,8 @@ class TestCase(BaseTestCase):
 
         # expected task manager objects numbers
         assert len(Task.objects.filter()) == 1
-        assert len(WFInstance.objects.filter()) == 2
-        assert len(TaskInvitation.objects.filter()) == 2
+        assert len(WFInstance.objects.filter()) == 1
+        assert len(TaskInvitation.objects.filter()) == 1
 
         Task.objects.filter().delete()
         WFInstance.objects.filter().delete()
