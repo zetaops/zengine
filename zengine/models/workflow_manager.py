@@ -266,41 +266,44 @@ class Task(Model):
 
     def create_invitations(self, wf_instances, roles):
         """creates a TaskInvitation for each role for each WFInstnace"""
-        if self.get_roles_from and self.object_type:
-            # WFInstance will go to all roles
-            for wfi in wf_instances:
-                for role in roles:
-                    TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
-                                   progress=get_progress(start=self.start_date,
-                                                         finish=self.finish_date),
-                                   start_date=self.start_date, finish_date=self.finish_date).save()
-        else:
-            for wfi in wf_instances:
-                role = wfi.current_actor
-                TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
-                               progress=get_progress(start=self.start_date,
-                                                     finish=self.finish_date),
-                               start_date=self.start_date, finish_date=self.finish_date).save()
+        for wfi in wf_instances:
+            # When the same abstract role
+            if self.get_roles_from:
+                current_roles = roles
+            # If the workflow goes personal role
+            else:
+                current_roles = [wfi.current_actor]
+
+            [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
+                            progress=get_progress(start=self.start_date, finish=self.finish_date),
+                            start_date=self.start_date, finish_date=self.finish_date).save() for role in current_roles]
 
     def create_wf_instances(self, roles):
         """ creates a WFInstnace for each object"""
         wfi = []
+        # When the same abstract role and when we send the object
         if self.get_roles_from and self.object_type:
             return self.get_wf_instance(roles)
+
         for role in roles:
             obj_keys = self.get_object_keys(role)
             if not obj_keys:
+                # When object is in the workflow
                 if wfi and self.get_roles_from:
-                    wf = wfi[0]
-                    wf.current_actor = role
-                    wfi += [wf]
+                    # When the workflow will go to the same role and object in workflow
+                    return wfi
                 else:
+                    # when object in workflow and selected parent units
                     wfi += [WFInstance(wf=self.wf,
                                        current_actor=role,
                                        task=self,
                                        name=self.wf.name,
                                        wf_object_type=self.object_type).save()]
+            # When we send the object
             else:
+                # When the workflow will go to the same role
+                if wfi and self.get_roles_from:
+                    return wfi
                 wfi += [WFInstance(wf=self.wf,
                                    current_actor=role,
                                    task=self,
@@ -312,8 +315,9 @@ class Task(Model):
 
     def get_wf_instance(self, roles):
         """
+        If self.get_roles_from and self.object_type exist this function is called
         :param roles: get_form_roles "Test Users"
-        :return: WFInstance objects array
+        :return: WFInstance objects
         """
         obj_keys = self.get_object_keys(roles[0])
 
@@ -363,7 +367,7 @@ class Task(Model):
                 model: 'Program'
                 query_role: 'Test User Role'
                 **kw: {'role':'role'}
-            :return: model object datas
+            :return: model object datas: Program.objects.filter(role=role)
             """
             query_dict = {}
             for k, v in kw.items():
@@ -371,15 +375,16 @@ class Task(Model):
                     parse = v.split('.')
                 else:
                     parse = [v]
-
+                # We expect first query parse to be a role
+                # example: kw = {'user': 'role.program.user'} parse = ['role', 'program', 'user']
                 if parse[0] == 'role':
                     query_dict[k] = query_role
                     for i in range(1, len(parse)):
-                        query_dict[k] += query_dict[k].__getattribute__(parse[i])
+                        query_dict[k] = query_dict[k].__getattribute__(parse[i])
+                # if not, We expect the query code to be the only query.
+                # example : {'type': 1} or {'program_id': 'AQi1ipdAlby4jIiaWOyaMoMeKVW'}
                 else:
                     query_dict[k] = parse[0]
-                    for i in range(1, len(parse)):
-                        query_dict[k] += query_dict[k].__getattribute__(parse[i])
 
             return model.objects.filter(**query_dict)
 
