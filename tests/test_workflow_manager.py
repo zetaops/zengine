@@ -9,11 +9,13 @@
 
 
 from zengine.lib.test_utils import BaseTestCase
-from zengine.lib.decorators import ROLE_GETTER_CHOICES
-from .models import Task, BPMNWorkflow, Unit, AbstractRole, User, TaskInvitation, WFInstance, Role, Teacher, Exam
+from .models import Task, BPMNWorkflow, Unit, AbstractRole, User, TaskInvitation, WFInstance, Role, Teacher
 from datetime import datetime, timedelta
+from pyoko.conf import settings
+from pyoko.lib.utils import get_object_from_path
 import time
 
+RoleModel = get_object_from_path(settings.ROLE_MODEL)
 
 class TestCase(BaseTestCase):
 
@@ -170,17 +172,26 @@ class TestCase(BaseTestCase):
         wf_instance.blocking_delete()
 
     def test_object_and_query_task_manager(self):
-
-        # create test task manager object with unit, abstract_role, object_type and object_query_code
+        # We send the object. Individual workflow assignment method to sub roles
+        # create new task manager
         task = Task()
+        # workflow is chosen
         task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        # task name is workflow title
         task.name = task.wf.title
-        task.unit = Unit.objects.get(name="Test Unit")
+        # upper unit is chosen
+        task.unit = Unit.objects.get(name="Test Parent Unit 2")
+        # abstract role is chosen
         task.abstract_role = AbstractRole.objects.get(name='Test AbstractRole')
+        # selected model needed for workflow
         task.object_type = 'Program'   # Program model
+        # model query code is written.
         task.object_query_code = {'role': 'role'}
+        # set start and end time of the workflow
         task.start_date = datetime.strptime('05.05.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('06.05.2016', '%d.%m.%Y')
+        # assignment to subunits of the selected unit
+        task.recursive_units = True
         task.run = True
         task.save()
 
@@ -197,20 +208,31 @@ class TestCase(BaseTestCase):
         assert len(wfi) == 5
         assert len(taskinv) == 5
 
+        # delete test datas
         tsk.delete()
         wfi.delete()
         taskinv.delete()
 
     def test_abstractrole_and_unit_task_manager(self):
+        # task manager creates person-specific workflows for persons which has the same abstract roles
+        # object is in the workflow
 
-        # create test task manager object with unit and abstract_role
+        # create new task manager
         task = Task()
+        # workflow is chosen
         task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        # task name is workflow title
         task.name = task.wf.title
-        task.unit = Unit.objects.get(name='Test Unit 2')
+        # upper unit is chosen
+        task.unit = Unit.objects.get(name='Test Parent Unit')
+        # abstract role is chosen
         task.abstract_role = AbstractRole.objects.get(name='Test AbstractRole 2')
+        # set start and end time of the workflow
         task.start_date = datetime.strptime('06.06.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('07.06.2016', '%d.%m.%Y')
+        # assignment to subunits of the selected unit
+        task.recursive_units = True
+
         task.run = True
         task.save()
 
@@ -218,24 +240,29 @@ class TestCase(BaseTestCase):
 
         # expected task manager objects numbers
         tsk = Task.objects.filter(start_date=datetime(2016, 6, 6, 0, 0))
-        role = Role.objects.get(unit=task.unit, abstract_role=task.abstract_role)
         assert len(tsk) == 1
         wfi = WFInstance.objects.filter(task=tsk[0])
         assert len(wfi) == 1
         taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 6, 6, 0, 0))
         assert len(taskinv) == 1
 
+        # delete test datas
         tsk.delete()
         wfi.delete()
         taskinv.delete()
 
     def test_wf_and_role_getter_task_manager(self):
-
-        # create test task manager object with wf and role_getter object
+        # A workflow assignment method that users with the same abstract role will see.
+        # object is in the workflow
+        # create new task manager
         task = Task()
+        # workflow is chosen
         task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        # task name is workflow title
         task.name = task.wf.title
+        # the selected abstract role for workflow
         task.get_roles_from = 'get_test_role'
+        # set start and end time of the workflow
         task.start_date = datetime.strptime('07.07.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('08.07.2016', '%d.%m.%Y')
         task.run = True
@@ -251,18 +278,27 @@ class TestCase(BaseTestCase):
         taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 7, 7, 0, 0))
         assert len(taskinv) == 2
 
+        # delete test datas
         tsk.delete()
         wfi.delete()
         taskinv.delete()
 
     def test_role_getter_object_and_query_task_manager(self):
-        # create test task manager object with wf, object_type, object_query_code and role_getter object
+        # A workflow assignment method that users with the same abstract role will see.
+        # We send the object.
+        # create new task manager
         task = Task()
+        # workflow is chosen
         task.wf = BPMNWorkflow.objects.get(name='workflow_management')
+        # task name is workflow title
         task.name = task.wf.title
+        # the selected abstract role for workflow
         task.get_roles_from = 'get_test_role'
+        # selected model needed for workflow
         task.object_type = 'Program'   # Program model
+        # model query code is written.
         task.object_query_code = {'type': 1} # Program.objects.filter(type = 1)
+        # set start and end time of the workflow
         task.start_date = datetime.strptime('08.08.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('09.08.2016', '%d.%m.%Y')
         task.run = True
@@ -278,6 +314,7 @@ class TestCase(BaseTestCase):
         taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 8, 8, 0, 0))
         assert len(taskinv) == 6
 
+        # delete test datas
         tsk.delete()
         wfi.delete()
         taskinv.delete()
