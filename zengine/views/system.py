@@ -171,6 +171,8 @@ def get_tasks(current):
             'wf_type': inv.wf_name,
             'state': inv.progress,
             'start_date': inv.instance.task.start_date.strftime(DATE_FORMAT),
-            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT)}
+            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT),
+            'description': inv.wf.description,
+            'status': inv.ownership}
         for inv in queryset
         ]
