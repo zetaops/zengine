@@ -181,7 +181,9 @@ def get_tasks(current):
         for inv in queryset
         ]
     task_inv_list = TaskInvitation.objects.filter(role_id=current.role_id)
-    current.output['active_task_count'] = task_inv_list.filter(progress__in=STATE_DICT['active']).count()
-    current.output['future_task_count'] = task_inv_list.filter(progress=STATE_DICT['future']).count()
-    current.output['finished_task_count'] = task_inv_list.filter(progress=STATE_DICT['finished']).count()
-    current.output['expired_task_count'] = task_inv_list.filter(progress=STATE_DICT['expired']).count()
+    current.output['task_count']= {
+        'active': task_inv_list.filter(progress__in=STATE_DICT['active']).count(),
+        'future' : task_inv_list.filter(progress=STATE_DICT['future']).count(),
+        'finished' : task_inv_list.filter(progress=STATE_DICT['finished']).count(),
+        'expired' : task_inv_list.filter(progress=STATE_DICT['expired']).count()
+    }
