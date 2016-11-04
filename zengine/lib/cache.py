@@ -222,6 +222,34 @@ class UserSessionID(Cache):
         if user_id:
             super(UserSessionID, self).__init__(user_id)
 
+class PasswordReset(Cache):
+    """
+    Cache object for the password reset.
+
+    Args:
+        user_id: Activation Code
+    """
+    PREFIX = 'PARE'
+    SERIALIZE = False
+
+    def __init__(self, activation_code):
+        if activation_code:
+            super(PasswordReset, self).__init__(activation_code)
+
+class EMailVerification(Cache):
+    """
+    Cache object for email verification.
+
+    Args:
+        user_id: Activation Code
+    """
+    PREFIX = 'EMVR'
+    SERIALIZE = False
+
+    def __init__(self, activation_code):
+        if activation_code:
+            super(EMailVerification, self).__init__(activation_code)
+
 
 class KeepAlive(Cache):
     """
