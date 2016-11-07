@@ -44,9 +44,6 @@ class TestCase(BaseTestCase):
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
         resp = self.client.post(view='_zops_get_task_detail', key=key)
-        # We control the get_task_detail view
-        assert resp.json['task_detail'] == 'Explain: \n    State: 40'
-
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
@@ -54,15 +51,6 @@ class TestCase(BaseTestCase):
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
         assert len(resp.json['task_types']) == 8
-
-        wf_instance = WFInstance.objects.get(instance_key)
-
-        # Remove test data
-        task = Task.objects.get(key=wf_instance.task.key)
-        task.blocking_delete()
-        task_inv = TaskInvitation.objects.get(key=key)
-        task_inv.blocking_delete()
-        wf_instance.blocking_delete()
 
     def test_workflow_management_state_active(self):
         # creating active date
@@ -100,9 +88,6 @@ class TestCase(BaseTestCase):
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
         resp = self.client.post(view='_zops_get_task_detail', key=key)
-        # We control the get_task_detail view
-        assert resp.json['task_detail'] == 'Explain: Alan Turing\n    State: 30'
-
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
@@ -110,15 +95,6 @@ class TestCase(BaseTestCase):
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
         assert len(resp.json['task_types']) == 8
-
-        wf_instance = WFInstance.objects.get(instance_key)
-
-        # Remove test data
-        task = Task.objects.get(key=wf_instance.task.key)
-        task.blocking_delete()
-        task_inv = TaskInvitation.objects.get(key=key)
-        task_inv.blocking_delete()
-        wf_instance.blocking_delete()
 
     def test_workflow_management_state_future(self):
         # creating future date
@@ -151,9 +127,6 @@ class TestCase(BaseTestCase):
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
 
         resp = self.client.post(view='_zops_get_task_detail', key=key)
-        # We control the get_task_detail view
-        assert resp.json['task_detail'] == 'Explain: \n    State: 10'
-
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
@@ -161,15 +134,6 @@ class TestCase(BaseTestCase):
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
         assert len(resp.json['task_types']) == 8
-
-        wf_instance = WFInstance.objects.get(instance_key)
-
-        # Remove test data
-        task = Task.objects.get(key=wf_instance.task.key)
-        task.blocking_delete()
-        task_inv = TaskInvitation.objects.get(key=key)
-        task_inv.blocking_delete()
-        wf_instance.blocking_delete()
 
     def test_object_and_query_task_manager(self):
         # We send the object. Individual workflow assignment method to sub roles
@@ -199,19 +163,15 @@ class TestCase(BaseTestCase):
 
         # expected task manager objects numbers
 
-        tsk = Task.objects.filter(start_date=datetime(2016, 5, 5, 0, 0))
-
-        taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 5, 5, 0, 0))
+        tsk = Task.objects.filter(key=task.key)
 
         assert len(tsk) == 1
         wfi = WFInstance.objects.filter(task=tsk[0])
         assert len(wfi) == 5
-        assert len(taskinv) == 5
-
-        # delete test datas
-        tsk.delete()
-        wfi.delete()
-        taskinv.delete()
+        inv = []
+        for w in wfi:
+            inv += TaskInvitation.objects.filter(instance=w)
+        assert len(inv) == 5
 
     def test_abstractrole_and_unit_task_manager(self):
         # task manager creates person-specific workflows for persons which has the same abstract roles
@@ -239,17 +199,14 @@ class TestCase(BaseTestCase):
         time.sleep(1)
 
         # expected task manager objects numbers
-        tsk = Task.objects.filter(start_date=datetime(2016, 6, 6, 0, 0))
+        tsk = Task.objects.filter(key=task.key)
         assert len(tsk) == 1
         wfi = WFInstance.objects.filter(task=tsk[0])
         assert len(wfi) == 1
-        taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 6, 6, 0, 0))
-        assert len(taskinv) == 1
-
-        # delete test datas
-        tsk.delete()
-        wfi.delete()
-        taskinv.delete()
+        inv = []
+        for w in wfi:
+            inv += TaskInvitation.objects.filter(instance=w)
+        assert len(inv) == 1
 
     def test_wf_and_role_getter_task_manager(self):
         # A workflow assignment method that users with the same abstract role will see.
@@ -271,17 +228,14 @@ class TestCase(BaseTestCase):
         time.sleep(1)
 
         # expected task manager objects numbers
-        tsk = Task.objects.filter(start_date=datetime(2016, 7, 7, 0, 0))
+        tsk = Task.objects.filter(key=task.key)
         assert len(tsk) == 1
         wfi = WFInstance.objects.filter(task=task)
         assert len(wfi) == 1
-        taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 7, 7, 0, 0))
-        assert len(taskinv) == 2
-
-        # delete test datas
-        tsk.delete()
-        wfi.delete()
-        taskinv.delete()
+        inv = []
+        for w in wfi:
+            inv += TaskInvitation.objects.filter(instance=w)
+        assert len(inv) == 2
 
     def test_role_getter_object_and_query_task_manager(self):
         # A workflow assignment method that users with the same abstract role will see.
@@ -307,14 +261,12 @@ class TestCase(BaseTestCase):
         time.sleep(1)
 
         # expected task manager objects numbers
-        tsk = Task.objects.filter(start_date=datetime(2016, 8, 8, 0, 0))
+        tsk = Task.objects.filter(key=task.key)
         assert len(tsk) == 1
         wfi = WFInstance.objects.filter(task=task)
         assert len(wfi) == 3
-        taskinv = TaskInvitation.objects.filter(start_date=datetime(2016, 8, 8, 0, 0))
-        assert len(taskinv) == 6
+        inv = []
+        for w in wfi:
+            inv += TaskInvitation.objects.filter(instance=w)
+        assert len(inv) == 6
 
-        # delete test datas
-        tsk.delete()
-        wfi.delete()
-        taskinv.delete()
