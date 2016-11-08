@@ -225,6 +225,15 @@ def get_model_choices():
     return [{'name': k, 'value': v.Meta.verbose_name} for k, v in model_registry.registry.items()]
 
 
+WF_TYPES = [{"Type A": {"def": "Aciklama",
+                        "fields": ["unit", "abstract_role", "object_type", "object_query_code"]}},
+            {"Type B": {"def": "Aciklama",
+                        "fields": ["get_roles_from", "object_type", "object_query_code"]}},
+            {"Type C": {"def": "Aciklama",
+                        "fields": ["get_roles_from"]}},
+            {"Type D": {"def": "Aciklama",
+                        "fields": ["unit", "abstract_role"]}}]
+
 class Task(Model):
     """
 
@@ -255,6 +264,39 @@ class Task(Model):
         search_fields = ['name']
         list_fields = ['name', ]
 
+    def recursive_unit_package(self, roles, typ=None):
+        wfinstances = [WFInstance(wf=self.wf,
+                       current_actor=role,
+                       task=self,
+                       name=self.wf.name) for role in roles]
+        if typ == "Type D":
+            [wfi.save() for wfi in wfinstances]
+
+        else:
+            return wfinstances
+
+    def get_roles_package(self):
+        instances = [WFInstance(wf=self.wf,
+                    task=self,
+                    name=self.wf.name)]
+
+        return instances
+
+    def object_type_package(self, instances, roles, typ=None):
+        for wfi in instances:
+            if typ == "Type A":
+                role = wfi.current_actor
+                keys = self.get_object_keys(role)
+            else:
+                role = roles[0]
+            instances = [WFInstance(wf=wfi.wf,
+                                    current_actor=role,
+                                    task=wfi.task,
+                                    name=wfi.name,
+                                    wf_object=obj_key,
+                                    wf_object_type=self.object_type).save()
+                                    for obj_key in keys]
+
     def create_tasks(self):
         """
         will create a WFInstance per object
@@ -269,9 +311,12 @@ class Task(Model):
         for wfi in wf_instances:
             # When the same abstract role
             if self.get_roles_from:
+                # is akisi ayni abstract rollere ayni data
                 current_roles = roles
             # If the workflow goes personal role
             else:
+                # is akisi ayni ama kisiye ozel datalarla calisacagi icin tek
+                # wfinstance a atanan rolu taskinvitation a da atiyoruz
                 current_roles = [wfi.current_actor]
 
             [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
@@ -304,6 +349,8 @@ class Task(Model):
                 # When the workflow will go to the same role
                 if wfi and self.get_roles_from:
                     return wfi
+                # Ust birimin secildigi alt birime ait ayni abstract role sahip  rollere, nesnenin belirlenip is akisiyla
+                # birlikte gonderildigi ozel is akisi atama islemi
                 wfi += [WFInstance(wf=self.wf,
                                    current_actor=role,
                                    task=self,
@@ -334,7 +381,7 @@ class Task(Model):
          in the following format: ```"key=val, key2 = val2 , key3= value with spaces"```
 
         Returns:
-             dict. Queryset filtering dict
+             dict. Queryset filtering dicqt
         """
         if isinstance(self.object_query_code, dict):
             # _DATE_ _DATETIME_
