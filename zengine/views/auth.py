@@ -29,13 +29,20 @@ class LoginForm(JsonForm):
 def logout(current):
     """
     Log out view.
-    Simply deletes the session object
+    Simply deletes the session object.
+    If there is logout message, it is shown while logging out.
+    Message should be sent in current.task_data with 'logout_message' field.
+    Message title should be sent in current.task_data with 'logout_title' field.
 
     Args:
         current: :attr:`~zengine.engine.WFCurrent` object.
     """
     current.user.is_online(False)
     current.session.delete()
+    current.output['cmd'] = 'reload'
+    if current.task_data.get('show_logout_message', False):
+        current.output['title'] = current.task_data.get('logout_title', None)
+        current.output['msg'] = current.task_data.get('logout_message', None)
 
 
 def dashboard(current):
@@ -79,8 +86,6 @@ class Login(SimpleView):
                 self.current.user.send_client_cmd({'error': "Login required", "code": 401},
                                                   via_queue=existing_sess_id)
                 self.current.user.unbind_private_channel(existing_sess_id)
-
-
 
     def do_view(self):
         """
