@@ -225,14 +225,91 @@ def get_model_choices():
     return [{'name': k, 'value': v.Meta.verbose_name} for k, v in model_registry.registry.items()]
 
 
-WF_TYPES = [{"Type A": {"def": "Aciklama",
-                        "fields": ["unit", "abstract_role", "object_type", "object_query_code"]}},
-            {"Type B": {"def": "Aciklama",
-                        "fields": ["get_roles_from", "object_type", "object_query_code"]}},
-            {"Type C": {"def": "Aciklama",
-                        "fields": ["get_roles_from"]}},
-            {"Type D": {"def": "Aciklama",
-                        "fields": ["unit", "abstract_role"]}}]
+TASK_TYPES = [
+    {
+        "Type A":
+            {
+                "def": """
+                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
+                `unit` recursively.
+
+                Objects are filtered by `object_type` and `object_query_code`. And relation between
+                objects and roles specified in object_query_code by `role` key.
+
+                    ```
+                    unit="A faculty",
+                    abstract_role="Lecturer",
+                    object_type="Class"
+                    object_query_code="lecturer_id='role.key'" # role means lecturer's current role.
+
+                    ```
+               """,
+
+                "fields": ["unit", "abstract_role", "get_roles_from", "object_type",
+                           "object_query_code", "recursive"]
+            }
+    },
+
+    {
+        "Type B":
+            {
+                "def": """
+                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
+                `unit` recursively.
+
+                Objects are filtered by `object_type` and `object_query_code`.
+
+                     ```
+                     unit="A faculty",
+                     abstract_role="Managers",
+                     object_type="Class"
+                     object_query_code="capacity>50"
+
+                     ```
+                """,
+                "fields": ["unit", "abstract_role", "get_roles_from", "object_type",
+                           "object_query_code", "recursive"]
+            }
+    },
+    {
+        "Type C":
+            {
+                "def": """
+                Roles are gathered from `get_roles_from` or `abstract_role` or intersection of both.
+
+                No objects are specified. This type of task is for wfs which are not dependent on
+                any object or unit, etc. e.g, periodic system management wf.
+
+                     ```
+                     abstract_role="Managers",
+
+                     ```
+                """,
+                "fields": ["abstract_role", "get_roles_from"]
+            }
+    },
+    {
+        "Type D":
+            {
+                "def": """
+                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
+                `unit` recursively.
+
+                No objects are specified. This type of task is for wfs which are not dependent on
+                any object, but unit. e.g, change timetable schedule, choose advisers
+                for department.
+
+                     ```
+                     unit="A faculty"
+                     abstract_role="Chief of Department",
+
+                     ```
+                """,
+                "fields": ["unit", "abstract_role", "get_roles_from", "recursive"]
+            }
+    }
+]
+
 
 class Task(Model):
     """
@@ -257,6 +334,7 @@ class Task(Model):
     notification_density = field.Integer(_("Notification density"),
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
+    deliver_by_related_role = field.Boolean()
 
     class Meta:
         verbose_name = "Workflow Task"
@@ -266,9 +344,9 @@ class Task(Model):
 
     def recursive_unit_package(self, roles, typ=None):
         wfinstances = [WFInstance(wf=self.wf,
-                       current_actor=role,
-                       task=self,
-                       name=self.wf.name) for role in roles]
+                                  current_actor=role,
+                                  task=self,
+                                  name=self.wf.name) for role in roles]
         if typ == "Type D":
             [wfi.save() for wfi in wfinstances]
 
@@ -277,8 +355,8 @@ class Task(Model):
 
     def get_roles_package(self):
         instances = [WFInstance(wf=self.wf,
-                    task=self,
-                    name=self.wf.name)]
+                                task=self,
+                                name=self.wf.name)]
 
         return instances
 
@@ -295,7 +373,7 @@ class Task(Model):
                                     name=wfi.name,
                                     wf_object=obj_key,
                                     wf_object_type=self.object_type).save()
-                                    for obj_key in keys]
+                         for obj_key in keys]
 
     def create_tasks(self):
         """
@@ -321,7 +399,8 @@ class Task(Model):
 
             [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
                             progress=get_progress(start=self.start_date, finish=self.finish_date),
-                            start_date=self.start_date, finish_date=self.finish_date).save() for role in current_roles]
+                            start_date=self.start_date, finish_date=self.finish_date).save() for
+             role in current_roles]
 
     def create_wf_instances(self, roles):
         """ creates a WFInstnace for each object"""
@@ -408,32 +487,32 @@ class Task(Model):
                     self.get_model_objects(model, role, **self.get_object_query_dict())]
 
     def get_model_objects(self, model, query_role, **kw):
-            """
-            model based on the search query in self.object.query.code
-            Example:
-                model: 'Program'
-                query_role: 'Test User Role'
-                **kw: {'role':'role'}
-            :return: model object datas: Program.objects.filter(role=role)
-            """
-            query_dict = {}
-            for k, v in kw.items():
-                if not type(v) == int:
-                    parse = v.split('.')
-                else:
-                    parse = [v]
-                # We expect first query parse to be a role
-                # example: kw = {'user': 'role.program.user'} parse = ['role', 'program', 'user']
-                if parse[0] == 'role':
-                    query_dict[k] = query_role
-                    for i in range(1, len(parse)):
-                        query_dict[k] = query_dict[k].__getattribute__(parse[i])
-                # if not, We expect the query code to be the only query.
-                # example : {'type': 1} or {'program_id': 'AQi1ipdAlby4jIiaWOyaMoMeKVW'}
-                else:
-                    query_dict[k] = parse[0]
+        """
+        model based on the search query in self.object.query.code
+        Example:
+            model: 'Program'
+            query_role: 'Test User Role'
+            **kw: {'role':'role'}
+        :return: model object datas: Program.objects.filter(role=role)
+        """
+        query_dict = {}
+        for k, v in kw.items():
+            if not type(v) == int:
+                parse = v.split('.')
+            else:
+                parse = [v]
+            # We expect first query parse to be a role
+            # example: kw = {'user': 'role.program.user'} parse = ['role', 'program', 'user']
+            if parse[0] == 'role':
+                query_dict[k] = query_role
+                for i in range(1, len(parse)):
+                    query_dict[k] = query_dict[k].__getattribute__(parse[i])
+            # if not, We expect the query code to be the only query.
+            # example : {'type': 1} or {'program_id': 'AQi1ipdAlby4jIiaWOyaMoMeKVW'}
+            else:
+                query_dict[k] = parse[0]
 
-            return model.objects.filter(**query_dict)
+        return model.objects.filter(**query_dict)
 
     def get_roles(self):
         """
@@ -452,7 +531,8 @@ class Task(Model):
                 # get roles from selected unit or sub-units of it
                 if self.recursive_units:
                     # this returns a list, we're converting it to a Role generator!
-                    roles = (RoleModel.objects.get(k) for k in UnitModel.get_role_keys(self.unit.key))
+                    roles = (RoleModel.objects.get(k) for k in
+                             UnitModel.get_role_keys(self.unit.key))
                 else:
                     roles = RoleModel.objects.filter(unit=self.unit)
             elif self.get_roles_from:
