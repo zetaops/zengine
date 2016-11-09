@@ -641,6 +641,11 @@ class CrudView(BaseView):
                 f['type'] = 'date'
                 f['values'] = chosen_filters or chosen_filters.extend((None, None))
 
+            elif isinstance(field, fields.Boolean):
+                f['values'] = [{'name': k, "value": k,
+                                'selected': True if k in chosen_filters else False} for k in
+                               ("true", "false")]
+
             elif field.choices:
                 f['values'] = [
                     {'name': k,
