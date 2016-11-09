@@ -335,6 +335,7 @@ class Task(Model):
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
     deliver_by_related_role = field.Boolean()
+    task_type = field.String()
 
     class Meta:
         verbose_name = "Workflow Task"
@@ -342,38 +343,52 @@ class Task(Model):
         search_fields = ['name']
         list_fields = ['name', ]
 
-    def recursive_unit_package(self, roles, typ=None):
+    def create_wfinstance_for_each_role(self, roles):
         wfinstances = [WFInstance(wf=self.wf,
                                   current_actor=role,
                                   task=self,
                                   name=self.wf.name) for role in roles]
-        if typ == "Type D":
-            [wfi.save() for wfi in wfinstances]
+        if self.task_type == "D":
+            return [wfi.save() for wfi in wfinstances]
 
         else:
             return wfinstances
 
-    def get_roles_package(self):
-        instances = [WFInstance(wf=self.wf,
-                                task=self,
-                                name=self.wf.name)]
+    def create_wfinstance_for_all_role(self):
+        wfinstance = [WFInstance(wf=self.wf,
+                                  task=self,
+                                  name=self.wf.name)]
+        if self.task_type == "C":
+            return [wfi.save() for wfi in wfinstance]
+        else:
+            return wfinstance
 
-        return instances
-
-    def object_type_package(self, instances, roles, typ=None):
+    def object_type_package(self, instances):
+        all_wfinstance = []
+        role = None
         for wfi in instances:
-            if typ == "Type A":
+            if self.task_type == "A":
                 role = wfi.current_actor
                 keys = self.get_object_keys(role)
+            elif self.task_type == "B":
+                keys = self.get_object_keys()
+
+            all_wfinstance += [WFInstance(wf=self.wf,
+                                          current_actor=role,
+                                          task=self,
+                                          name=self.wf.name).save() for key in keys]
+        return all_wfinstance
+
+    def create_task_invitation(self, instances, roles=None):
+        for wfi in instances:
+            if self.task_type == "A" or self.task_type == 'D':
+                current_roles = [wfi.current_actor]
             else:
-                role = roles[0]
-            instances = [WFInstance(wf=wfi.wf,
-                                    current_actor=role,
-                                    task=wfi.task,
-                                    name=wfi.name,
-                                    wf_object=obj_key,
-                                    wf_object_type=self.object_type).save()
-                         for obj_key in keys]
+                current_roles = roles
+            [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
+                            progress=get_progress(start=self.start_date, finish=self.finish_date),
+                            start_date=self.start_date, finish_date=self.finish_date).save() for
+             role in current_roles]
 
     def create_tasks(self):
         """
@@ -381,78 +396,20 @@ class Task(Model):
         and per TaskInvitation for each role and WFInstance
         """
         roles = self.get_roles()
-        wf_instances = self.create_wf_instances(roles)
-        self.create_invitations(wf_instances, roles)
-
-    def create_invitations(self, wf_instances, roles):
-        """creates a TaskInvitation for each role for each WFInstnace"""
-        for wfi in wf_instances:
-            # When the same abstract role
-            if self.get_roles_from:
-                # is akisi ayni abstract rollere ayni data
-                current_roles = roles
-            # If the workflow goes personal role
-            else:
-                # is akisi ayni ama kisiye ozel datalarla calisacagi icin tek
-                # wfinstance a atanan rolu taskinvitation a da atiyoruz
-                current_roles = [wfi.current_actor]
-
-            [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
-                            progress=get_progress(start=self.start_date, finish=self.finish_date),
-                            start_date=self.start_date, finish_date=self.finish_date).save() for
-             role in current_roles]
-
-    def create_wf_instances(self, roles):
-        """ creates a WFInstnace for each object"""
-        wfi = []
-        # When the same abstract role and when we send the object
-        if self.get_roles_from and self.object_type:
-            return self.get_wf_instance(roles)
-
-        for role in roles:
-            obj_keys = self.get_object_keys(role)
-            if not obj_keys:
-                # When object is in the workflow
-                if wfi and self.get_roles_from:
-                    # When the workflow will go to the same role and object in workflow
-                    return wfi
-                else:
-                    # when object in workflow and selected parent units
-                    wfi += [WFInstance(wf=self.wf,
-                                       current_actor=role,
-                                       task=self,
-                                       name=self.wf.name,
-                                       wf_object_type=self.object_type).save()]
-            # When we send the object
-            else:
-                # When the workflow will go to the same role
-                if wfi and self.get_roles_from:
-                    return wfi
-                # Ust birimin secildigi alt birime ait ayni abstract role sahip  rollere, nesnenin belirlenip is akisiyla
-                # birlikte gonderildigi ozel is akisi atama islemi
-                wfi += [WFInstance(wf=self.wf,
-                                   current_actor=role,
-                                   task=self,
-                                   wf_object=obj_key,
-                                   name=self.wf.name,
-                                   wf_object_type=self.object_type).save()
-                        for obj_key in obj_keys]
-        return wfi
-
-    def get_wf_instance(self, roles):
-        """
-        If self.get_roles_from and self.object_type exist this function is called
-        :param roles: get_form_roles "Test Users"
-        :return: WFInstance objects
-        """
-        obj_keys = self.get_object_keys(roles[0])
-
-        return [WFInstance(wf=self.wf,
-                           task=self,
-                           wf_object=obj_key,
-                           name=self.wf.name,
-                           wf_object_type=self.object_type).save()
-                for obj_key in obj_keys]
+        if self.task_type == "A":
+            instances = self.create_wfinstance_for_each_role(roles)
+            instance_objects = self.object_type_package(instances)
+            self.create_task_invitation(instance_objects)
+        elif self.task_type == "B":
+            instances = self.create_wfinstance_for_all_role()
+            instance_objects = self.object_type_package(instances)
+            self.create_task_invitation(instance_objects, roles)
+        elif self.task_type == "C":
+            instance_objects = self.create_wfinstance_for_all_role()
+            self.create_task_invitation(instance_objects, roles)
+        else:
+            instance_objects = self.create_wfinstance_for_each_role(roles)
+            self.create_task_invitation(instance_objects)
 
     def get_object_query_dict(self):
         """returns objects keys according to self.object_query_code
@@ -471,7 +428,7 @@ class Task(Model):
             return dict([map(str.strip, pair.split('='))
                          for pair in self.object_query_code.split(',')])
 
-    def get_object_keys(self, role):
+    def get_object_keys(self, role=None):
         """returns object keys according to task definition
         which can be explicitly selected one object (self.object_key) or
         result of a queryset filter.
@@ -486,7 +443,7 @@ class Task(Model):
             return [m.key for m in
                     self.get_model_objects(model, role, **self.get_object_query_dict())]
 
-    def get_model_objects(self, model, query_role, **kw):
+    def get_model_objects(self, model, query_role=None, **kw):
         """
         model based on the search query in self.object.query.code
         Example:
@@ -497,13 +454,13 @@ class Task(Model):
         """
         query_dict = {}
         for k, v in kw.items():
-            if not type(v) == int:
+            if not isinstance(v, int):
                 parse = v.split('.')
             else:
                 parse = [v]
             # We expect first query parse to be a role
             # example: kw = {'user': 'role.program.user'} parse = ['role', 'program', 'user']
-            if parse[0] == 'role':
+            if self.task_type == "A" and query_role:
                 query_dict[k] = query_role
                 for i in range(1, len(parse)):
                     query_dict[k] = query_dict[k].__getattribute__(parse[i])
@@ -550,10 +507,33 @@ class Task(Model):
 
         return roles
 
+    def check_task_type(self):
+        if self.object_type:
+            if self.object_query_code:
+                query = self.get_object_query_dict()
+                for k, v in query.items():
+                    if not type(v) == int:
+                        parse = v.split('.')
+                    else:
+                        parse = [v]
+                    if parse[0] == 'role':
+                        self.task_type = "A"
+                        break
+                else:
+                    self.task_type = "B"
+            else:
+                self.task_type = "B"
+        else:
+            if not self.unit.exist:
+                self.task_type = "C"
+            else:
+                self.task_type = "D"
+
     def post_save(self):
         """can be removed when a proper task manager admin interface implemented"""
         if self.run:
             self.run = False
+            self.check_task_type()
             self.create_tasks()
             self.save()
 
