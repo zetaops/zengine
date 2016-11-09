@@ -20,6 +20,11 @@ RoleModel = get_object_from_path(settings.ROLE_MODEL)
 class TestCase(BaseTestCase):
 
     def test_workflow_management_state_finished(self):
+
+        usr = User.objects.get(username='test_user')
+        role = Role.objects.get(user=usr)
+        finished_task_count = TaskInvitation.objects.filter(role=role, progress=40).count()
+
         # create test task manager object with bpmn workflow, unit and abstract role models
         task = Task()
         task.wf = BPMNWorkflow.objects.get(name='workflow_management')
@@ -32,7 +37,6 @@ class TestCase(BaseTestCase):
         task.run = True
         task.save()
 
-        usr = User.objects.get(username='test_user')
         self.prepare_client(user=usr)
         time.sleep(1)
         # call finished data
@@ -40,10 +44,11 @@ class TestCase(BaseTestCase):
         # We control the get_tasks view
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
         assert resp.json['task_list'][0]['title'] == 'workflow_management'
+        assert resp.json['task_list'][0]['description'] == 'Test workflow management bpmn description'
+        assert resp.json['task_count']['finished'] == finished_task_count + 1
 
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
-        resp = self.client.post(view='_zops_get_task_detail', key=key)
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
@@ -53,13 +58,17 @@ class TestCase(BaseTestCase):
         assert len(resp.json['task_types']) == 8
 
     def test_workflow_management_state_active(self):
+
+        usr = User.objects.get(username='test_user2')
+        role = Role.objects.get(user=usr)
+        active_task_count = TaskInvitation.objects.filter(role=role, progress__in=[20, 30]).count()
+
         # creating active date
         now = datetime.now()
         one_day = timedelta(1)
         tomorrow = now + one_day
         yesterday = now - one_day
 
-        usr = User.objects.get(username='test_user2')
         # create test task manager object with bpmn workflow, unit, abstract role and role models
         task = Task()
         task.wf = BPMNWorkflow.objects.get(name='workflow_management')
@@ -84,10 +93,11 @@ class TestCase(BaseTestCase):
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
         assert resp.json['task_list'][0]['title'] == 'workflow_management'
         assert resp.json['task_list'][0]['state'] == 30
+        assert resp.json['task_list'][0]['description'] == 'Test workflow management bpmn description'
+        assert resp.json['task_count']['active'] == active_task_count + 1
 
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
-        resp = self.client.post(view='_zops_get_task_detail', key=key)
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
@@ -97,6 +107,11 @@ class TestCase(BaseTestCase):
         assert len(resp.json['task_types']) == 8
 
     def test_workflow_management_state_future(self):
+
+        usr = User.objects.get(username='test_user2')
+        role = Role.objects.get(user=usr)
+        future_task_count = TaskInvitation.objects.filter(role=role, progress=10).count()
+
         # creating future date
         now = datetime.now()
         one_week = timedelta(7)
@@ -113,7 +128,6 @@ class TestCase(BaseTestCase):
         task.run = True
         task.save()
 
-        usr = User.objects.get(username='test_user2')
         self.prepare_client(user=usr)
         time.sleep(1)
         # call future data
@@ -122,11 +136,12 @@ class TestCase(BaseTestCase):
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
         assert resp.json['task_list'][0]['title'] == 'workflow_management'
         assert resp.json['task_list'][0]['state'] == 10
+        assert resp.json['task_list'][0]['description'] == 'Test workflow management bpmn description'
+        assert resp.json['task_count']['future'] == future_task_count + 1
 
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
 
-        resp = self.client.post(view='_zops_get_task_detail', key=key)
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
