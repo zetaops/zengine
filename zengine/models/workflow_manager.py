@@ -6,24 +6,19 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+
 import json
 import types
-
 from datetime import datetime
-from time import sleep
-from traceback import format_exc
-
-import functools
-
 import six
 from pika.exceptions import ChannelClosed
 from pika.exceptions import ConnectionClosed
-from pyoko import Model, field, ListNode, LinkProxy
+from pyoko import Model, field, ListNode
 from pyoko.conf import settings
 from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.fields import DATE_TIME_FORMAT
-from pyoko.lib.utils import get_object_from_path, lazy_property
-from SpiffWorkflow.bpmn.parser.util import full_attr, BPMN_MODEL_NS, ATTRIBUTE_NS
+from pyoko.lib.utils import get_object_from_path
+from SpiffWorkflow.bpmn.parser.util import BPMN_MODEL_NS, ATTRIBUTE_NS
 from pyoko.modelmeta import model_registry
 from zengine.client_queue import get_mq_connection
 from zengine.lib.cache import Cache
@@ -207,6 +202,13 @@ ROLE_SEARCH_DEPTH = (
 
 
 def get_progress(start, finish):
+    """
+    Args:
+        start (DateTime): start date
+        finish (DateTime): finish date
+    Returns:
+
+    """
     now = datetime.now()
     dif_time_start = start - now
     dif_time_finish = finish - now
@@ -223,92 +225,6 @@ def get_progress(start, finish):
 
 def get_model_choices():
     return [{'name': k, 'value': v.Meta.verbose_name} for k, v in model_registry.registry.items()]
-
-
-TASK_TYPES = [
-    {
-        "Type A":
-            {
-                "def": """
-                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
-                `unit` recursively.
-
-                Objects are filtered by `object_type` and `object_query_code`. And relation between
-                objects and roles specified in object_query_code by `role` key.
-
-                    ```
-                    unit="A faculty",
-                    abstract_role="Lecturer",
-                    object_type="Class"
-                    object_query_code="lecturer_id='role.key'" # role means lecturer's current role.
-
-                    ```
-               """,
-
-                "fields": ["unit", "abstract_role", "get_roles_from", "object_type",
-                           "object_query_code", "recursive"]
-            }
-    },
-
-    {
-        "Type B":
-            {
-                "def": """
-                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
-                `unit` recursively.
-
-                Objects are filtered by `object_type` and `object_query_code`.
-
-                     ```
-                     unit="A faculty",
-                     abstract_role="Managers",
-                     object_type="Class"
-                     object_query_code="capacity>50"
-
-                     ```
-                """,
-                "fields": ["unit", "abstract_role", "get_roles_from", "object_type",
-                           "object_query_code", "recursive"]
-            }
-    },
-    {
-        "Type C":
-            {
-                "def": """
-                Roles are gathered from `get_roles_from` or `abstract_role` or intersection of both.
-
-                No objects are specified. This type of task is for wfs which are not dependent on
-                any object or unit, etc. e.g, periodic system management wf.
-
-                     ```
-                     abstract_role="Managers",
-
-                     ```
-                """,
-                "fields": ["abstract_role", "get_roles_from"]
-            }
-    },
-    {
-        "Type D":
-            {
-                "def": """
-                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
-                `unit` recursively.
-
-                No objects are specified. This type of task is for wfs which are not dependent on
-                any object, but unit. e.g, change timetable schedule, choose advisers
-                for department.
-
-                     ```
-                     unit="A faculty"
-                     abstract_role="Chief of Department",
-
-                     ```
-                """,
-                "fields": ["unit", "abstract_role", "get_roles_from", "recursive"]
-            }
-    }
-]
 
 
 class Task(Model):
@@ -335,7 +251,6 @@ class Task(Model):
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
     deliver_by_related_role = field.Boolean()
-    task_type = field.String()
 
     class Meta:
         verbose_name = "Workflow Task"
@@ -343,52 +258,69 @@ class Task(Model):
         search_fields = ['name']
         list_fields = ['name', ]
 
-    def create_wfinstance_for_each_role(self, roles):
-        wfinstances = [WFInstance(wf=self.wf,
-                                  current_actor=role,
-                                  task=self,
-                                  name=self.wf.name) for role in roles]
-        if self.task_type == "D":
-            return [wfi.save() for wfi in wfinstances]
+    def create_wf_instances(self, roles=None):
+        """
+        Creates wf instances.
+        Args:
+            roles (list): role list
 
+        Returns:
+            (list): wf instances
+        """
+
+        # if roles specified then create an instance for each role
+        # else create only one instance
+
+        if roles:
+            wf_instances = [
+                WFInstance(
+                    wf=self.wf,
+                    current_actor=role,
+                    task=self,
+                    name=self.wf.name
+                ) for role in roles
+                ]
         else:
-            return wfinstances
+            wf_instances = [
+                WFInstance(
+                    wf=self.wf,
+                    task=self,
+                    name=self.wf.name
+                )
+            ]
 
-    def create_wfinstance_for_all_role(self):
-        wfinstance = [WFInstance(wf=self.wf,
-                                  task=self,
-                                  name=self.wf.name)]
-        if self.task_type == "C":
-            return [wfi.save() for wfi in wfinstance]
+        # if task type is not related with objects save instances immediately.
+        if self.task_type in ["C", "D"]:
+            return [wfi.save() for wfi in wf_instances]
+
+        # if task type is related with its objects, save populate instances per object
         else:
-            return wfinstance
-
-    def object_type_package(self, instances):
-        all_wfinstance = []
-        role = None
-        for wfi in instances:
-            if self.task_type == "A":
-                role = wfi.current_actor
+            wf_obj_instances = []
+            for wfi in wf_instances:
+                role = wfi.current_actor if self.task_type == "A" else None
                 keys = self.get_object_keys(role)
-            elif self.task_type == "B":
-                keys = self.get_object_keys()
+                wf_obj_instances.extend(
+                    [WFInstance(
+                        wf=self.wf,
+                        current_actor=role,
+                        task=self,
+                        name=self.wf.name
+                    ).save() for key in keys]
+                )
 
-            all_wfinstance += [WFInstance(wf=self.wf,
-                                          current_actor=role,
-                                          task=self,
-                                          name=self.wf.name).save() for key in keys]
-        return all_wfinstance
+            return wf_obj_instances
 
     def create_task_invitation(self, instances, roles=None):
         for wfi in instances:
-            if self.task_type == "A" or self.task_type == 'D':
-                current_roles = [wfi.current_actor]
-            else:
-                current_roles = roles
-            [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
-                            progress=get_progress(start=self.start_date, finish=self.finish_date),
-                            start_date=self.start_date, finish_date=self.finish_date).save() for
-             role in current_roles]
+            current_roles = roles or [wfi.current_actor]
+            for role in current_roles:
+                TaskInvitation(
+                    instance=wfi,
+                    role=role,
+                    wf_name=self.wf.name,
+                    progress=get_progress(start=self.start_date, finish=self.finish_date),
+                    start_date=self.start_date, finish_date=self.finish_date
+                ).save()
 
     def create_tasks(self):
         """
@@ -396,20 +328,14 @@ class Task(Model):
         and per TaskInvitation for each role and WFInstance
         """
         roles = self.get_roles()
-        if self.task_type == "A":
-            instances = self.create_wfinstance_for_each_role(roles)
-            instance_objects = self.object_type_package(instances)
-            self.create_task_invitation(instance_objects)
-        elif self.task_type == "B":
-            instances = self.create_wfinstance_for_all_role()
-            instance_objects = self.object_type_package(instances)
-            self.create_task_invitation(instance_objects, roles)
-        elif self.task_type == "C":
-            instance_objects = self.create_wfinstance_for_all_role()
-            self.create_task_invitation(instance_objects, roles)
-        else:
-            instance_objects = self.create_wfinstance_for_each_role(roles)
-            self.create_task_invitation(instance_objects)
+
+        if self.task_type in ["A", "D"]:
+            instances = self.create_wf_instances(roles=roles)
+            self.create_task_invitation(instances)
+
+        elif self.task_type in ["C", "B"]:
+            instances = self.create_wf_instances()
+            self.create_task_invitation(instances, roles)
 
     def get_object_query_dict(self):
         """returns objects keys according to self.object_query_code
@@ -417,7 +343,7 @@ class Task(Model):
          in the following format: ```"key=val, key2 = val2 , key3= value with spaces"```
 
         Returns:
-             dict. Queryset filtering dicqt
+             (dict): Queryset filtering dicqt
         """
         if isinstance(self.object_query_code, dict):
             # _DATE_ _DATETIME_
@@ -425,10 +351,11 @@ class Task(Model):
         else:
             # comma separated, key=value pairs. wrapping spaces will be ignored
             # eg: "key=val, key2 = val2 , key3= value with spaces"
-            return dict([map(str.strip, pair.split('='))
-                         for pair in self.object_query_code.split(',')])
+            return dict(
+                [map(str.strip, pair.split('=')) for pair in self.object_query_code.split(',')]
+            )
 
-    def get_object_keys(self, role=None):
+    def get_object_keys(self, wfi_role=None):
         """returns object keys according to task definition
         which can be explicitly selected one object (self.object_key) or
         result of a queryset filter.
@@ -441,31 +368,38 @@ class Task(Model):
         if self.object_query_code:
             model = model_registry.get_model(self.object_type)
             return [m.key for m in
-                    self.get_model_objects(model, role, **self.get_object_query_dict())]
+                    self.get_model_objects(model, wfi_role, **self.get_object_query_dict())]
 
-    def get_model_objects(self, model, query_role=None, **kw):
+    @staticmethod
+    def get_model_objects(model, wfi_role=None, **kwargs):
         """
-        model based on the search query in self.object.query.code
-        Example:
-            model: 'Program'
-            query_role: 'Test User Role'
-            **kw: {'role':'role'}
-        :return: model object datas: Program.objects.filter(role=role)
+        Fetches model objects by filtering with kwargs
+
+        If wfi_role is specified, then we expect kwargs contains a
+        filter value starting with role,
+
+        e.g. {'user': 'role.program.user'}
+
+        We replace this `role` key with role instance parameter `wfi_role` and try to get
+        object that filter value 'role.program.user' points by iterating `getattribute`. At
+        the end filter argument becomes {'user': user}.
+
+        Args:
+            model (Model): Model class
+            wfi_role (Role): role instance of wf instance
+            **kwargs: filter arguments
+
+        Returns:
+            (list): list of model object instances
         """
         query_dict = {}
-        for k, v in kw.items():
-            if not isinstance(v, int):
-                parse = v.split('.')
-            else:
-                parse = [v]
-            # We expect first query parse to be a role
-            # example: kw = {'user': 'role.program.user'} parse = ['role', 'program', 'user']
-            if self.task_type == "A" and query_role:
-                query_dict[k] = query_role
+        for k, v in kwargs.items():
+            parse = str(v).split('.')
+
+            if parse[0] == 'role' and wfi_role:
+                query_dict[k] = wfi_role
                 for i in range(1, len(parse)):
                     query_dict[k] = query_dict[k].__getattribute__(parse[i])
-            # if not, We expect the query code to be the only query.
-            # example : {'type': 1} or {'program_id': 'AQi1ipdAlby4jIiaWOyaMoMeKVW'}
             else:
                 query_dict[k] = parse[0]
 
@@ -507,33 +441,90 @@ class Task(Model):
 
         return roles
 
-    def check_task_type(self):
+    @property
+    def task_type(self):
+        """
+        Returns:
+            (string) a task type defined as below
+
+        "Type A":
+                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
+                `unit` recursively.
+
+                Objects are filtered by `object_type` and `object_query_code`. And relation between
+                objects and roles specified in object_query_code by `role` key.
+
+                    ```
+                    unit="A faculty",
+                    abstract_role="Lecturer",
+                    object_type="Class"
+                    object_query_code="lecturer_id='role.key'" # role means lecturer's current role.
+
+                    ```
+
+                "fields": ["unit", "abstract_role", "get_roles_from", "object_type",
+                           "object_query_code", "recursive"]
+        "Type B":
+                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
+                `unit` recursively.
+
+                Objects are filtered by `object_type` and `object_query_code`.
+
+                     ```
+                     unit="A faculty",
+                     abstract_role="Managers",
+                     object_type="Class"
+                     object_query_code="capacity>50"
+
+                     ```
+                "fields": ["unit", "abstract_role", "get_roles_from", "object_type",
+                           "object_query_code", "recursive"]
+
+        "Type C":
+                Roles are gathered from `get_roles_from` or `abstract_role` or intersection of both.
+
+                No objects are specified. This type of task is for wfs which are not dependent on
+                any object or unit, etc. e.g, periodic system management wf.
+
+                     ```
+                     abstract_role="Managers",
+
+                     ```
+                "fields": ["abstract_role", "get_roles_from"]
+
+        "Type D":
+                Roles are gathered from intersection of `get_roles_from`, `abstract_role` and
+                `unit` recursively.
+
+                No objects are specified. This type of task is for wfs which are not dependent on
+                any object, but unit. e.g, change timetable schedule, choose advisers
+                for department.
+
+                     ```
+                     unit="A faculty"
+                     abstract_role="Chief of Department",
+
+                     ```
+                "fields": ["unit", "abstract_role", "get_roles_from", "recursive"]
+        """
+
         if self.object_type:
-            if self.object_query_code:
-                query = self.get_object_query_dict()
-                for k, v in query.items():
-                    if not type(v) == int:
-                        parse = v.split('.')
-                    else:
-                        parse = [v]
-                    if parse[0] == 'role':
-                        self.task_type = "A"
-                        break
-                else:
-                    self.task_type = "B"
-            else:
-                self.task_type = "B"
+            return "A" if self.is_role_in_object_query_code() else "B"
         else:
-            if not self.unit.exist:
-                self.task_type = "C"
-            else:
-                self.task_type = "D"
+            return "C" if not self.unit.exist else "D"
+
+    def is_role_in_object_query_code(self):
+        query_code = self.get_object_query_dict()
+        for k, v in query_code.items():
+            parse = str(v).split('.')
+            if parse[0] == 'role':
+                return True
+        return False
 
     def post_save(self):
         """can be removed when a proper task manager admin interface implemented"""
         if self.run:
             self.run = False
-            self.check_task_type()
             self.create_tasks()
             self.save()
 
