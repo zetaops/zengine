@@ -422,10 +422,25 @@ class CrudView(BaseView):
         if self.object.Meta.list_fields:
             list_headers = []
             for f in self.object.Meta.list_fields:
-                if callable(getattr(self.object, f)):
+                if callable(getattr(self.object, f, None)):
                     list_headers.append(getattr(self.object, f).title)
+                elif "." in f:
+                    def attribute_name(obj, lst):
+                        i = 0
+                        cls = obj.get_link(field=lst[i])['mdl']
+                        if not hasattr(attrgetter(lst[i + 1])(cls), "get_link"):
+                            list_headers.append(cls.get_field(lst[i + 1]).title)
+                        else:
+                            try:
+                                return attribute_name(cls, lst=lst[i + 1:])
+                            except IndexError:
+                                cls = attrgetter(lst[i + 1])(cls).__class__
+                                list_headers.append(cls.Meta.verbose_name_plural)
+
+                    attribute_name(self.object, f.split("."))
+
                 else:
-                    list_headers.append(self.object._fields[f].title)
+                    list_headers.append(self.object.get_field(f).title)
             self.output['objects'].append(list_headers)
         else:
             self.output['objects'].append('-1')
@@ -497,7 +512,7 @@ class CrudView(BaseView):
                 elif callable(field):
                     field_str = field()
                 elif '.' in f:
-                    field_str = attrgetter(f)(obj)
+                    field_str = six.text_type(attrgetter(f)(obj))
                 else:
                     field_str = obj.get_humane_value(f)
                 result['fields'].append(field_str)
