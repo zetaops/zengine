@@ -52,7 +52,7 @@ class Program(Model):
 
     name = field.String()
     role = Role()
-    type = field.Integer()
+    typ = field.Integer()
 
     def __unicode__(self):
         return "%s" % self.name

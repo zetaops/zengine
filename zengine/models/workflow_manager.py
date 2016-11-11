@@ -251,10 +251,6 @@ class Task(Model):
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
     deliver_by_related_role = field.Boolean()
-<<<<<<< HEAD
-    task_type = field.String()
-=======
->>>>>>> db4920ecb9c1d20512486284fb2c5d5c90b8804d
 
     class Meta:
         verbose_name = "Workflow Task"
@@ -262,54 +258,6 @@ class Task(Model):
         search_fields = ['name']
         list_fields = ['name', ]
 
-<<<<<<< HEAD
-    def create_wfinstance_for_each_role(self, roles):
-        wfinstances = [WFInstance(wf=self.wf,
-                                  current_actor=role,
-                                  task=self,
-                                  name=self.wf.name) for role in roles]
-        if self.task_type == "D":
-            return [wfi.save() for wfi in wfinstances]
-
-        else:
-            return wfinstances
-
-    def create_wfinstance_for_all_role(self):
-        wfinstance = [WFInstance(wf=self.wf,
-                                  task=self,
-                                  name=self.wf.name)]
-        if self.task_type == "C":
-            return [wfi.save() for wfi in wfinstance]
-        else:
-            return wfinstance
-
-    def object_type_package(self, instances):
-        all_wfinstance = []
-        role = None
-        for wfi in instances:
-            if self.task_type == "A":
-                role = wfi.current_actor
-                keys = self.get_object_keys(role)
-            elif self.task_type == "B":
-                keys = self.get_object_keys()
-
-            all_wfinstance += [WFInstance(wf=self.wf,
-                                          current_actor=role,
-                                          task=self,
-                                          name=self.wf.name).save() for key in keys]
-        return all_wfinstance
-
-    def create_task_invitation(self, instances, roles=None):
-        for wfi in instances:
-            if self.task_type == "A" or self.task_type == 'D':
-                current_roles = [wfi.current_actor]
-            else:
-                current_roles = roles
-            [TaskInvitation(instance=wfi, role=role, wf_name=self.wf.name,
-                            progress=get_progress(start=self.start_date, finish=self.finish_date),
-                            start_date=self.start_date, finish_date=self.finish_date).save() for
-             role in current_roles]
-=======
     def create_wf_instances(self, roles=None):
         """
         Creates wf instances.
@@ -356,7 +304,9 @@ class Task(Model):
                         wf=self.wf,
                         current_actor=role,
                         task=self,
-                        name=self.wf.name
+                        name=self.wf.name,
+                        wf_object=key,
+                        wf_object_type=self.object_type
                     ).save() for key in keys]
                 )
 
@@ -446,14 +396,17 @@ class Task(Model):
         """
         query_dict = {}
         for k, v in kwargs.items():
-            parse = str(v).split('.')
-
-            if parse[0] == 'role' and wfi_role:
-                query_dict[k] = wfi_role
-                for i in range(1, len(parse)):
-                    query_dict[k] = query_dict[k].__getattribute__(parse[i])
+            if isinstance(v, list):
+                query_dict[k] = map(str, v)
             else:
-                query_dict[k] = parse[0]
+                parse = str(v).split('.')
+                if parse[0] == 'role' and wfi_role:
+                    query_dict[k] = wfi_role
+                    for i in range(1, len(parse)):
+                        query_dict[k] = query_dict[k].__getattribute__(parse[i])
+                else:
+                    query_dict[k] = parse[0]
+
 
         return model.objects.filter(**query_dict)
 

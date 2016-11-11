@@ -165,7 +165,7 @@ class TestCase(BaseTestCase):
         # selected model needed for workflow
         task.object_type = 'Program'   # Program model
         # model query code is written.
-        task.object_query_code = {'role': 'role'}
+        task.object_query_code = {'typ__in': [1, 2], 'role': 'role'}
         # set start and end time of the workflow
         task.start_date = datetime.strptime('05.05.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('06.05.2016', '%d.%m.%Y')
@@ -266,7 +266,7 @@ class TestCase(BaseTestCase):
         # selected model needed for workflow
         task.object_type = 'Program'   # Program model
         # model query code is written.
-        task.object_query_code = {'type': 1} # Program.objects.filter(type = 1)
+        task.object_query_code = {'typ': 1} # Program.objects.filter(type = 1)
         # set start and end time of the workflow
         task.start_date = datetime.strptime('08.08.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('09.08.2016', '%d.%m.%Y')
