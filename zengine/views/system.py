@@ -128,7 +128,11 @@ def get_tasks(current):
                      'start_date': string,  # start date
                      'finish_date': string,  # end date
 
-                     },]
+                     },],
+                'active_task_count': int,
+                'future_task_count': int,
+                'finished_task_count': int,
+                'expired_task_count': int,
                 }
         """
     # TODO: Also return invitations for user's other roles
@@ -171,6 +175,15 @@ def get_tasks(current):
             'wf_type': inv.wf_name,
             'state': inv.progress,
             'start_date': inv.instance.task.start_date.strftime(DATE_FORMAT),
-            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT)}
+            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT),
+            'description': inv.instance.wf.description,
+            'status': inv.ownership}
         for inv in queryset
         ]
+    task_inv_list = TaskInvitation.objects.filter(role_id=current.role_id)
+    current.output['task_count']= {
+        'active': task_inv_list.filter(progress__in=STATE_DICT['active']).count(),
+        'future' : task_inv_list.filter(progress=STATE_DICT['future']).count(),
+        'finished' : task_inv_list.filter(progress=STATE_DICT['finished']).count(),
+        'expired' : task_inv_list.filter(progress=STATE_DICT['expired']).count()
+    }
