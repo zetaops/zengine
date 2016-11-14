@@ -30,28 +30,39 @@ class AuthBackend(object):
         else:
             return User()
 
-    def set_user(self, user):
+    def set_user(self, user, role):
         """
-        Kullanıcı datasını session'a yazar.
+        Writes user data to session.
 
         Args:
-            user: User nesnesi
-
-        Returns:
+            user: User object
+            role: If user has last_active_role field,
+                  otherwise default role.
 
         """
-        user = user
         self.session['user_id'] = user.key
         self.session['user_data'] = user.clean_value()
 
         # TODO: this should be remembered from previous login
-        default_role = user.role_set[0].role
         # self.session['role_data'] = default_role.clean_value()
-        self.session['role_id'] = default_role.key
-        self.current.role_id = default_role.key
+        self.session['role_id'] = role.key
+        self.current.role_id = role.key
         self.current.user_id = user.key
-        # self.perm_cache = PermissionCache(default_role.key)
-        self.session['permissions'] = default_role.get_permissions()
+        # self.perm_cache = PermissionCache(role.key)
+        self.session['permissions'] = role.get_permissions()
+
+    def find_user_role(self, user):
+        """
+        If exist, during login operation, role is taken from user's last_login_role field.
+        Otherwise, user's default role is chosen.
+
+        Args:
+            user: User object
+
+        """
+        user_role = user.last_login_role() if user.last_login_role_key else user.role_set[0].role
+
+        self.set_user(user, user_role)
 
     def get_role(self):
         # TODO: This should work
@@ -69,7 +80,7 @@ class AuthBackend(object):
             user = User.objects.filter(username=username).get()
             is_login_ok = user.check_password(password)
             if is_login_ok:
-                self.set_user(user)
+                self.find_user_role(user)
             return is_login_ok
         except ObjectDoesNotExist:
             pass
