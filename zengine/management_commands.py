@@ -536,92 +536,78 @@ class CheckList(Command):
     PARAMS = []
 
     def run(self):
+        self.check_encoding_and_env()
         self.check_mq_connection()
-        self.check_redis()
         self.check_riak()
+        self.check_redis()
         self.check_migration_and_solr()
 
     def check_migration_and_solr(self):
-        from pyoko.db.schema_update import SchemaUpdater, fake_context, get_schema_from_solr, wait_for_schema_creation
+        from pyoko.db.schema_update import SchemaUpdater
+        from socket import error as socket_error
+        from pyoko.model import model_registry
         from pyoko.conf import settings
         from importlib import import_module
-        from socket import error as socket_error
-        import time
+
+        import_module(settings.MODELS_MODULE)
 
         try:
-            time.sleep(1)
-            import_module(settings.MODELS_MODULE)
-            registry = import_module('pyoko.model').model_registry
-            updater = SchemaUpdater(registry, 'all', 1, False)
+            print "Checking migration and solr ..."
+            updater = SchemaUpdater(model_registry, 'all', 1, False)
+            updater.run(True)
 
-            models = [model for model in updater.registry.get_base_models()
-                      if updater.bucket_names[0] == 'all' or
-                      model.__name__.lower() in updater.bucket_names]
-            num_models = len(models)
-            pack_size = int(num_models / updater.threads) or 1
-            n_val = updater.client.bucket_type(settings.DEFAULT_BUCKET_TYPE).get_property('n_val')
-            updater.client.create_search_index('foo_index', '_yz_default', n_val=n_val)
-            for i in range(0, num_models, pack_size):
-                job_pack = []
-                for model in models[i:i + pack_size]:
-                    ins = model(fake_context)
-                    fields = updater.get_schema_fields(ins._collect_index_fields())
-                    new_schema = updater.compile_schema(fields)
-                    job_pack.append((new_schema, model))
-
-                for new_schema, model in job_pack:
-                    bucket_name = model._get_bucket_name()
-                    index_name = "%s_%s" % (settings.DEFAULT_BUCKET_TYPE, bucket_name)
-                    get_schema_from_solr(index_name)
-                    if not get_schema_from_solr(index_name) == new_schema:
-                        print ("%s modelin update edilmesi lazim." % index_name)
         except socket_error as e:
-            print "Error not connected, open redis and rabbitmq"
+            print "Error not connected, open redis and rabbitmq - False"
 
     def check_redis(self):
-        import redis
+        from pyoko.db.connection import cache
         from redis.exceptions import ConnectionError
-        # for local server
+
         try:
-            redis_client = redis.Redis()
-            redis_client.ping()
-            print "Redis is open",
+            cache.ping()
+            print "Redis Checked - True"
         except ConnectionError as e:
-            print "Redis is Closed!", e.message
+            print "Redis Checked - False", e.message
 
     def check_riak(self):
-        import riak
+        from pyoko.db.connection import client
         from socket import error as socket_error
-        # for local server
+
         try:
-            riak_client = riak.RiakClient(protocol='pbc', riak_host='localhost', pb_port='8087')
-            riak_client.ping()
-            print "Riak is open"
+            if client.ping():
+                print "Riak Checked - True"
+            else:
+                print "Riak Checked - False"
         except socket_error as e:
-            print "Riak is Closed!", e.message
+            print "Riak Checked False", e.message
 
     def check_mq_connection(self):
         import pika
-        from pyoko.conf import settings
+        from zengine.client_queue import BLOCKING_MQ_PARAMS
         from pika.exceptions import ProbableAuthenticationError, ConnectionClosed
-
-        BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
-            host=settings.MQ_HOST,
-            port=settings.MQ_PORT,
-            virtual_host=settings.MQ_VHOST,
-            heartbeat_interval=0,
-            credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
-        )
 
         try:
             connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
             channel = connection.channel()
             if channel.is_open:
-                print "RabbitMQ is open"
-            else:
-                print "RabbitMQ is not open!!!"
+                print "RabbitMQ Checked - True"
+            elif self.channel.is_closed or self.channel.is_closing:
+                print "RabbitMQ Checked - False"
         except ConnectionClosed as e:
             print "RabbitMQ is not open!!!", e
         except ProbableAuthenticationError as e:
-            print "RabbitMQ username and password wrong"
+            print "RabbitMQ username and password wrong - False"
 
+    def check_encoding_and_env(self):
+        import sys
+        import os
+        if sys.getfilesystemencoding() == 'UTF-8':
+            print "File system encoding Checked - True"
+        else:
+            print "File system encoding Checked - False"
+        check_env_list = ['PYTHONIOENCODING', 'RIAK_PROTOCOL', 'RIAK_SERVER', 'RIAK_PORT', 'REDIS_SERVER', 'USER',
+                          'DEFAULT_BUCKET_TYPE', 'PYOKO_SETTINGS']
+        env = os.environ
+        for k, v in env.items():
+            if k in check_env_list:
+                print "{} : {}".format(k, v)
