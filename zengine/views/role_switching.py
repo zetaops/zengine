@@ -7,7 +7,6 @@
 from zengine.views.crud import CrudView
 from zengine.forms import JsonForm
 from zengine.forms import fields
-from pyoko import ListNode
 from ulakbus.models import Role
 from zengine.lib.translation import gettext as _
 from ulakbus.models.auth import AuthBackend
@@ -24,10 +23,12 @@ class RoleSwitching(CrudView):
         """
 
         _form = JsonForm(current=self.current, title=_(u"Switch Role"))
-        _form.help_text = "Your current role: %s %s" %(self.current.role.unit.name,self.current.role.abstract_role.name)
+        _form.help_text = "Your current role: %s %s" % (self.current.role.unit.name,
+                                                        self.current.role.abstract_role.name)
         _choices = get_user_roles(self.current.user, self.current.role)
         _form.role_options = fields.Integer(_(u"Please, choose the role you want to switch:")
-                                            ,choices=_choices, default=_choices[0][0],required=True)
+                                            , choices=_choices, default=_choices[0][0],
+                                            required=True)
         _form.switch = fields.Button(_(u"Switch"))
         self.form_out(_form)
 
@@ -49,6 +50,7 @@ class RoleSwitching(CrudView):
         # Dashboard is reloaded according to user's new role.
         self.current.output['cmd'] = 'reload'
 
+
 def get_user_roles(user, current_role):
     """
 
@@ -56,5 +58,7 @@ def get_user_roles(user, current_role):
     :return: user's role list except current role, for switchable role options
              at role choosing screen.
     """
-    return [(role_set.role.key,'%s %s' %(role_set.role.unit.name,role_set.role.abstract_role.name)) for role_set in user.role_set
-            if role_set.role != current_role]
+    return [
+        (role_set.role.key, '%s %s' % (role_set.role.unit.name, role_set.role.abstract_role.name))
+        for role_set in user.role_set
+        if role_set.role != current_role]
