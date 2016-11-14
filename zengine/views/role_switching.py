@@ -13,16 +13,6 @@ from zengine.lib.translation import gettext as _
 from ulakbus.models.auth import AuthBackend
 
 
-class RoleForm(JsonForm):
-    class Meta:
-        inline_edit = ['choice']
-
-    class RoleList(ListNode):
-        choice = fields.Boolean(_(u"Choice"), type="checkbox")
-        role = fields.String(_(u'User Role'), index=True)
-        key = fields.String(hidden=True)
-
-
 class RoleSwitching(CrudView):
     """
     Switches current user's role.
@@ -33,11 +23,11 @@ class RoleSwitching(CrudView):
         Lists user roles as selectable except user's current role.
         """
 
-        _form = RoleForm(current=self.current, title=_(u"Switch Role"))
-        _form.help_text = "Your current role: %s" % self.current.role.abstract_role.name
-
-        for role in get_user_roles(self.current.user, self.current.role):
-            _form.RoleList(choice=False, role=role.abstract_role.name, key=role.key)
+        _form = JsonForm(current=self.current, title=_(u"Switch Role"))
+        _form.help_text = "Your current role: %s %s" %(self.current.role.unit.name,self.current.role.abstract_role.name)
+        _choices = get_user_roles(self.current.user, self.current.role)
+        _form.role_options = fields.Integer(_(u"Please, choose the role you want to switch:")
+                                            ,choices=_choices, default=_choices[0][0],required=True)
         _form.switch = fields.Button(_(u"Switch"))
         self.form_out(_form)
 
@@ -47,7 +37,7 @@ class RoleSwitching(CrudView):
         """
 
         # Get chosen role_key from user form.
-        role_key = get_chosen_role_key(self.input['form'])
+        role_key = self.input['form']['role_options']
         # Get chosen role.
         role = Role.objects.get(role_key)
         # Assign chosen switch role key to user's last_login_role_key field
@@ -59,16 +49,6 @@ class RoleSwitching(CrudView):
         # Dashboard is reloaded according to user's new role.
         self.current.output['cmd'] = 'reload'
 
-
-def get_chosen_role_key(form):
-    """
-
-    :param form: the form which is coming from user.
-    :return: chosen role's key.
-    """
-    return [role['key'] for role in form['RoleList'] if role['choice']][0]
-
-
 def get_user_roles(user, current_role):
     """
 
@@ -76,4 +56,5 @@ def get_user_roles(user, current_role):
     :return: user's role list except current role, for switchable role options
              at role choosing screen.
     """
-    return [role_set.role for role_set in user.role_set if role_set.role != current_role]
+    return [(role_set.role.key,'%s %s' %(role_set.role.unit.name,role_set.role.abstract_role.name)) for role_set in user.role_set
+            if role_set.role != current_role]
