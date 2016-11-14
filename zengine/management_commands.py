@@ -23,7 +23,6 @@ from babel.messages import frontend as babel_frontend
 from babel.messages.extract import DEFAULT_KEYWORDS as BABEL_DEFAULT_KEYWORDS
 
 
-
 class UpdatePermissions(Command):
     """
     Gets permissions from
@@ -407,7 +406,6 @@ class ClearQueues(Command):
         worker.clear_queue()
 
 
-
 class ListSysViews(Command):
     """
     Lists non-workflow system and development views
@@ -431,8 +429,6 @@ class ListSysViews(Command):
             print("|_ %s" % file)
             for view in views:
                 print("  |_   %s" % view)
-
-
 
 
 class LoadDiagrams(Command):
@@ -532,3 +528,100 @@ class LoadDiagrams(Command):
             for f in glob.glob("%s/*.bpmn" % pth):
                 with open(f) as fp:
                     yield os.path.basename(os.path.splitext(f)[0]), fp.read()
+
+
+class CheckList(Command):
+    CMD_NAME = 'check_list'
+    HELP = ""
+    PARAMS = []
+
+    def run(self):
+        self.check_mq_connection()
+        self.check_redis()
+        self.check_riak()
+        self.check_migration_and_solr()
+
+    def check_migration_and_solr(self):
+        from pyoko.db.schema_update import SchemaUpdater, fake_context, get_schema_from_solr, wait_for_schema_creation
+        from pyoko.conf import settings
+        from importlib import import_module
+        from socket import error as socket_error
+        import time
+
+        try:
+            time.sleep(1)
+            import_module(settings.MODELS_MODULE)
+            registry = import_module('pyoko.model').model_registry
+            updater = SchemaUpdater(registry, 'all', 1, False)
+
+            models = [model for model in updater.registry.get_base_models()
+                      if updater.bucket_names[0] == 'all' or
+                      model.__name__.lower() in updater.bucket_names]
+            num_models = len(models)
+            pack_size = int(num_models / updater.threads) or 1
+            n_val = updater.client.bucket_type(settings.DEFAULT_BUCKET_TYPE).get_property('n_val')
+            updater.client.create_search_index('foo_index', '_yz_default', n_val=n_val)
+            for i in range(0, num_models, pack_size):
+                job_pack = []
+                for model in models[i:i + pack_size]:
+                    ins = model(fake_context)
+                    fields = updater.get_schema_fields(ins._collect_index_fields())
+                    new_schema = updater.compile_schema(fields)
+                    job_pack.append((new_schema, model))
+
+                for new_schema, model in job_pack:
+                    bucket_name = model._get_bucket_name()
+                    index_name = "%s_%s" % (settings.DEFAULT_BUCKET_TYPE, bucket_name)
+                    get_schema_from_solr(index_name)
+                    if not get_schema_from_solr(index_name) == new_schema:
+                        print ("%s modelin update edilmesi lazim." % index_name)
+        except socket_error as e:
+            print "Error not connected, open redis and rabbitmq"
+
+    def check_redis(self):
+        import redis
+        from redis.exceptions import ConnectionError
+        # for local server
+        try:
+            redis_client = redis.Redis()
+            redis_client.ping()
+            print "Redis is open",
+        except ConnectionError as e:
+            print "Redis is Closed!", e.message
+
+    def check_riak(self):
+        import riak
+        from socket import error as socket_error
+        # for local server
+        try:
+            riak_client = riak.RiakClient(protocol='pbc', riak_host='localhost', pb_port='8087')
+            riak_client.ping()
+            print "Riak is open"
+        except socket_error as e:
+            print "Riak is Closed!", e.message
+
+    def check_mq_connection(self):
+        import pika
+        from pyoko.conf import settings
+        from pika.exceptions import ProbableAuthenticationError, ConnectionClosed
+
+        BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
+            host=settings.MQ_HOST,
+            port=settings.MQ_PORT,
+            virtual_host=settings.MQ_VHOST,
+            heartbeat_interval=0,
+            credentials=pika.PlainCredentials(settings.MQ_USER, settings.MQ_PASS)
+        )
+
+        try:
+            connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+            channel = connection.channel()
+            if channel.is_open:
+                print "RabbitMQ is open"
+            else:
+                print "RabbitMQ is not open!!!"
+        except ConnectionClosed as e:
+            print "RabbitMQ is not open!!!", e
+        except ProbableAuthenticationError as e:
+            print "RabbitMQ username and password wrong"
+
