@@ -9,7 +9,8 @@
 
 
 from zengine.lib.test_utils import BaseTestCase
-from .models import Task, BPMNWorkflow, Unit, AbstractRole, User, TaskInvitation, WFInstance, Role, Teacher
+from .models import Task, BPMNWorkflow, Unit, AbstractRole, User, TaskInvitation, WFInstance, Role, \
+    Teacher
 from datetime import datetime, timedelta
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
@@ -17,8 +18,8 @@ import time
 
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
 
-class TestCase(BaseTestCase):
 
+class TestCase(BaseTestCase):
     def test_workflow_management_state_finished(self):
 
         usr = User.objects.get(username='test_user')
@@ -44,18 +45,21 @@ class TestCase(BaseTestCase):
         # We control the get_tasks view
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
         assert resp.json['task_list'][0]['title'] == 'workflow_management'
-        assert resp.json['task_list'][0]['description'] == 'Test workflow management bpmn description'
+        assert resp.json['task_list'][0][
+                   'description'] == 'Test workflow management bpmn description'
         assert resp.json['task_count']['finished'] == finished_task_count + 1
 
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
-        instance_key = resp.json['task_list'][0]['token']   # WFInstance key
+        instance_key = resp.json['task_list'][0]['token']  # WFInstance key
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
-        assert len(resp.json['task_types']) == 8
+        assert len(resp.json['task_types']) == len(
+            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+             if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_workflow_management_state_active(self):
 
@@ -76,7 +80,7 @@ class TestCase(BaseTestCase):
         task.unit = Unit.objects.get(name="Test Unit")
         task.abstract_role = AbstractRole.objects.get(name='Test AbstractRole')
         task.role = Role.objects.get(user=usr)
-        task.object_type = 'Exam'   # Exam model
+        task.object_type = 'Exam'  # Exam model
         # search operation is done in Exam model
         task.object_query_code = {'teacher_id': Teacher.objects.filter()[0].key}
         task.start_date = datetime.strptime(yesterday.strftime("%d.%m.%Y"), '%d.%m.%Y')
@@ -93,18 +97,21 @@ class TestCase(BaseTestCase):
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
         assert resp.json['task_list'][0]['title'] == 'workflow_management'
         assert resp.json['task_list'][0]['state'] == 30
-        assert resp.json['task_list'][0]['description'] == 'Test workflow management bpmn description'
+        assert resp.json['task_list'][0][
+                   'description'] == 'Test workflow management bpmn description'
         assert resp.json['task_count']['active'] == active_task_count + 1
 
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
-        instance_key = resp.json['task_list'][0]['token']   # WFInstance key
+        instance_key = resp.json['task_list'][0]['token']  # WFInstance key
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
         assert len(resp.json['actions'][0]) == 2
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
-        assert len(resp.json['task_types']) == 8
+        assert len(resp.json['task_types']) == len(
+            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+             if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_workflow_management_state_future(self):
 
@@ -136,11 +143,12 @@ class TestCase(BaseTestCase):
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
         assert resp.json['task_list'][0]['title'] == 'workflow_management'
         assert resp.json['task_list'][0]['state'] == 10
-        assert resp.json['task_list'][0]['description'] == 'Test workflow management bpmn description'
+        assert resp.json['task_list'][0][
+                   'description'] == 'Test workflow management bpmn description'
         assert resp.json['task_count']['future'] == future_task_count + 1
 
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
-        instance_key = resp.json['task_list'][0]['token']   # WFInstance key
+        instance_key = resp.json['task_list'][0]['token']  # WFInstance key
 
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
@@ -148,7 +156,9 @@ class TestCase(BaseTestCase):
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
-        assert len(resp.json['task_types']) == 8
+        assert len(resp.json['task_types']) == len(
+            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+             if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_object_and_query_task_manager(self):
         # We send the object. Individual workflow assignment method to sub roles
@@ -163,7 +173,7 @@ class TestCase(BaseTestCase):
         # abstract role is chosen
         task.abstract_role = AbstractRole.objects.get(name='Test AbstractRole')
         # selected model needed for workflow
-        task.object_type = 'Program'   # Program model
+        task.object_type = 'Program'  # Program model
         # model query code is written.
         task.object_query_code = {'typ__in': [1, 2], 'role': 'role'}
         # set start and end time of the workflow
@@ -264,9 +274,9 @@ class TestCase(BaseTestCase):
         # the selected abstract role for workflow
         task.get_roles_from = 'get_test_role'
         # selected model needed for workflow
-        task.object_type = 'Program'   # Program model
+        task.object_type = 'Program'  # Program model
         # model query code is written.
-        task.object_query_code = {'typ': 1} # Program.objects.filter(type = 1)
+        task.object_query_code = {'typ': 1}  # Program.objects.filter(type = 1)
         # set start and end time of the workflow
         task.start_date = datetime.strptime('08.08.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('09.08.2016', '%d.%m.%Y')
@@ -284,4 +294,3 @@ class TestCase(BaseTestCase):
         for w in wfi:
             inv += TaskInvitation.objects.filter(instance=w)
         assert len(inv) == 6
-
