@@ -30,19 +30,17 @@ class AuthBackend(object):
         else:
             return User()
 
-    def set_user(self, user, role):
+    def set_user(self, user):
         """
         Writes user data to session.
 
         Args:
             user: User object
-            role: If user has last_active_role field,
-                  otherwise default role.
 
         """
         self.session['user_id'] = user.key
         self.session['user_data'] = user.clean_value()
-
+        role = self.get_role()
         # TODO: this should be remembered from previous login
         # self.session['role_data'] = default_role.clean_value()
         self.session['role_id'] = role.key
@@ -51,22 +49,15 @@ class AuthBackend(object):
         # self.perm_cache = PermissionCache(role.key)
         self.session['permissions'] = role.get_permissions()
 
-    def find_user_role(self, user):
+    def get_role(self):
         """
         If exist, during login operation, role is taken from user's last_login_role field.
         Otherwise, user's default role is chosen.
-
-        Args:
-            user: User object
-
         """
-        user_role = user.last_login_role() if user.last_login_role_key else user.role_set[0].role
-
-        self.set_user(user, user_role)
-
-    def get_role(self):
         # TODO: This should work
-        return self.get_user().role_set[0].role
+        user = self.get_user()
+        user_role = user.last_login_role() if user.last_login_role_key else user.role_set[0].role
+        return user_role
 
     def get_permissions(self):
         return self.get_user().get_permissions()
@@ -80,7 +71,7 @@ class AuthBackend(object):
             user = User.objects.filter(username=username).get()
             is_login_ok = user.check_password(password)
             if is_login_ok:
-                self.find_user_role(user)
+                self.set_user(user)
             return is_login_ok
         except ObjectDoesNotExist:
             pass

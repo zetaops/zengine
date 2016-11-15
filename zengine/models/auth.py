@@ -96,6 +96,7 @@ class User(Model, BaseUser):
                                    default=settings.DEFAULT_LOCALIZATION_FORMAT)
     locale_number = field.String(_(u"Preferred Number Format"), index=False,
                                  default=settings.DEFAULT_LOCALIZATION_FORMAT)
+    last_login_role_key = field.String(_(u"Last Login Role Key"))
     unit = Unit()
 
     class Meta:
@@ -110,6 +111,9 @@ class User(Model, BaseUser):
 
     def post_creation(self):
         self.prepare_channels()
+
+    def last_login_role(self):
+        return Role.objects.get(self.last_login_role_key)
 
     def get_permissions(self):
         """

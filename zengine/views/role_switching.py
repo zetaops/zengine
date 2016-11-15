@@ -7,9 +7,8 @@
 from zengine.views.crud import CrudView
 from zengine.forms import JsonForm
 from zengine.forms import fields
-from ulakbus.models import Role
 from zengine.lib.translation import gettext as _
-from ulakbus.models.auth import AuthBackend
+from zengine.auth.auth_backend import AuthBackend
 
 
 class RoleSwitching(CrudView):
@@ -21,7 +20,6 @@ class RoleSwitching(CrudView):
         """
         Lists user roles as selectable except user's current role.
         """
-
         _form = JsonForm(current=self.current, title=_(u"Switch Role"))
         _form.help_text = "Your current role: %s %s" % (self.current.role.unit.name,
                                                         self.current.role.abstract_role.name)
@@ -39,14 +37,12 @@ class RoleSwitching(CrudView):
 
         # Get chosen role_key from user form.
         role_key = self.input['form']['role_options']
-        # Get chosen role.
-        role = Role.objects.get(role_key)
         # Assign chosen switch role key to user's last_login_role_key field
         self.current.user.last_login_role_key = role_key
         self.current.user.save()
         auth = AuthBackend(self.current)
         # According to user's new role, user's session set again.
-        auth.set_user(self.current.user, role)
+        auth.set_user(self.current.user)
         # Dashboard is reloaded according to user's new role.
         self.current.output['cmd'] = 'reload'
 
@@ -55,8 +51,7 @@ def get_user_roles(user, current_role):
     """
 
     :param user: User object
-    :return: user's role list except current role, for switchable role options
-             at role choosing screen.
+    :return: user's role list except current role
     """
     return [
         (role_set.role.key, '%s %s' % (role_set.role.unit.name, role_set.role.abstract_role.name))
