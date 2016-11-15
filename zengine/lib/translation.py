@@ -31,7 +31,6 @@ The monkey patching is performed because inheriting LazyProxy causes
 infinite recursion due to the override of __getattr__ method of LazyProxy.
 """
 
-
 DEFAULT_PREFS = {
     'locale_language': settings.DEFAULT_LANG,
     'locale_datetime': settings.DEFAULT_LOCALIZATION_FORMAT,
@@ -54,7 +53,9 @@ def _load_translations():
                 catalog = gettextlib.NullTranslations()
             else:
                 # For other languages, we need to insert the translations
-                log.debug('Loading translation of language {lang} for {domain}'.format(lang=language, domain=domain))
+                log.debug(
+                    'Loading translation of language {lang} for {domain}'.format(
+                        lang=language, domain=domain))
                 try:
                     catalog = gettextlib.translation(
                         domain=domain,
@@ -64,7 +65,8 @@ def _load_translations():
                     )
                 except IOError:
                     log.error('Translations for language {lang} for {domain} not found! '
-                              'Falling back to default language!'.format(lang=language, domain=domain))
+                              'Falling back to default language!'.format(lang=language,
+                                                                         domain=domain))
                     catalog = gettextlib.NullTranslations()
             translations[domain] = catalog
         all_translations[language] = translations
@@ -72,9 +74,12 @@ def _load_translations():
 
 
 class InstalledLocale(object):
-    language = ''  # Force the first language install to swap out the initial NullTranslations of `_active_catalogs`
+    # Force the first language install to swap out the
+    # initial NullTranslations of `_active_catalogs`
+    language = ''
+
     datetime = DEFAULT_PREFS['locale_datetime']
-    number   = DEFAULT_PREFS['locale_number']
+    number = DEFAULT_PREFS['locale_number']
     # Until ZEngine runs and translations get installed (i.e. when using the shell),
     # just show untranslated messages for everything
     _active_catalogs = defaultdict(gettextlib.NullTranslations)
@@ -110,6 +115,7 @@ class InstalledLocale(object):
 
         If the locale specified is already installed for the selected type, then this is a no-op.
         """
+
         # Skip if the locale is already installed
         if locale_code == getattr(cls, locale_type):
             return
@@ -130,18 +136,22 @@ def gettext(message, domain=DEFAULT_DOMAIN):
     All messages in the application that are translateable should be wrapped with this function.
     When importing this function, it should be renamed to '_'. For example:
 
-    >>> from zengine.lib.translation import gettext as _
-    >>> print(_('Hello, world!'))
-    Merhaba, dünya!
+    .. code-block:: python
+
+        from zengine.lib.translation import gettext as _
+        print(_('Hello, world!'))
+        'Merhaba, dünya!'
 
     For the messages that will be formatted later on, instead of using the position-based
     formatting, key-based formatting should be used. This gives the translator an idea what
     the variables in the format are going to be, and makes it possible for the translator
     to reorder the variables. For example:
 
-    >>> name, number = 'Elizabeth', 'II'
-    >>> _('Queen %(name)s %(number)s') % {'name': name, 'number': number}
-    Kraliçe II. Elizabeth
+    .. code-block:: python
+
+        name, number = 'Elizabeth', 'II'
+        _('Queen %(name)s %(number)s') % {'name': name, 'number': number}
+        'Kraliçe II. Elizabeth'
 
     The message returned by this function depends on the language of the current user.
     If this function is called before a language is installed (which is normally done
@@ -152,18 +162,22 @@ def gettext(message, domain=DEFAULT_DOMAIN):
     be marked as unicode. Otherwise, python will not be able to correctly match these
     messages with translations. For example:
 
-    >>> print(_('Café'))
-    Café
-    >>> print(_(u'Café'))
-    Kahve
+    .. code-block:: python
+
+        print(_('Café'))
+        'Café'
+        print(_(u'Café'))
+        'Kahve'
 
     Args:
-        message (unicode): The input message.
+        message (basestring, unicode): The input message.
         domain (basestring): The domain of the message. Defaults to 'messages', which
             is the domain where all application messages should be located.
+
     Returns:
         unicode: The translated message.
     """
+
     if six.PY2:
         return InstalledLocale._active_catalogs[domain].ugettext(message)
     else:
@@ -171,7 +185,7 @@ def gettext(message, domain=DEFAULT_DOMAIN):
 
 
 def gettext_lazy(message, domain=DEFAULT_DOMAIN):
-    """Mark a message as translateable, but delay the translation until the message is used.
+    """Mark a message as translatable, but delay the translation until the message is used.
 
     Sometimes, there are some messages that need to be translated, but the translation
     can't be done at the point the message itself is written. For example, the names of
@@ -179,23 +193,28 @@ def gettext_lazy(message, domain=DEFAULT_DOMAIN):
     the translation would be done when the file is imported, long before a user even connects.
     To avoid this, `gettext_lazy` should be used. For example:
 
-    >>> from zengine.lib.translation import gettext_lazy, InstalledLocale
-    >>> from pyoko import model, fields
-    >>> class User(model.Model):,
-    ...     name = fields.String(gettext_lazy('User Name'))
-    >>> print(User.name.title)
-    User Name
-    >>> InstalledLocale.install_language('tr')
-    >>> print(User.name.title)
-    Kullanıcı Adı
+
+    .. code-block:: python
+
+        from zengine.lib.translation import gettext_lazy, InstalledLocale
+        from pyoko import model, fields
+        class User(model.Model):
+             name = fields.String(gettext_lazy('User Name'))
+        print(User.name.title)
+        'User Name'
+        
+        InstalledLocale.install_language('tr')
+        print(User.name.title)
+        'Kullanıcı Adı'
 
     Args:
-        message (unicode): The input message.
+        message (basestring, unicode): The input message.
         domain (basestring): The domain of the message. Defaults to 'messages', which
             is the domain where all application messages should be located.
     Returns:
         unicode: The translated message, with the translation itself being delayed until
             the text is actually used.
+
     """
     return LazyProxy(gettext, message, domain=domain, enable_cache=False)
 
@@ -206,24 +225,32 @@ def ngettext(singular, plural, n, domain=DEFAULT_DOMAIN):
     Some messages may need to change based on a number. For example, consider a message
     like the following:
 
-    >>> def alert_msg(msg_count): print('You have %d %s' % (msg_count, 'message' if msg_count == 1 else 'messages'))
-    >>> alert_msg(1)
-    You have 1 message
-    >>> alert_msg(5)
-    You have 5 messages
+    .. code-block:: python
+
+        def alert_msg(msg_count): print(
+        'You have %d %s' % (msg_count, 'message' if msg_count == 1 else 'messages'))
+
+        alert_msg(1)
+        'You have 1 message'
+        alert_msg(5)
+        'You have 5 messages'
 
     To translate this message, you can use ngettext to consider the plural forms:
 
-    >>> from zengine.lib.translation import ngettext
-    >>> def alert_msg(msg_count): print(ngettext('You have %(count)d message',
-    ...                                          'You have %(count)d messages',
-    ...                                          msg_count) % {'count': msg_count})
-    >>> alert_msg(1)
-    1 mesajınız var
-    >>> alert_msg(5)
-    5 mesajlarınız var
+    .. code-block:: python
 
-    When doing formatting, both singular and plural forms of the message should have the exactly same variables.
+        from zengine.lib.translation import ngettext
+        def alert_msg(msg_count): print(ngettext('You have %(count)d message',
+                                                 'You have %(count)d messages',
+                                                 msg_count) % {'count': msg_count})
+        alert_msg(1)
+        '1 mesajınız var'
+
+        alert_msg(5)
+        '5 mesajlarınız var'
+
+    When doing formatting, both singular and plural forms of the message should
+    have the exactly same variables.
 
     Args:
         singular (unicode): The singular form of the message.
@@ -233,7 +260,9 @@ def ngettext(singular, plural, n, domain=DEFAULT_DOMAIN):
             is the domain where all application messages should be located.
     Returns:
         unicode: The correct pluralization, translated.
+
     """
+
     if six.PY2:
         return InstalledLocale._active_catalogs[domain].ungettext(singular, plural, n)
     else:
@@ -241,7 +270,8 @@ def ngettext(singular, plural, n, domain=DEFAULT_DOMAIN):
 
 
 def ngettext_lazy(singular, plural, n, domain=DEFAULT_DOMAIN):
-    """Mark a message with plural forms translateable, and delay the translation until the message is used.
+    """Mark a message with plural forms translateable, and delay the translation
+    until the message is used.
 
     Works the same was a `ngettext`, with a delaying functionality similiar to `gettext_lazy`.
 
@@ -249,10 +279,11 @@ def ngettext_lazy(singular, plural, n, domain=DEFAULT_DOMAIN):
         singular (unicode): The singular form of the message.
         plural (unicode): The plural form of the message.
         n (int): The number that is used to decide which form should be used.
-        locale (basestring): The domain of the message. Defaults to 'messages', which
-            is the domain where all application messages should be located.
+        domain (basestring): The domain of the message. Defaults to 'messages', which
+                             is the domain where all application messages should be located.
     Returns:
-        unicode: The correct pluralization, with the translation being delayed until the message is used.
+        unicode: The correct pluralization, with the translation being
+                 delayed until the message is used.
     """
     return LazyProxy(ngettext, singular, plural, n, domain=domain, enable_cache=False)
 
@@ -295,9 +326,12 @@ def markonly(message):
 
 
 def _wrap_locale_formatter(fn, locale_type):
-    """Wrap a Babel data formatting function to automatically format for currently installed locale."""
+    """Wrap a Babel data formatting function to automatically format
+    for currently installed locale."""
+
     def wrapped_locale_formatter(*args, **kwargs):
-        """A Babel formatting function, wrapped to automatically use the currently installed language.
+        """A Babel formatting function, wrapped to automatically use the
+        currently installed language.
 
         The wrapped function will not throw any exceptions for unknown locales,
         if Babel doesn't recognise the locale, we will simply fall back to
@@ -314,30 +348,36 @@ def _wrap_locale_formatter(fn, locale_type):
         try:
             formatted = fn(*args, **kwargs_)
         except UnknownLocaleError:
-            log.warning('Can\'t do formatting for language code {locale}, falling back to default {default}'.format(
-                locale=kwargs_['locale'], default=settings.DEFAULT_LANG))
+            log.warning(
+                """Can\'t do formatting for language code {locale},
+                           falling back to default {default}""".format(
+                    locale=kwargs_['locale'],
+                    default=settings.DEFAULT_LANG)
+            )
             kwargs_['locale'] = settings.DEFAULT_LANG
             formatted = fn(*args, **kwargs_)
         return formatted
+
     return wrapped_locale_formatter
 
+
 # Date and Time
-format_date =       _wrap_locale_formatter(dates.format_date, 'datetime')
-format_datetime =   _wrap_locale_formatter(dates.format_datetime, 'datetime')
-format_interval =   _wrap_locale_formatter(dates.format_interval, 'datetime')
-format_time =       _wrap_locale_formatter(dates.format_time, 'datetime')
-format_timedelta =  _wrap_locale_formatter(dates.format_timedelta, 'datetime')
+format_date = _wrap_locale_formatter(dates.format_date, 'datetime')
+format_datetime = _wrap_locale_formatter(dates.format_datetime, 'datetime')
+format_interval = _wrap_locale_formatter(dates.format_interval, 'datetime')
+format_time = _wrap_locale_formatter(dates.format_time, 'datetime')
+format_timedelta = _wrap_locale_formatter(dates.format_timedelta, 'datetime')
 get_timezone_name = _wrap_locale_formatter(dates.get_timezone_name, 'datetime')
-get_day_names =     _wrap_locale_formatter(dates.get_day_names, 'datetime')
-get_month_names =   _wrap_locale_formatter(dates.get_month_names, 'datetime')
+get_day_names = _wrap_locale_formatter(dates.get_day_names, 'datetime')
+get_month_names = _wrap_locale_formatter(dates.get_month_names, 'datetime')
 
 # Number
-format_decimal =    _wrap_locale_formatter(numbers.format_decimal, 'number')
-format_number =     _wrap_locale_formatter(numbers.format_number, 'number')
+format_decimal = _wrap_locale_formatter(numbers.format_decimal, 'number')
+format_number = _wrap_locale_formatter(numbers.format_number, 'number')
 format_scientific = _wrap_locale_formatter(numbers.format_scientific, 'number')
-format_percent =    _wrap_locale_formatter(numbers.format_percent, 'number')
-format_currency =   _wrap_locale_formatter(numbers.format_currency, 'number')
-format_list =       _wrap_locale_formatter(lists.format_list, 'number')
+format_percent = _wrap_locale_formatter(numbers.format_percent, 'number')
+format_currency = _wrap_locale_formatter(numbers.format_currency, 'number')
+format_list = _wrap_locale_formatter(lists.format_list, 'number')
 
 
 def _get_available_translations():
@@ -345,6 +385,7 @@ def _get_available_translations():
     for language in InstalledLocale._translation_catalogs.keys():
         translations[language] = Locale(language).language_name
     return translations
+
 
 available_translations = _get_available_translations()
 
@@ -354,10 +395,13 @@ def _get_available_locales(sample_formatter, sample_value):
     for lcode in settings.LOCALIZATION_FORMATS:
         locales[lcode] = "{sample} - {name}".format(
             sample=sample_formatter(sample_value, locale=lcode),
-            # For some languages, only the 2-character code has a name, i.e. tr has a name but tr_TR doesn't
+
+            # For some languages, only the 2-character code has
+            # a name, i.e. tr has a name but tr_TR doesn't
             name=Locale(lcode).language_name or Locale(lcode.split('_')[0]).language_name
         )
     return locales
+
 
 available_datetimes = _get_available_locales(format_datetime, datetime.now().replace(
     # Just take the current year, rest of the date is hardcoded to provide a more descriptive sample
