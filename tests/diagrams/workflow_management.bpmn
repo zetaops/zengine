@@ -5,15 +5,15 @@
     <bpmn:startEvent id="StartEvent_1">
       <bpmn:outgoing>SequenceFlow_19oanlg</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:task id="management" name="Workflow Management">
-      <bpmn:incoming>SequenceFlow_19oanlg</bpmn:incoming>
-      <bpmn:outgoing>SequenceFlow_0mfzvml</bpmn:outgoing>
-    </bpmn:task>
     <bpmn:endEvent id="EndEvent_0j0n4xp">
       <bpmn:incoming>SequenceFlow_0mfzvml</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="SequenceFlow_19oanlg" sourceRef="StartEvent_1" targetRef="management" />
     <bpmn:sequenceFlow id="SequenceFlow_0mfzvml" sourceRef="management" targetRef="EndEvent_0j0n4xp" />
+    <bpmn:serviceTask id="management" name="Workflow Management">
+      <bpmn:incoming>SequenceFlow_19oanlg</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0mfzvml</bpmn:outgoing>
+    </bpmn:serviceTask>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="workflow_management">
@@ -22,9 +22,6 @@
         <bpmndi:BPMNLabel>
           <dc:Bounds x="194" y="295" width="90" height="20" />
         </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_1ri5ggm_di" bpmnElement="management">
-        <dc:Bounds x="302" y="237" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_0j0n4xp_di" bpmnElement="EndEvent_0j0n4xp">
         <dc:Bounds x="445" y="259" width="36" height="36" />
@@ -46,6 +43,9 @@
           <dc:Bounds x="378.5" y="252" width="90" height="20" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_13l5plv_di" bpmnElement="management">
+        <dc:Bounds x="302" y="237" width="100" height="80" />
+      </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

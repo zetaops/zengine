@@ -8,7 +8,10 @@ from zengine.views.crud import CrudView
 from zengine.forms import JsonForm
 from zengine.forms import fields
 from zengine.lib.translation import gettext as _
-from zengine.auth.auth_backend import AuthBackend
+from zengine import settings
+from pyoko.lib.utils import get_object_from_path
+
+AuthBackend = get_object_from_path(settings.AUTH_BACKEND)
 
 
 class RoleSwitching(CrudView):
@@ -23,9 +26,9 @@ class RoleSwitching(CrudView):
         _form = JsonForm(current=self.current, title=_(u"Switch Role"))
         _form.help_text = "Your current role: %s %s" % (self.current.role.unit.name,
                                                         self.current.role.abstract_role.name)
-        _choices = get_user_roles(self.current.user, self.current.role)
+        switch_roles = get_user_switchable_roles(self.current.user, self.current.role)
         _form.role_options = fields.Integer(_(u"Please, choose the role you want to switch:")
-                                            , choices=_choices, default=_choices[0][0],
+                                            , choices=switch_roles, default=switch_roles[0][0],
                                             required=True)
         _form.switch = fields.Button(_(u"Switch"))
         self.form_out(_form)
@@ -47,11 +50,13 @@ class RoleSwitching(CrudView):
         self.current.output['cmd'] = 'reload'
 
 
-def get_user_roles(user, current_role):
+def get_user_switchable_roles(user, current_role):
     """
+    Returns user's role list except current role as a tuple
+    (role.key, role.name)
 
     :param user: User object
-    :return: user's role list except current role
+    :return: list of tuples, user's role list except current role
     """
     return [
         (role_set.role.key, '%s %s' % (role_set.role.unit.name, role_set.role.abstract_role.name))

@@ -56,8 +56,7 @@ class AuthBackend(object):
         """
         # TODO: This should work
         user = self.get_user()
-        user_role = user.last_login_role() if user.last_login_role_key else user.role_set[0].role
-        return user_role
+        return user.last_login_role()
 
     def get_permissions(self):
         return self.get_user().get_permissions()

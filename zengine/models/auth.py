@@ -113,7 +113,8 @@ class User(Model, BaseUser):
         self.prepare_channels()
 
     def last_login_role(self):
-        return Role.objects.get(self.last_login_role_key)
+        last_key = self.last_login_role_key
+        return Role.objects.get(last_key) if last_key else self.role_set[0].role
 
     def get_permissions(self):
         """
@@ -122,9 +123,8 @@ class User(Model, BaseUser):
         Returns:
             List of Permission objects.
         """
-        users_primary_role = self.role_set[0].role
-        return users_primary_role.get_permissions()
-
+        user_role = self.last_login_role() if self.last_login_role_key else self.role_set[0].role
+        return user_role.get_permissions()
 
 class PermissionCache(Cache):
     """PermissionCache sınıfı Kullanıcıya Permission nesnelerinin
