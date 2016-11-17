@@ -26,7 +26,7 @@ class RoleSwitching(CrudView):
         _form = JsonForm(current=self.current, title=_(u"Switch Role"))
         _form.help_text = "Your current role: %s %s" % (self.current.role.unit.name,
                                                         self.current.role.abstract_role.name)
-        switch_roles = get_user_switchable_roles(self.current.user, self.current.role)
+        switch_roles = self.get_user_switchable_roles()
         _form.role_options = fields.Integer(_(u"Please, choose the role you want to switch:")
                                             , choices=switch_roles, default=switch_roles[0][0],
                                             required=True)
@@ -49,16 +49,19 @@ class RoleSwitching(CrudView):
         # Dashboard is reloaded according to user's new role.
         self.current.output['cmd'] = 'reload'
 
+    def get_user_switchable_roles(self):
+        """
+        Returns user's role list except current role as a tuple
+        (role.key, role.name)
 
-def get_user_switchable_roles(user, current_role):
-    """
-    Returns user's role list except current role as a tuple
-    (role.key, role.name)
+        Returns:
+            (list): list of tuples, user's role list except current role
 
-    :param user: User object
-    :return: list of tuples, user's role list except current role
-    """
-    return [
-        (role_set.role.key, '%s %s' % (role_set.role.unit.name, role_set.role.abstract_role.name))
-        for role_set in user.role_set
-        if role_set.role != current_role]
+        """
+        roles = []
+        for rs in self.current.user.role_set:
+            # rs.role != self.current.role is not True after python version 2.7.12
+            if rs.role.key != self.current.role.key:
+                roles.append((rs.role.key, '%s %s' % (rs.role.unit.name,
+                                                      rs.role.abstract_role.name)))
+        return roles
