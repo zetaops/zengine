@@ -8,32 +8,61 @@
 # (GPLv3).  See LICENSE.txt for details.
 import time
 
+from zengine.lib.exceptions import HTTPError
 from zengine.lib.test_utils import BaseTestCase
 from zengine.models import User
+
+# role_key:(permission wf,non-permission wf)
+role_permission_wfs = {'WOJt2XKpYEfhAPFl5jPJXIZSrGD': ('workflow_management', 'sequential_cruds'),
+                       'NdOZ5WODiDYSdmjHCKt6Ax1sryA': ('edit_catalog_data', 'jump_to_wf')}
 
 
 class TestCase(BaseTestCase):
     def test_role_switching(self):
 
+        user = User.objects.get(username='test_user')
+        # User's last_login_role_key field assigned to None.
+        user.last_login_role_key = None
+        user.blocking_save()
+
         for i in range(2):
-            # Login with test_user.
-            user = User.objects.get(username='test_user')
-            # User's last_login_role_key field assigned to None.
-            if i == 0:
-                user.last_login_role_key = None
-                user.save()
             # Role switching wf is started.
-            self.prepare_client('/role_switching/', username='test_user')
+            user = User.objects.get(username='test_user')
+            self.prepare_client('role_switching', user=user)
+            # Current role is taken.
+            if i ==1:
+                assert new_last_login_role == self.client.current.role
+            assert self.client.current.role.key == self.client.current.role_id
+            # Current role is assigned to current_role field.
+            current_role = self.client.current.role
+            # Switch user's role is tried about permission to wf's.
+            permission_control = []
+            for k in range(2):
+                # In first loop user should have a permission to wf.
+                # In second loop user shouldn't have a permission to wf.
+                # These wf permissions are controlled.
+                self.prepare_client(role_permission_wfs[current_role.key][k],
+                                    user=user)
+                try:
+                    self.client.post()
+                    permission_control.append((k,True))
+                except HTTPError as error:
+                    code, msg = error.args
+                    assert code == 403
+                    permission_control.append((k,False))
+
+            assert sorted(permission_control) == [(0,True),(1,False)]
+
+            # Role switching wf is started again.
+            self.prepare_client('role_switching', username='test_user')
+            # After re-starting wf, current role is controlled about no role change.
+            assert current_role == self.client.current.role
             resp = self.client.post()
             # If user's last_login_role_key is exist, controlled login operation
             # with this role.
             if i == 1:
                 last_login_role = user.last_login_role()
                 assert last_login_role == self.client.current.role
-            # Current role is taken.
-            assert self.client.current.role.key == self.client.current.role_id
-            # Current role is assigned to current_role field.
-            current_role = self.client.current.role
             # Controlled in role select screen.
             assert 'Switch Role' == resp.json['forms']['schema']["title"]
             # All user's roles' keys are put to roles list.
@@ -72,3 +101,6 @@ class TestCase(BaseTestCase):
             self.prepare_client('/role_switching/', user=user)
             # Current role should be last_login_role, is controlled.
             assert new_last_login_role == self.client.current.role
+
+        user.last_login_role_key = None
+        user.blocking_save()
