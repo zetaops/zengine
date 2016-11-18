@@ -17,6 +17,7 @@ import time
 
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
 
+
 class TestCase(BaseTestCase):
 
     def test_workflow_management_state_finished(self):
@@ -51,11 +52,12 @@ class TestCase(BaseTestCase):
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
-        assert len(resp.json['actions'][0]) == 2
+        assert len(resp.json['actions']) == 4
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
-        assert len(resp.json['task_types']) == 8
+        assert len(resp.json['task_types']) == len([bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+                                                    if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_workflow_management_state_active(self):
 
@@ -100,11 +102,12 @@ class TestCase(BaseTestCase):
         instance_key = resp.json['task_list'][0]['token']   # WFInstance key
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
-        assert len(resp.json['actions'][0]) == 2
+        assert len(resp.json['actions']) == 4
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
-        assert len(resp.json['task_types']) == 8
+        assert len(resp.json['task_types']) == len([bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+                                                    if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_workflow_management_state_future(self):
 
@@ -144,11 +147,12 @@ class TestCase(BaseTestCase):
 
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
-        assert len(resp.json['actions'][0]) == 2
+        assert len(resp.json['actions']) == 4
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
-        assert len(resp.json['task_types']) == 8
+        assert len(resp.json['task_types']) == len([bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+                                                    if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_object_and_query_task_manager(self):
         # We send the object. Individual workflow assignment method to sub roles

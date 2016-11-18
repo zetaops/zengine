@@ -87,12 +87,15 @@ def get_task_actions(current):
                #  response:
                    {
                    'key': key,
-                   'actions': [('name_string', 'cmd_string'),]
+                   'actions': [{'name_string':'cmd_string'},]
                     }
     """
     task_inv = TaskInvitation.objects.get(current.input['key'])
     current.output['key'] = task_inv.key
-    current.output['actions'] = [(task_inv.instance.name, task_inv.wf_name), ]
+    current.output['actions'] = [{"Assign Yourself": "task_assign_yourself"},
+                                 {"Assign Someone Else": "assign_same_abstract_role"},
+                                 {"Suspend": "suspend_workflow"},
+                                 {"Postpone": "postpone_workflow"}]
 
 
 @view()
