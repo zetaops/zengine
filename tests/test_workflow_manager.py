@@ -9,8 +9,8 @@
 
 
 from zengine.lib.test_utils import BaseTestCase
-from .models import Task, BPMNWorkflow, Unit, AbstractRole, User
-from .models import TaskInvitation, WFInstance, Role, Teacher
+from .models import User, TaskInvitation, WFInstance, Role, Teacher
+from .models import Task, BPMNWorkflow, Unit, AbstractRole
 from datetime import datetime, timedelta
 from pyoko.conf import settings
 from pyoko.lib.utils import get_object_from_path
@@ -56,6 +56,7 @@ class TestCase(BaseTestCase):
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
+
         assert len(resp.json['task_types']) == len(
             [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
              if self.client.current.has_permission(bpmn_wf.name)])
@@ -195,8 +196,8 @@ class TestCase(BaseTestCase):
         assert len(inv) == 5
 
     def test_abstractrole_and_unit_task_manager(self):
-        # task manager creates person-specific workflows
-        # for persons which has the same abstract roles
+        # task manager creates person-specific workflows for
+        # persons which has the same abstract roles
         # object is in the workflow
 
         # create new task manager
@@ -273,7 +274,7 @@ class TestCase(BaseTestCase):
         # selected model needed for workflow
         task.object_type = 'Program'   # Program model
         # model query code is written.
-        task.object_query_code = {'typ': 1} # Program.objects.filter(type = 1)
+        task.object_query_code = {'typ': 1}  # Program.objects.filter(type = 1)
         # set start and end time of the workflow
         task.start_date = datetime.strptime('08.08.2016', '%d.%m.%Y')
         task.finish_date = datetime.strptime('09.08.2016', '%d.%m.%Y')
