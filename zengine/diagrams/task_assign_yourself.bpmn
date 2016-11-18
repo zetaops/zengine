@@ -12,7 +12,7 @@
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="SequenceFlow_0zyaoar" sourceRef="StartEvent_1" targetRef="assign_yourself" />
     <bpmn:sequenceFlow id="SequenceFlow_0xe7vev" sourceRef="assign_yourself" targetRef="EndEvent_0v6kkuy" />
-    <bpmn:serviceTask id="assign_yourself" name="Assign Yourself" camunda:class="task_manager_actions.assign_yourself">
+    <bpmn:serviceTask id="assign_yourself" name="Assign Yourself" camunda:class="task_manager_actions.TaskManagerActionsView.assign_yourself">
       <bpmn:incoming>SequenceFlow_0zyaoar</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_0xe7vev</bpmn:outgoing>
     </bpmn:serviceTask>

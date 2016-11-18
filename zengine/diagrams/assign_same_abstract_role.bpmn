@@ -13,11 +13,11 @@
       <bpmn:incoming>SequenceFlow_19wtc26</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="SequenceFlow_19wtc26" sourceRef="send_workflow" targetRef="EndEvent_1xt4618" />
-    <bpmn:userTask id="select_role" name="Select Role" camunda:assignee="task_manager_actions.select_role">
+    <bpmn:userTask id="select_role" name="Select Role" camunda:assignee="task_manager_actions.TaskManagerActionsView.select_role">
       <bpmn:incoming>SequenceFlow_02w4hkf</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_0yceceb</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:serviceTask id="send_workflow" name="Send Workflow" camunda:class="task_manager_actions.send_workflow">
+    <bpmn:serviceTask id="send_workflow" name="Send Workflow" camunda:class="task_manager_actions.TaskManagerActionsView.send_workflow">
       <bpmn:incoming>SequenceFlow_0yceceb</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_19wtc26</bpmn:outgoing>
     </bpmn:serviceTask>

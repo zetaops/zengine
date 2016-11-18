@@ -12,7 +12,7 @@
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="SequenceFlow_1jhd996" sourceRef="suspend" targetRef="EndEvent_0e3t73t" />
     <bpmn:sequenceFlow id="SequenceFlow_0gzvq8v" sourceRef="StartEvent_1" targetRef="suspend" />
-    <bpmn:serviceTask id="suspend" name="Suspend Workflow" camunda:class="task_manager_actions.suspend">
+    <bpmn:serviceTask id="suspend" name="Suspend Workflow" camunda:class="task_manager_actions.TaskManagerActionsView.suspend">
       <bpmn:incoming>SequenceFlow_0gzvq8v</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_1jhd996</bpmn:outgoing>
     </bpmn:serviceTask>
