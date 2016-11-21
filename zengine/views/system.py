@@ -8,8 +8,9 @@
 # (GPLv3).  See LICENSE.txt for details.
 from pyoko.fields import DATE_FORMAT
 from datetime import datetime
-from zengine.lib.decorators import view, bg_job
+from zengine.lib.decorators import view
 from zengine.models import TaskInvitation, BPMNWorkflow
+from zengine.lib.translation import gettext_lazy as __
 
 
 @view()
@@ -87,12 +88,18 @@ def get_task_actions(current):
                #  response:
                    {
                    'key': key,
-                   'actions': [('name_string', 'cmd_string'),]
+                   'actions': [{"title":':'Action Title', "wf": "workflow_name"},]
                     }
     """
     task_inv = TaskInvitation.objects.get(current.input['key'])
+    actions = [{"title": __(u"Assign Someone Else"), "wf": "assign_same_abstract_role"},
+               {"title": __(u"Suspend"), "wf": "suspend_workflow"},
+               {"title": __(u"Postpone"), "wf": "postpone_workflow"}]
+    if task_inv.instance.current_actor != current.role:
+        actions.append({"title": __(u"Assign Yourself"), "wf": "task_assign_yourself"})
+
     current.output['key'] = task_inv.key
-    current.output['actions'] = [(task_inv.instance.name, task_inv.wf_name), ]
+    current.output['actions'] = actions
 
 
 @view()

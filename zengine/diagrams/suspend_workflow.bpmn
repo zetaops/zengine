@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:collaboration id="Collaboration_0f5huji">
+    <bpmn:participant id="Participant_0zeatu1" name="Suspend Workflow" processRef="suspend_workflow" />
+  </bpmn:collaboration>
+  <bpmn:process id="suspend_workflow" isExecutable="false">
+    <bpmn:endEvent id="EndEvent_0e3t73t">
+      <bpmn:incoming>SequenceFlow_1jhd996</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_0gzvq8v</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_1jhd996" sourceRef="suspend" targetRef="EndEvent_0e3t73t" />
+    <bpmn:sequenceFlow id="SequenceFlow_0gzvq8v" sourceRef="StartEvent_1" targetRef="suspend" />
+    <bpmn:serviceTask id="suspend" name="Suspend Workflow" camunda:class="task_manager_actions.TaskManagerActionsView.suspend">
+      <bpmn:incoming>SequenceFlow_0gzvq8v</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1jhd996</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0f5huji">
+      <bpmndi:BPMNShape id="Participant_0zeatu1_di" bpmnElement="Participant_0zeatu1">
+        <dc:Bounds x="271" y="229" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="368" y="330" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="341" y="366" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0gzvq8v_di" bpmnElement="SequenceFlow_0gzvq8v">
+        <di:waypoint xsi:type="dc:Point" x="404" y="348" />
+        <di:waypoint xsi:type="dc:Point" x="538" y="348" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="426" y="323" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="EndEvent_0e3t73t_di" bpmnElement="EndEvent_0e3t73t">
+        <dc:Bounds x="772" y="330" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="745" y="366" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1jhd996_di" bpmnElement="SequenceFlow_1jhd996">
+        <di:waypoint xsi:type="dc:Point" x="638" y="348" />
+        <di:waypoint xsi:type="dc:Point" x="772" y="348" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="660" y="323" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_0uq4y0t_di" bpmnElement="suspend">
+        <dc:Bounds x="538" y="308" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

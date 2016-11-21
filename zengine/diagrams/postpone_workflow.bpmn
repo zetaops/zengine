@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:collaboration id="Collaboration_13k7kvd">
+    <bpmn:participant id="Participant_0ta4jnw" name="Postpone Workflow" processRef="postpone_workflow" />
+  </bpmn:collaboration>
+  <bpmn:process id="postpone_workflow" isExecutable="false">
+    <bpmn:sequenceFlow id="SequenceFlow_1y3p5gx" sourceRef="save_date" targetRef="EndEvent_0bq2bnm" />
+    <bpmn:sequenceFlow id="SequenceFlow_0tibzod" sourceRef="StartEvent_1" targetRef="select_postponed_date" />
+    <bpmn:endEvent id="EndEvent_0bq2bnm">
+      <bpmn:incoming>SequenceFlow_1y3p5gx</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="save_date" name="Save Date" camunda:class="task_manager_actions.TaskManagerActionsView.save_date">
+      <bpmn:incoming>SequenceFlow_1xwxse2</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1y3p5gx</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_0tibzod</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_1xwxse2" sourceRef="select_postponed_date" targetRef="save_date" />
+    <bpmn:userTask id="select_postponed_date" name="Select Postponed Date" camunda:assignee="task_manager_actions.TaskManagerActionsView.select_postponed_date">
+      <bpmn:incoming>SequenceFlow_0tibzod</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1xwxse2</bpmn:outgoing>
+    </bpmn:userTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_13k7kvd">
+      <bpmndi:BPMNShape id="Participant_0ta4jnw_di" bpmnElement="Participant_0ta4jnw">
+        <dc:Bounds x="429" y="269" width="540" height="248" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="499" y="371" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="472" y="407" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0tibzod_di" bpmnElement="SequenceFlow_0tibzod">
+        <di:waypoint xsi:type="dc:Point" x="535" y="389" />
+        <di:waypoint xsi:type="dc:Point" x="587" y="389" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="516" y="364" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="EndEvent_0bq2bnm_di" bpmnElement="EndEvent_0bq2bnm">
+        <dc:Bounds x="876" y="371" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="849" y="407" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1y3p5gx_di" bpmnElement="SequenceFlow_1y3p5gx">
+        <di:waypoint xsi:type="dc:Point" x="836" y="389" />
+        <di:waypoint xsi:type="dc:Point" x="876" y="389" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="811" y="364" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="ServiceTask_0cqwbif_di" bpmnElement="save_date">
+        <dc:Bounds x="736" y="349" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_1xwxse2_di" bpmnElement="SequenceFlow_1xwxse2">
+        <di:waypoint xsi:type="dc:Point" x="687" y="389" />
+        <di:waypoint xsi:type="dc:Point" x="736" y="389" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="666.5" y="364" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="UserTask_0yheten_di" bpmnElement="select_postponed_date">
+        <dc:Bounds x="587" y="349" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
