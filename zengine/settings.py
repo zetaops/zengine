@@ -42,6 +42,9 @@ WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'diagrams')]
 #: Authentication backend
 AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
+#: WF_Initial_Values class
+WF_INITIAL_VALUES = 'zengine.lib.wf_initial_values.WFValues'
+
 #: Permissions model
 PERMISSION_MODEL = 'zengine.models.Permission'
 
