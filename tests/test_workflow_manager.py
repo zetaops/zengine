@@ -52,7 +52,7 @@ class TestCase(BaseTestCase):
         key = resp.json['task_list'][0]['key']  # TaskInvitation key
         resp = self.client.post(view='_zops_get_task_actions', key=key)
         # We control the get_task_actions view
-        assert len(resp.json['actions']) == 4
+        assert len(resp.json['actions']) == 3
 
         resp = self.client.post(view='_zops_get_task_types')
         # We control the get_task_types view
@@ -88,7 +88,6 @@ class TestCase(BaseTestCase):
         task.run = True
         task.save()
 
-        usr = User.objects.get(username='test_user2')
         self.prepare_client(user=usr)
         time.sleep(1)
         # call active data

@@ -21,10 +21,10 @@ class TestCase(BaseTestCase):
         # Test data is reset
         inv = TaskInvitation.objects.get("Ewn4V1Iih7htogD7kLyyWthswxr")
         inv.role = RoleModel()
-        inv.save()
         wfi = inv.instance
         wfi.current_actor = RoleModel()
         wfi.save()
+        inv.save()
 
         # We will take the workflow to ourselves.
         for i in range(2):
@@ -45,9 +45,12 @@ class TestCase(BaseTestCase):
                                     form={"select_role": "NdOZ5WODiDYSdmjHCKt6Ax1sryA",
                                           "explain_text": "Test"})
             if i == 0:
-                print resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'][0] == "Successful"
             else:
-                print resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+
+
+class TestCase2(BaseTestCase):
 
     def test_postponed_workflow(self):
         self.prepare_client('/postpone_workflow/', username='test_user2')
@@ -64,6 +67,6 @@ class TestCase(BaseTestCase):
             resp = self.client.post(task_inv_key="Ewn4V1Iih7htogD7kLyyWthswxr")
 
             if i == 0:
-                print resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'][0] == "Successful"
             else:
-                print resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
