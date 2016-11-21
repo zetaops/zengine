@@ -11,6 +11,8 @@ from zengine.models import TaskInvitation
 from pyoko.lib.utils import get_object_from_path
 from pyoko.conf import settings
 from datetime import datetime
+from zengine.lib.translation import gettext as _
+
 
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
 
@@ -43,11 +45,11 @@ class TaskManagerActionsView(BaseView):
             wfi.current_actor = self.current.role
             wfi.save()
             [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if not inv == task_invitation]
-            title = "Successful",
-            msg = "You have successfully assigned the job to yourself."
+            title = _(u"Successful"),
+            msg = _(u"You have successfully assigned the job to yourself.")
         else:
-            title = "Unsuccessful",
-            msg = "Unfortunately, this job is already taken by someone else."
+            title = _(u"Unsuccessful"),
+            msg = _(u"Unfortunately, this job is already taken by someone else.")
 
         self.current.msg_box(title=title, msg=msg)
     # - Assign Yourself -
@@ -65,18 +67,18 @@ class TaskManagerActionsView(BaseView):
 
         """
         roles = [(m.key, m.__unicode__()) for m in RoleModel.objects.filter(
-                                                                abstract_role=self.current.role.abstract_role,
-                                                                unit=self.current.role.unit)]
+                                                    abstract_role=self.current.role.abstract_role,
+                                                    unit=self.current.role.unit)]
 
         if roles:
-            _form = forms.JsonForm(title='Assign to workflow')
-            _form.select_role = fields.Integer("Chose Role", choices=roles)
-            _form.explain_text = fields.String("Explain Text", required=False)
-            _form.send_button = fields.Button("Send")
+            _form = forms.JsonForm(title=_(u'Assign to workflow'))
+            _form.select_role = fields.Integer(_(u"Chose Role"), choices=roles)
+            _form.explain_text = fields.String(_(u"Explain Text"), required=False)
+            _form.send_button = fields.Button(_(u"Send"))
             self.form_out(_form)
         else:
-            title = "Unsuccessful",
-            msg = "Assign role not found or this is already assigned"
+            title = _(u"Unsuccessful"),
+            msg = _(u"Assign role not found or this is already assigned")
             self.current.msg_box(title=title, msg=msg)
 
     def send_workflow(self):
@@ -91,11 +93,11 @@ class TaskManagerActionsView(BaseView):
             wfi.save()
             task_invitation.save()
             [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if not inv == task_invitation]
-            title = "Successful",
-            msg = "The workflow was assigned to someone else with success."
+            title = _(u"Successful"),
+            msg = _(u"The workflow was assigned to someone else with success.")
         else:
-            title = "Unsuccessful",
-            msg = "This workflow is already assigned"
+            title = _(u"Unsuccessful"),
+            msg = _(u"This workflow is already assigned")
         self.current.msg_box(title=title, msg=msg)
 
     # - Assign to same abstract role and unit -
@@ -138,8 +140,8 @@ class TaskManagerActionsView(BaseView):
         wfi.finish_date = dt_finish
         wfi.save()
 
-        title = "Successful",
-        msg = "You've extended the workflow time."
+        title = _(u"Successful"),
+        msg = _(u"You've extended the workflow time.")
         self.current.msg_box(title=title, msg=msg)
     # - Postponed workflow -
 
@@ -165,11 +167,11 @@ class TaskManagerActionsView(BaseView):
         if wfi.current_actor.exist and wfi.current_actor == self.current.role:
             wfi.current_actor = RoleModel()
             wfi.save()
-            title = "Successful",
-            msg = "You left the workflow."
+            title = _(u"Successful"),
+            msg = _(u"You left the workflow.")
         else:
-            title = "Unsuccessful",
-            msg = "Unfortunately, this workflow does not belong to you or is already idle."
+            title = _(u"Unsuccessful"),
+            msg = _(u"Unfortunately, this workflow does not belong to you or is already idle.")
 
         self.current.msg_box(title=title, msg=msg)
     # - Suspend workflow -
