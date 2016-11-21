@@ -552,34 +552,36 @@ class CheckList(Command):
         import_module(settings.MODELS_MODULE)
 
         try:
-            print "Checking migration and solr ..."
+            print("Checking migration and solr ...")
             updater = SchemaUpdater(model_registry, 'all', 1, False)
-            updater.run(True)
+            updater.run(check_only=True)
 
         except socket_error as e:
-            print "Error not connected, open redis and rabbitmq - False"
+            print("Error not connected, open redis and rabbitmq - False")
 
-    def check_redis(self):
+    @staticmethod
+    def check_redis():
         from pyoko.db.connection import cache
         from redis.exceptions import ConnectionError
 
         try:
             cache.ping()
-            print "Redis Checked - True"
+            print("Redis Checked - True")
         except ConnectionError as e:
-            print "Redis Checked - False", e.message
+            print("Redis Checked - False", e.message)
 
-    def check_riak(self):
+    @staticmethod
+    def check_riak():
         from pyoko.db.connection import client
         from socket import error as socket_error
 
         try:
             if client.ping():
-                print "Riak Checked - True"
+                print("Riak Checked - True")
             else:
-                print "Riak Checked - False"
+                print("Riak Checked - False")
         except socket_error as e:
-            print "Riak Checked False", e.message
+            print("Riak Checked False", e.message)
 
     def check_mq_connection(self):
         import pika
@@ -590,24 +592,27 @@ class CheckList(Command):
             connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
             channel = connection.channel()
             if channel.is_open:
-                print "RabbitMQ Checked - True"
+                print("RabbitMQ Checked - True")
             elif self.channel.is_closed or self.channel.is_closing:
-                print "RabbitMQ Checked - False"
+                print("RabbitMQ Checked - False")
         except ConnectionClosed as e:
-            print "RabbitMQ is not open!!!", e
+            print("RabbitMQ is not open!!!", e)
         except ProbableAuthenticationError as e:
-            print "RabbitMQ username and password wrong - False"
+            print("RabbitMQ username and password wrong - False")
 
-    def check_encoding_and_env(self):
+    @staticmethod
+    def check_encoding_and_env():
         import sys
         import os
         if sys.getfilesystemencoding() == 'UTF-8':
-            print "File system encoding Checked - True"
+            print("File system encoding Checked - True")
         else:
-            print "File system encoding Checked - False"
-        check_env_list = ['PYTHONIOENCODING', 'RIAK_PROTOCOL', 'RIAK_SERVER', 'RIAK_PORT', 'REDIS_SERVER', 'USER',
-                          'DEFAULT_BUCKET_TYPE', 'PYOKO_SETTINGS']
+            print("File system encoding Checked - False")
+        check_env_list = ['RIAK_PROTOCOL', 'RIAK_SERVER', 'RIAK_PORT', 'REDIS_SERVER',
+                          'DEFAULT_BUCKET_TYPE', 'PYOKO_SETTINGS',
+                          'MQ_HOST', 'MQ_PORT', 'MQ_USER', 'MQ_VHOST',
+                          ]
         env = os.environ
         for k, v in env.items():
             if k in check_env_list:
-                print "{} : {}".format(k, v)
+                print("{} : {}".format(k, v))
