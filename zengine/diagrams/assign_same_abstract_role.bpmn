@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2">
+  <bpmn:collaboration id="Collaboration_0iwhv1y">
+    <bpmn:participant id="Participant_1dy6yno" name="Assign Same Abstract Role" processRef="assign_same_abstract_role" />
+  </bpmn:collaboration>
+  <bpmn:process id="assign_same_abstract_role" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>SequenceFlow_02w4hkf</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_02w4hkf" sourceRef="StartEvent_1" targetRef="select_role" />
+    <bpmn:sequenceFlow id="SequenceFlow_0yceceb" sourceRef="select_role" targetRef="send_workflow" />
+    <bpmn:endEvent id="EndEvent_1xt4618">
+      <bpmn:incoming>SequenceFlow_19wtc26</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_19wtc26" sourceRef="send_workflow" targetRef="EndEvent_1xt4618" />
+    <bpmn:userTask id="select_role" name="Select Role" camunda:assignee="task_manager_actions.TaskManagerActionsView.select_role">
+      <bpmn:incoming>SequenceFlow_02w4hkf</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0yceceb</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="send_workflow" name="Send Workflow" camunda:class="task_manager_actions.TaskManagerActionsView.send_workflow">
+      <bpmn:incoming>SequenceFlow_0yceceb</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_19wtc26</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0iwhv1y">
+      <bpmndi:BPMNShape id="Participant_1dy6yno_di" bpmnElement="Participant_1dy6yno">
+        <dc:Bounds x="231" y="272" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="294" y="379" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="267" y="415" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_02w4hkf_di" bpmnElement="SequenceFlow_02w4hkf">
+        <di:waypoint xsi:type="dc:Point" x="330" y="397" />
+        <di:waypoint xsi:type="dc:Point" x="392" y="397" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="316" y="372" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0yceceb_di" bpmnElement="SequenceFlow_0yceceb">
+        <di:waypoint xsi:type="dc:Point" x="492" y="397" />
+        <di:waypoint xsi:type="dc:Point" x="572" y="397" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="487" y="372" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="EndEvent_1xt4618_di" bpmnElement="EndEvent_1xt4618">
+        <dc:Bounds x="728" y="379" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="701" y="415" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_19wtc26_di" bpmnElement="SequenceFlow_19wtc26">
+        <di:waypoint xsi:type="dc:Point" x="672" y="397" />
+        <di:waypoint xsi:type="dc:Point" x="728" y="397" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="655" y="372" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="UserTask_16v3om4_di" bpmnElement="select_role">
+        <dc:Bounds x="392" y="357" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_04amkp1_di" bpmnElement="send_workflow">
+        <dc:Bounds x="572" y="357" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

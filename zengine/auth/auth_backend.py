@@ -32,30 +32,31 @@ class AuthBackend(object):
 
     def set_user(self, user):
         """
-        Kullanıcı datasını session'a yazar.
+        Writes user data to session.
 
         Args:
-            user: User nesnesi
-
-        Returns:
+            user: User object
 
         """
-        user = user
         self.session['user_id'] = user.key
         self.session['user_data'] = user.clean_value()
-
+        role = self.get_role()
         # TODO: this should be remembered from previous login
-        default_role = user.role_set[0].role
         # self.session['role_data'] = default_role.clean_value()
-        self.session['role_id'] = default_role.key
-        self.current.role_id = default_role.key
+        self.session['role_id'] = role.key
+        self.current.role_id = role.key
         self.current.user_id = user.key
-        # self.perm_cache = PermissionCache(default_role.key)
-        self.session['permissions'] = default_role.get_permissions()
+        # self.perm_cache = PermissionCache(role.key)
+        self.session['permissions'] = role.get_permissions()
 
     def get_role(self):
+        """
+        If exist, during login operation, role is taken from user's last_login_role field.
+        Otherwise, user's default role is chosen.
+        """
         # TODO: This should work
-        return self.get_user().role_set[0].role
+        user = self.get_user()
+        return user.last_login_role()
 
     def get_permissions(self):
         return self.get_user().get_permissions()

@@ -1,52 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://activiti.org/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd" id="_qyVjYLNPEeSf4I-xcGOQ0Q" exporter="camunda modeler" exporterVersion="2.7.0" targetNamespace="http://activiti.org/bpmn">
+<bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="_qyVjYLNPEeSf4I-xcGOQ0Q" targetNamespace="http://activiti.org/bpmn" exporter="Camunda Modeler" exporterVersion="1.2.2" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
   <bpmn2:process id="logout" isExecutable="false">
     <bpmn2:extensionElements>
       <camunda:properties>
-        <camunda:property value="hidden" name="menu_category"/>
+        <camunda:property name="menu_category" value="hidden" />
       </camunda:properties>
     </bpmn2:extensionElements>
     <bpmn2:startEvent id="StartEvent_1">
       <bpmn2:outgoing>SequenceFlow_3</bpmn2:outgoing>
     </bpmn2:startEvent>
-    <bpmn2:serviceTask id="logout" camunda:class="auth.logout" name="logout">
+    <bpmn2:serviceTask id="Logout" name="Logout" camunda:class="auth.logout">
       <bpmn2:incoming>SequenceFlow_3</bpmn2:incoming>
-      <bpmn2:outgoing>SequenceFlow_4</bpmn2:outgoing>
+      <bpmn2:outgoing>SequenceFlow_0q4uirw</bpmn2:outgoing>
     </bpmn2:serviceTask>
-    <bpmn2:dataObject id="DataObject_1" name="d1"/>
-    <bpmn2:dataObject id="DataObject_2" name="d2"/>
     <bpmn2:endEvent id="EndEvent_1">
-      <bpmn2:incoming>SequenceFlow_4</bpmn2:incoming>
+      <bpmn2:incoming>SequenceFlow_0q4uirw</bpmn2:incoming>
     </bpmn2:endEvent>
-    <bpmn2:sequenceFlow id="SequenceFlow_3" name="" sourceRef="StartEvent_1" targetRef="logout"/>
-    <bpmn2:sequenceFlow id="SequenceFlow_4" name="" sourceRef="logout" targetRef="EndEvent_1"/>
+    <bpmn2:sequenceFlow id="SequenceFlow_3" name="" sourceRef="StartEvent_1" targetRef="Logout" />
+    <bpmn2:sequenceFlow id="SequenceFlow_0q4uirw" sourceRef="Logout" targetRef="EndEvent_1" />
   </bpmn2:process>
-  <bpmn2:dataStore id="DataStore_1"/>
+  <bpmn2:dataStore id="DataStore_1" />
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="logout">
       <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
-        <dc:Bounds height="36.0" width="36.0" x="56.0" y="208.0"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_EndEvent_3" bpmnElement="EndEvent_1">
-        <dc:Bounds height="36.0" width="36.0" x="720.0" y="208.0"/>
+        <dc:Bounds x="189" y="208" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds height="0.0" width="0.0" x="738.0" y="249.0"/>
+          <dc:Bounds x="162" y="244" width="90" height="20" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="_BPMNShape_Task_6" bpmnElement="logout">
-        <dc:Bounds height="58.0" width="100.0" x="341.0" y="197.0"/>
+      <bpmndi:BPMNShape id="_BPMNShape_EndEvent_3" bpmnElement="EndEvent_1">
+        <dc:Bounds x="720" y="208" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="738" y="249" width="0" height="0" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_4" bpmnElement="SequenceFlow_3" sourceElement="_BPMNShape_StartEvent_2" targetElement="_BPMNShape_Task_6">
-        <di:waypoint xsi:type="dc:Point" x="92.0" y="226.0"/>
-        <di:waypoint xsi:type="dc:Point" x="341.0" y="226.0"/>
+      <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_4" bpmnElement="SequenceFlow_3" sourceElement="_BPMNShape_StartEvent_2" targetElement="_BPMNShape_ServiceTask_25">
+        <di:waypoint xsi:type="dc:Point" x="225" y="226" />
+        <di:waypoint xsi:type="dc:Point" x="410" y="226" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="272.5" y="201" width="90" height="20" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_5" bpmnElement="SequenceFlow_4" sourceElement="_BPMNShape_Task_6" targetElement="_BPMNShape_EndEvent_3">
-        <di:waypoint xsi:type="dc:Point" x="441.0" y="226.0"/>
-        <di:waypoint xsi:type="dc:Point" x="720.0" y="226.0"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="_BPMNShape_ServiceTask_25" bpmnElement="logout">
-        <dc:Bounds height="58.0" width="100.0" x="341.0" y="197.0"/>
+      <bpmndi:BPMNShape id="_BPMNShape_ServiceTask_25" bpmnElement="Logout">
+        <dc:Bounds x="410" y="197" width="100" height="58" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0q4uirw_di" bpmnElement="SequenceFlow_0q4uirw">
+        <di:waypoint xsi:type="dc:Point" x="510" y="226" />
+        <di:waypoint xsi:type="dc:Point" x="720" y="226" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="570" y="201" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn2:definitions>

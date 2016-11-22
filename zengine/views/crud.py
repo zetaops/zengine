@@ -422,10 +422,25 @@ class CrudView(BaseView):
         if self.object.Meta.list_fields:
             list_headers = []
             for f in self.object.Meta.list_fields:
-                if callable(getattr(self.object, f)):
+                if callable(getattr(self.object, f, None)):
                     list_headers.append(getattr(self.object, f).title)
+                elif "." in f:
+                    def attribute_name(obj, lst):
+                        i = 0
+                        cls = obj.get_link(field=lst[i])['mdl']
+                        if not hasattr(attrgetter(lst[i + 1])(cls), "get_link"):
+                            list_headers.append(cls.get_field(lst[i + 1]).title)
+                        else:
+                            try:
+                                return attribute_name(cls, lst=lst[i + 1:])
+                            except IndexError:
+                                cls = attrgetter(lst[i + 1])(cls).__class__
+                                list_headers.append(cls.Meta.verbose_name_plural)
+
+                    attribute_name(self.object, f.split("."))
+
                 else:
-                    list_headers.append(self.object._fields[f].title)
+                    list_headers.append(self.object.get_field(f).title)
             self.output['objects'].append(list_headers)
         else:
             self.output['objects'].append('-1')
@@ -497,7 +512,7 @@ class CrudView(BaseView):
                 elif callable(field):
                     field_str = field()
                 elif '.' in f:
-                    field_str = attrgetter(f)(obj)
+                    field_str = six.text_type(attrgetter(f)(obj))
                 else:
                     field_str = obj.get_humane_value(f)
                 result['fields'].append(field_str)
@@ -641,6 +656,11 @@ class CrudView(BaseView):
                 f['type'] = 'date'
                 f['values'] = chosen_filters or chosen_filters.extend((None, None))
 
+            elif isinstance(field, fields.Boolean):
+                f['values'] = [{'name': k, "value": k,
+                                'selected': True if k in chosen_filters else False} for k in
+                               ("true", "false")]
+
             elif field.choices:
                 f['values'] = [
                     {'name': k,
@@ -761,8 +781,7 @@ class CrudView(BaseView):
                 continue  # passing for now, needs client support
 
             obj_data[key] = val
-        self.form_out(forms.JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
-                                                        self.object)))
+        self.output['object_title'] = "%s : %s" % (self.model_class.Meta.verbose_name, self.object)
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
 

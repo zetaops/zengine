@@ -40,6 +40,17 @@ class Unit(Model):
             stack.extend(cls.get_user_keys(unit_key))
         return stack
 
+    @classmethod
+    def get_role_keys(cls, unit_key):
+        """
+        :param unit_key: Parent unit key
+        :return: role keys of subunits
+        """
+        stack = Role.objects.filter(unit_id=unit_key).values_list('key', flatten=True)
+        for unit_key in cls.objects.filter(parent_id=unit_key).values_list('key', flatten=True):
+            stack.extend(cls.get_role_keys(unit_key))
+        return stack
+
 
 class Permission(Model):
     """
@@ -85,11 +96,14 @@ class User(Model, BaseUser):
                                    default=settings.DEFAULT_LOCALIZATION_FORMAT)
     locale_number = field.String(_(u"Preferred Number Format"), index=False,
                                  default=settings.DEFAULT_LOCALIZATION_FORMAT)
+    last_login_role_key = field.String(_(u"Last Login Role Key"))
     unit = Unit()
 
     class Meta:
         """ meta class
         """
+        verbose_name = _(u"User")
+        verbose_name_plural = _(u"Users")
         list_fields = ['username', 'superuser']
 
     def pre_save(self):
@@ -98,6 +112,10 @@ class User(Model, BaseUser):
     def post_creation(self):
         self.prepare_channels()
 
+    def last_login_role(self):
+        last_key = self.last_login_role_key
+        return Role.objects.get(last_key) if last_key else self.role_set[0].role
+
     def get_permissions(self):
         """
         Permissions of the user.
@@ -105,9 +123,8 @@ class User(Model, BaseUser):
         Returns:
             List of Permission objects.
         """
-        users_primary_role = self.role_set[0].role
-        return users_primary_role.get_permissions()
-
+        user_role = self.last_login_role() if self.last_login_role_key else self.role_set[0].role
+        return user_role.get_permissions()
 
 class PermissionCache(Cache):
     """PermissionCache sınıfı Kullanıcıya Permission nesnelerinin
@@ -131,6 +148,7 @@ class AbstractRole(Model):
         verbose_name = _(u"Abstract Role")
         verbose_name_plural = _(u"Abstract Roles")
         search_fields = ['name']
+
 
     def __unicode__(self):
         return "%s" % self.name
