@@ -21,7 +21,7 @@ from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 from babel.messages import frontend as babel_frontend
 from babel.messages.extract import DEFAULT_KEYWORDS as BABEL_DEFAULT_KEYWORDS
-
+from zengine.lib.translation import gettext_lazy as __
 
 
 class UpdatePermissions(Command):
@@ -407,7 +407,6 @@ class ClearQueues(Command):
         worker.clear_queue()
 
 
-
 class ListSysViews(Command):
     """
     Lists non-workflow system and development views
@@ -431,8 +430,6 @@ class ListSysViews(Command):
             print("|_ %s" % file)
             for view in views:
                 print("  |_   %s" % view)
-
-
 
 
 class LoadDiagrams(Command):
@@ -532,3 +529,127 @@ class LoadDiagrams(Command):
             for f in glob.glob("%s/*.bpmn" % pth):
                 with open(f) as fp:
                     yield os.path.basename(os.path.splitext(f)[0]), fp.read()
+
+
+class CheckList(Command):
+    # change font and type in the shell.
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+    CMD_NAME = 'check_list'
+    HELP = "The system also checks whether the services are up and running," \
+           " whether the models are up-to-date, the environment variables are controlled."
+
+    def run(self):
+        self.check_encoding_and_env()
+        self.check_mq_connection()
+        self.check_riak()
+        self.check_redis()
+        self.check_migration_and_solr()
+
+    def check_migration_and_solr(self):
+        """
+            The model or models are checked for migrations that need to be done.
+            Solr is also checked.
+        """
+        from pyoko.db.schema_update import SchemaUpdater
+        from socket import error as socket_error
+        from pyoko.model import model_registry
+        from pyoko.conf import settings
+        from importlib import import_module
+
+        import_module(settings.MODELS_MODULE)
+
+        try:
+            print(__(u"Checking migration and solr ..."))
+            updater = SchemaUpdater(model_registry, 'all', 1, False)
+            updater.run(check_only=True)
+
+        except socket_error as e:
+            print(__(u"{0}Error not connected, open redis and rabbitmq{1}").format(CheckList.FAIL,
+                                                                                   CheckList.ENDC))
+
+    @staticmethod
+    def check_redis():
+        """
+            Redis checks the connection
+            It displays on the screen whether or not you have a connection.
+        """
+        from pyoko.db.connection import cache
+        from redis.exceptions import ConnectionError
+
+        try:
+            cache.ping()
+            print(CheckList.OKGREEN+"{0}Redis is working{1}"+CheckList.ENDC)
+        except ConnectionError as e:
+            print(__(u"{0}Redis is not working{1} ").format(CheckList.FAIL,
+                                                            CheckList.ENDC), e.message)
+
+    @staticmethod
+    def check_riak():
+        """
+            Riak checks the connection
+            It displays on the screen whether or not you have a connection.
+        """
+        from pyoko.db.connection import client
+        from socket import error as socket_error
+
+        try:
+            if client.ping():
+                print(__(u"{0}Riak is working{1}").format(CheckList.OKGREEN, CheckList.ENDC))
+            else:
+                print(__(u"{0}Riak is not working{1}").format(CheckList.FAIL, CheckList.ENDC))
+        except socket_error as e:
+            print(__(u"{0}Riak is not working{1}").format(CheckList.FAIL,
+                                                          CheckList.ENDC), e.message)
+
+    def check_mq_connection(self):
+        """
+        RabbitMQ checks the connection
+        It displays on the screen whether or not you have a connection.
+        """
+        import pika
+        from zengine.client_queue import BLOCKING_MQ_PARAMS
+        from pika.exceptions import ProbableAuthenticationError, ConnectionClosed
+
+        try:
+            connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
+            channel = connection.channel()
+            if channel.is_open:
+                print(__(u"{0}RabbitMQ is working{1}").format(CheckList.OKGREEN, CheckList.ENDC))
+            elif self.channel.is_closed or self.channel.is_closing:
+                print(__(u"{0}RabbitMQ is not working!{1}").format(CheckList.FAIL, CheckList.ENDC))
+        except ConnectionClosed as e:
+            print(__(u"{0}RabbitMQ is not working!{1}").format(CheckList.FAIL, CheckList.ENDC), e)
+        except ProbableAuthenticationError as e:
+            print(__(u"{0}RabbitMQ username and password wrong{1}").format(CheckList.FAIL,
+                                                                           CheckList.ENDC))
+
+    @staticmethod
+    def check_encoding_and_env():
+        """
+        It brings the environment variables to the screen.
+        The user checks to see if they are using the correct variables.
+        """
+        import sys
+        import os
+        if sys.getfilesystemencoding() in ['utf-8', 'UTF-8']:
+            print(__(u"{0}File system encoding correct{1}").format(CheckList.OKGREEN,
+                                                                   CheckList.ENDC))
+        else:
+            print(__(u"{0}File system encoding wrong!!{1}").format(CheckList.FAIL,
+                                                                   CheckList.ENDC))
+        check_env_list = ['RIAK_PROTOCOL', 'RIAK_SERVER', 'RIAK_PORT', 'REDIS_SERVER',
+                          'DEFAULT_BUCKET_TYPE', 'PYOKO_SETTINGS',
+                          'MQ_HOST', 'MQ_PORT', 'MQ_USER', 'MQ_VHOST',
+                          ]
+        env = os.environ
+        for k, v in env.items():
+            if k in check_env_list:
+                print(__(u"{0}{1} : {2}{3}").format(CheckList.BOLD, k, v, CheckList.ENDC))
