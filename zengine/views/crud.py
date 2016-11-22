@@ -781,8 +781,7 @@ class CrudView(BaseView):
                 continue  # passing for now, needs client support
 
             obj_data[key] = val
-        self.form_out(forms.JsonForm(title="%s : %s" % (self.model_class.Meta.verbose_name,
-                                                        self.object)))
+        self.output['object_title'] = "%s : %s" % (self.model_class.Meta.verbose_name, self.object)
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
 
