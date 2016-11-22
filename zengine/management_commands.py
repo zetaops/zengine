@@ -531,9 +531,19 @@ class LoadDiagrams(Command):
 
 
 class CheckList(Command):
+    # change font and type in the shell.
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
     CMD_NAME = 'check_list'
-    HELP = ""
-    PARAMS = []
+    HELP = "The system also checks whether the services are up and running," \
+           " whether the models are up-to-date, the environment variables are controlled."
 
     def run(self):
         self.check_encoding_and_env()
@@ -543,6 +553,10 @@ class CheckList(Command):
         self.check_migration_and_solr()
 
     def check_migration_and_solr(self):
+        """
+            The model or models are checked for migrations that need to be done.
+            Solr is also checked.
+        """
         from pyoko.db.schema_update import SchemaUpdater
         from socket import error as socket_error
         from pyoko.model import model_registry
@@ -557,33 +571,45 @@ class CheckList(Command):
             updater.run(check_only=True)
 
         except socket_error as e:
-            print("Error not connected, open redis and rabbitmq - False")
+            print(CheckList.FAIL+"Error not connected, open redis and rabbitmq"+CheckList.ENDC)
 
     @staticmethod
     def check_redis():
+        """
+            Redis checks the connection
+            It displays on the screen whether or not you have a connection.
+        """
         from pyoko.db.connection import cache
         from redis.exceptions import ConnectionError
 
         try:
             cache.ping()
-            print("Redis Checked - True")
+            print(CheckList.OKGREEN+"Redis is working"+CheckList.ENDC)
         except ConnectionError as e:
-            print("Redis Checked - False", e.message)
+            print(CheckList.FAIL+"Redis is not working "+CheckList.ENDC, e.message)
 
     @staticmethod
     def check_riak():
+        """
+            Riak checks the connection
+            It displays on the screen whether or not you have a connection.
+        """
         from pyoko.db.connection import client
         from socket import error as socket_error
 
         try:
             if client.ping():
-                print("Riak Checked - True")
+                print(CheckList.OKGREEN+"Riak is working"+CheckList.ENDC)
             else:
-                print("Riak Checked - False")
+                print(CheckList.FAIL+"Riak is not working"+CheckList.ENDC)
         except socket_error as e:
             print("Riak Checked False", e.message)
 
     def check_mq_connection(self):
+        """
+        RabbitMQ checks the connection
+        It displays on the screen whether or not you have a connection.
+        """
         import pika
         from zengine.client_queue import BLOCKING_MQ_PARAMS
         from pika.exceptions import ProbableAuthenticationError, ConnectionClosed
@@ -592,22 +618,26 @@ class CheckList(Command):
             connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
             channel = connection.channel()
             if channel.is_open:
-                print("RabbitMQ Checked - True")
+                print(CheckList.OKGREEN+"RabbitMQ is working"+CheckList.ENDC)
             elif self.channel.is_closed or self.channel.is_closing:
-                print("RabbitMQ Checked - False")
+                print(CheckList.FAIL+"RabbitMQ is not working!"+CheckList.ENDC)
         except ConnectionClosed as e:
-            print("RabbitMQ is not open!!!", e)
+            print(CheckList.FAIL+"RabbitMQ is not working!"+CheckList.ENDC, e)
         except ProbableAuthenticationError as e:
-            print("RabbitMQ username and password wrong - False")
+            print(CheckList.FAIL+"RabbitMQ username and password wrong"+CheckList.ENDC)
 
     @staticmethod
     def check_encoding_and_env():
+        """
+        It brings the environment variables to the screen.
+        The user checks to see if they are using the correct variables.
+        """
         import sys
         import os
-        if sys.getfilesystemencoding() == 'UTF-8':
-            print("File system encoding Checked - True")
+        if sys.getfilesystemencoding() == 'utf-8':
+            print(CheckList.OKGREEN+"File system encoding correct"+CheckList.ENDC)
         else:
-            print("File system encoding Checked - False")
+            print(CheckList.FAIL+"File system encoding wrong!!"+CheckList.ENDC)
         check_env_list = ['RIAK_PROTOCOL', 'RIAK_SERVER', 'RIAK_PORT', 'REDIS_SERVER',
                           'DEFAULT_BUCKET_TYPE', 'PYOKO_SETTINGS',
                           'MQ_HOST', 'MQ_PORT', 'MQ_USER', 'MQ_VHOST',
@@ -615,4 +645,4 @@ class CheckList(Command):
         env = os.environ
         for k, v in env.items():
             if k in check_env_list:
-                print("{} : {}".format(k, v))
+                print(CheckList.BOLD+"{} : {}".format(k, v)+CheckList.ENDC)
