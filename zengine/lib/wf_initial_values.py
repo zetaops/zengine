@@ -9,4 +9,4 @@
 
 class WFValues(object):
     def assign_wf_initial_values(self,current):
-        pass
+        current.task_data['wf_initial_values'] = {}
