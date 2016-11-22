@@ -21,6 +21,7 @@ from pyoko.manage import *
 from zengine.views.crud import SelectBoxCache
 from babel.messages import frontend as babel_frontend
 from babel.messages.extract import DEFAULT_KEYWORDS as BABEL_DEFAULT_KEYWORDS
+from zengine.lib.translation import gettext_lazy as __
 
 
 class UpdatePermissions(Command):
@@ -566,12 +567,13 @@ class CheckList(Command):
         import_module(settings.MODELS_MODULE)
 
         try:
-            print("Checking migration and solr ...")
+            print(__(u"Checking migration and solr ..."))
             updater = SchemaUpdater(model_registry, 'all', 1, False)
             updater.run(check_only=True)
 
         except socket_error as e:
-            print(CheckList.FAIL+"Error not connected, open redis and rabbitmq"+CheckList.ENDC)
+            print(__(u"{0}Error not connected, open redis and rabbitmq{1}").format(CheckList.FAIL,
+                                                                                   CheckList.ENDC))
 
     @staticmethod
     def check_redis():
@@ -584,9 +586,10 @@ class CheckList(Command):
 
         try:
             cache.ping()
-            print(CheckList.OKGREEN+"Redis is working"+CheckList.ENDC)
+            print(CheckList.OKGREEN+"{0}Redis is working{1}"+CheckList.ENDC)
         except ConnectionError as e:
-            print(CheckList.FAIL+"Redis is not working "+CheckList.ENDC, e.message)
+            print(__(u"{0}Redis is not working{1} ").format(CheckList.FAIL,
+                                                            CheckList.ENDC), e.message)
 
     @staticmethod
     def check_riak():
@@ -599,11 +602,12 @@ class CheckList(Command):
 
         try:
             if client.ping():
-                print(CheckList.OKGREEN+"Riak is working"+CheckList.ENDC)
+                print(__(u"{0}Riak is working{1}").format(CheckList.OKGREEN, CheckList.ENDC))
             else:
-                print(CheckList.FAIL+"Riak is not working"+CheckList.ENDC)
+                print(__(u"{0}Riak is not working{1}").format(CheckList.FAIL, CheckList.ENDC))
         except socket_error as e:
-            print("Riak Checked False", e.message)
+            print(__(u"{0}Riak is not working{1}").format(CheckList.FAIL,
+                                                          CheckList.ENDC), e.message)
 
     def check_mq_connection(self):
         """
@@ -618,13 +622,14 @@ class CheckList(Command):
             connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
             channel = connection.channel()
             if channel.is_open:
-                print(CheckList.OKGREEN+"RabbitMQ is working"+CheckList.ENDC)
+                print(__(u"{0}RabbitMQ is working{1}").format(CheckList.OKGREEN, CheckList.ENDC))
             elif self.channel.is_closed or self.channel.is_closing:
-                print(CheckList.FAIL+"RabbitMQ is not working!"+CheckList.ENDC)
+                print(__(u"{0}RabbitMQ is not working!{1}").format(CheckList.FAIL, CheckList.ENDC))
         except ConnectionClosed as e:
-            print(CheckList.FAIL+"RabbitMQ is not working!"+CheckList.ENDC, e)
+            print(__(u"{0}RabbitMQ is not working!{1}").format(CheckList.FAIL, CheckList.ENDC), e)
         except ProbableAuthenticationError as e:
-            print(CheckList.FAIL+"RabbitMQ username and password wrong"+CheckList.ENDC)
+            print(__(u"{0}RabbitMQ username and password wrong{1}").format(CheckList.FAIL,
+                                                                           CheckList.ENDC))
 
     @staticmethod
     def check_encoding_and_env():
@@ -635,9 +640,11 @@ class CheckList(Command):
         import sys
         import os
         if sys.getfilesystemencoding() == 'utf-8':
-            print(CheckList.OKGREEN+"File system encoding correct"+CheckList.ENDC)
+            print(__(u"{0}File system encoding correct{1}").format(CheckList.OKGREEN,
+                                                                   CheckList.ENDC))
         else:
-            print(CheckList.FAIL+"File system encoding wrong!!"+CheckList.ENDC)
+            print(__(u"{0}File system encoding wrong!!{1}").format(CheckList.FAIL,
+                                                                   CheckList.ENDC))
         check_env_list = ['RIAK_PROTOCOL', 'RIAK_SERVER', 'RIAK_PORT', 'REDIS_SERVER',
                           'DEFAULT_BUCKET_TYPE', 'PYOKO_SETTINGS',
                           'MQ_HOST', 'MQ_PORT', 'MQ_USER', 'MQ_VHOST',
@@ -645,4 +652,4 @@ class CheckList(Command):
         env = os.environ
         for k, v in env.items():
             if k in check_env_list:
-                print(CheckList.BOLD+"{} : {}".format(k, v)+CheckList.ENDC)
+                print(__(u"{0}{1} : {2}{3}").format(CheckList.BOLD, k, v, CheckList.ENDC))
