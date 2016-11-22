@@ -639,7 +639,7 @@ class CheckList(Command):
         """
         import sys
         import os
-        if sys.getfilesystemencoding() == 'utf-8':
+        if sys.getfilesystemencoding() in ['utf-8', 'UTF-8']:
             print(__(u"{0}File system encoding correct{1}").format(CheckList.OKGREEN,
                                                                    CheckList.ENDC))
         else:
