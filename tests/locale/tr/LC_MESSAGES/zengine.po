@@ -120,3 +120,26 @@ msgstr "Sil"
 msgid "Edit"
 msgstr "Düzenle"
 
+#: ../../zengine/zengine/views/system.py:95
+msgid "Assign Someone Else"
+msgstr "Başkasına Ata"
+
+#: ../../zengine/zengine/views/system.py:96
+msgid "Suspend"
+msgstr "Askıya Al"
+
+#: ../../zengine/zengine/views/system.py:97
+msgid "Postpone"
+msgstr "Ertele"
+
+#: ../../zengine/zengine/views/system.py:99
+msgid "Assign Yourself"
+msgstr "Kendine Ata"
+
+#: ../../zengine/zengine/views/task_manager_actions.py:48
+msgid "Successful"
+msgstr "Başarılı"
+
+#: ../../zengine/zengine/views/task_manager_actions.py:51
+msgid "Unsuccessful"
+msgstr "Başarısız"
