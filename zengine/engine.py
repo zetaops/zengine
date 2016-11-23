@@ -250,7 +250,8 @@ class ZEngine(object):
 
         # in wf diagram, if property is stated as init = True
         # demanded initial values are assigned and put to cache
-        if bool(self.get_worfklow_spec().wf_properties.get('init', False)):
+        start_init_values = self.workflow_spec.wf_properties.get('init', 'False') == 'True'
+        if start_init_values:
             WFInit = get_object_from_path(settings.WF_INITIAL_VALUES)()
             WFInit.assign_wf_initial_values(self.current)
 

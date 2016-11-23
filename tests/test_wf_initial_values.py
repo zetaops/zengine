@@ -11,7 +11,10 @@ from zengine.lib.test_utils import BaseTestCase
 
 
 class TestCase(BaseTestCase):
+
+
     def test_wf_initial_values(self):
+
         # sequential_cruds diagram has a property as init = True
         self.prepare_client('sequential_cruds', username='super_user')
         # WF is started.
@@ -19,10 +22,8 @@ class TestCase(BaseTestCase):
         # 'wf_initial_values' should be in current task_data.
         # Because it has a property as init=True
         assert 'wf_initial_values' in self.client.current.task_data
-        # 'wf_initial_values' key's value should be empty dict.
-        assert self.client.current.task_data['wf_initial_values'] == {}
-        # workflow_management diagram doesn't have a property.
 
+        # workflow_management diagram doesn't have a property.
         self.prepare_client('workflow_management', username='super_user')
         # WF is started.
         self.client.post()
