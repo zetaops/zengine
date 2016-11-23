@@ -729,7 +729,7 @@ def sync_wf_cache(current):
     BG Job for storing wf state to DB
     """
     wf_cache = WFCache(current)
-    wf_state = wf_cache.get()
+    wf_state = wf_cache.get()  # unicode serialized json to dict, all values are unicode
     if 'role_id' in wf_state:
         # role_id inserted by engine, so it's a sign that we get it from cache not db
         try:
@@ -750,7 +750,7 @@ def sync_wf_cache(current):
         wfi.step = wf_state['step']
         wfi.name = wf_state['name']
         wfi.pool = wf_state['pool']
-        wfi.current_actor_id = wf_state['role_id']
+        wfi.current_actor_id = str(wf_state['role_id'])  # keys must be str not unicode
         wfi.data = wf_state['data']
         if wf_state['finished']:
             wfi.finished = True
