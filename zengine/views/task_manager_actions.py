@@ -37,7 +37,7 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
-        task_invitation_key = self.input['task_inv_key']
+        task_invitation_key = self.input['filters']['task_inv_id']['values'][0]
         task_invitation = TaskInvitation.objects.get(task_invitation_key)
         wfi = task_invitation.instance
 
@@ -66,6 +66,9 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
+        if 'task_inv_key' not in self.current.task_data:
+            self.current.task_data['task_inv_key'] = self.input['filters']['task_inv_id']['values'][0]
+
         roles = [(m.key, m.__unicode__()) for m in RoleModel.objects.filter(
                                                     abstract_role=self.current.role.abstract_role,
                                                     unit=self.current.role.unit) if m != self.current.role]
@@ -85,10 +88,10 @@ class TaskManagerActionsView(BaseView):
         """
         With the workflow instance and the task invitation is assigned a role.
         """
-        task_invitation = TaskInvitation.objects.get(self.input['task_inv_key'])
+        task_invitation = TaskInvitation.objects.get(self.current.task_data['task_inv_key'])
         wfi = task_invitation.instance
         select_role = self.input['form']['select_role']
-        if not wfi.current_actor.key == select_role:
+        if wfi.current_actor == self.current.role:
             task_invitation.role = RoleModel.objects.get(select_role)
             wfi.current_actor = RoleModel.objects.get(select_role)
             wfi.save()
@@ -115,6 +118,9 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
+        if 'task_inv_key' not in self.current.task_data:
+            self.current.task_data['task_inv_key'] = self.input['filters']['task_inv_id']['values'][0]
+
         _form = forms.JsonForm(title="Postponed Workflow")
         _form.start_date = fields.DateTime("Start Date")
         _form.finish_date = fields.DateTime("Finish Date")
@@ -127,7 +133,7 @@ class TaskManagerActionsView(BaseView):
             Workflow instance and invitation roles change.
 
         """
-        task_invitation = TaskInvitation.objects.get(self.input['task_inv_key'])
+        task_invitation = TaskInvitation.objects.get(self.current.task_data['task_inv_key'])
         wfi = task_invitation.instance
         if wfi.current_actor.exist and wfi.current_actor == self.current.role:
 
@@ -166,7 +172,7 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
-        task_invitation_key = self.input['task_inv_key']
+        task_invitation_key = self.input['filters']['task_inv_id']['values'][0]
         task_invitation = TaskInvitation.objects.get(task_invitation_key)
         wfi = task_invitation.instance
 
