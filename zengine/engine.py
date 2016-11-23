@@ -10,34 +10,25 @@ Zengine's engine!
 from __future__ import division
 from __future__ import print_function, absolute_import, division
 
-import gettext
 import importlib
 import os
 import sys
 import traceback
-from copy import deepcopy
-import babel
-
 import lazy_object_proxy
 from SpiffWorkflow import Task
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
-from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
-from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
-    CompactWorkflowSerializer
+from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import CompactWorkflowSerializer
 from SpiffWorkflow.specs import WorkflowSpec
 from datetime import datetime
-
-from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
-from pyoko.model import super_context, model_registry
+from pyoko.model import super_context
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.config import settings
 from zengine.current import WFCurrent
-from zengine.lib.camunda_parser import InMemoryPackager, ZopsSerializer
+from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
-
 
 # crud_view = CrudView()
 from zengine.models import BPMNWorkflow
@@ -255,8 +246,15 @@ class ZEngine(object):
                 self.current.task_data['object_id'] = self.wf_state['subject']
         self.check_for_authentication()
         self.check_for_permission()
-
         self.workflow = self.load_or_create_workflow()
+
+        # in wf diagram, if property is stated as init = True
+        # demanded initial values are assigned and put to cache
+        start_init_values = self.workflow_spec.wf_properties.get('init', 'False') == 'True'
+        if start_init_values:
+            WFInit = get_object_from_path(settings.WF_INITIAL_VALUES)()
+            WFInit.assign_wf_initial_values(self.current)
+
         log_msg = ("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
                    "\tWF: %s (Possible) TASK:%s\n"
                    "\tCMD:%s\n"
