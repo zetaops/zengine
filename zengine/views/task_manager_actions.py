@@ -51,10 +51,10 @@ class TaskManagerActionsView(BaseView):
             wfi.save()
             [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if
              not inv == task_invitation]
-            title = _(u"Successful"),
+            title = _(u"Successful")
             msg = _(u"You have successfully assigned the job to yourself.")
         else:
-            title = _(u"Unsuccessful"),
+            title = _(u"Unsuccessful")
             msg = _(u"Unfortunately, this job is already taken by someone else.")
 
         self.current.msg_box(title=title, msg=msg)
@@ -85,8 +85,8 @@ class TaskManagerActionsView(BaseView):
             _form.send_button = fields.Button(_(u"Send"))
             self.form_out(_form)
         else:
-            title = _(u"Unsuccessful"),
-            msg = _(u"Assign role not found or this is already assigned")
+            title = _(u"Unsuccessful")
+            msg = _(u"Assign role not found")
             self.current.msg_box(title=title, msg=msg)
 
     def send_workflow(self):
@@ -103,11 +103,12 @@ class TaskManagerActionsView(BaseView):
             task_invitation.save()
             [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if
              not inv == task_invitation]
-            title = _(u"Successful"),
+            title = _(u"Successful")
             msg = _(u"The workflow was assigned to someone else with success.")
         else:
-            title = _(u"Unsuccessful"),
-            msg = _(u"This workflow is already assigned")
+            title = _(u"Unsuccessful")
+            msg = _(u"This workflow does not belong to you, you cannot assign it to someone else.")
+
         self.current.msg_box(title=title, msg=msg)
 
     # - Assign to same abstract role and unit -
@@ -152,10 +153,10 @@ class TaskManagerActionsView(BaseView):
             wfi.finish_date = dt_finish
             wfi.save()
 
-            title = _(u"Successful"),
+            title = _(u"Successful")
             msg = _(u"You've extended the workflow time.")
         else:
-            title = _(u"Unsuccessful"),
+            title = _(u"Unsuccessful")
             msg = _(u"This workflow does not belong to you.")
 
         self.current.msg_box(title=title, msg=msg)
@@ -181,12 +182,19 @@ class TaskManagerActionsView(BaseView):
         wfi = task_invitation.instance
 
         if wfi.current_actor.exist and wfi.current_actor == self.current.role:
+            for m in RoleModel.objects.filter(abstract_role=self.current.role.abstract_role,
+                                              unit=self.current.role.unit):
+                if m != self.current.role:
+                    task_invitation.key = ''
+                    task_invitation.role = m
+                    task_invitation.save()
+
             wfi.current_actor = RoleModel()
             wfi.save()
-            title = _(u"Successful"),
+            title = _(u"Successful")
             msg = _(u"You left the workflow.")
         else:
-            title = _(u"Unsuccessful"),
+            title = _(u"Unsuccessful")
             msg = _(u"Unfortunately, this workflow does not belong to you or is already idle.")
 
         self.current.msg_box(title=title, msg=msg)
