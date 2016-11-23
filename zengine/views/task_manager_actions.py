@@ -1,4 +1,3 @@
-
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
@@ -13,11 +12,18 @@ from pyoko.conf import settings
 from datetime import datetime
 from zengine.lib.translation import gettext as _
 
-
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
 
 
 class TaskManagerActionsView(BaseView):
+    def __init__(self, current=None):
+        super(TaskManagerActionsView, self).__init__(current)
+
+        if 'task_inv_key' not in self.current.task_data:
+            self.current.task_data['task_inv_key'] = self.input['filters']['task_inv_id']['values'][
+                0]
+
+        self.task_invitation_key = self.current.task_data['task_inv_key']
 
     # - Assign Yourself -
     def assign_yourself(self):
@@ -37,14 +43,14 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
-        task_invitation_key = self.input['filters']['task_inv_id']['values'][0]
-        task_invitation = TaskInvitation.objects.get(task_invitation_key)
+        task_invitation = TaskInvitation.objects.get(self.task_invitation_key)
         wfi = task_invitation.instance
 
         if not wfi.current_actor.exist:
             wfi.current_actor = self.current.role
             wfi.save()
-            [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if not inv == task_invitation]
+            [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if
+             not inv == task_invitation]
             title = _(u"Successful"),
             msg = _(u"You have successfully assigned the job to yourself.")
         else:
@@ -52,6 +58,7 @@ class TaskManagerActionsView(BaseView):
             msg = _(u"Unfortunately, this job is already taken by someone else.")
 
         self.current.msg_box(title=title, msg=msg)
+
     # - Assign Yourself -
 
     # - Assign to same abstract role and unit -
@@ -66,12 +73,10 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
-        if 'task_inv_key' not in self.current.task_data:
-            self.current.task_data['task_inv_key'] = self.input['filters']['task_inv_id']['values'][0]
 
         roles = [(m.key, m.__unicode__()) for m in RoleModel.objects.filter(
-                                                    abstract_role=self.current.role.abstract_role,
-                                                    unit=self.current.role.unit) if m != self.current.role]
+            abstract_role=self.current.role.abstract_role,
+            unit=self.current.role.unit) if m != self.current.role]
 
         if roles:
             _form = forms.JsonForm(title=_(u'Assign to workflow'))
@@ -88,7 +93,7 @@ class TaskManagerActionsView(BaseView):
         """
         With the workflow instance and the task invitation is assigned a role.
         """
-        task_invitation = TaskInvitation.objects.get(self.current.task_data['task_inv_key'])
+        task_invitation = TaskInvitation.objects.get(self.task_invitation_key)
         wfi = task_invitation.instance
         select_role = self.input['form']['select_role']
         if wfi.current_actor == self.current.role:
@@ -96,7 +101,8 @@ class TaskManagerActionsView(BaseView):
             wfi.current_actor = RoleModel.objects.get(select_role)
             wfi.save()
             task_invitation.save()
-            [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if not inv == task_invitation]
+            [inv.delete() for inv in TaskInvitation.objects.filter(instance=wfi) if
+             not inv == task_invitation]
             title = _(u"Successful"),
             msg = _(u"The workflow was assigned to someone else with success.")
         else:
@@ -118,8 +124,6 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
-        if 'task_inv_key' not in self.current.task_data:
-            self.current.task_data['task_inv_key'] = self.input['filters']['task_inv_id']['values'][0]
 
         _form = forms.JsonForm(title="Postponed Workflow")
         _form.start_date = fields.DateTime("Start Date")
@@ -133,7 +137,7 @@ class TaskManagerActionsView(BaseView):
             Workflow instance and invitation roles change.
 
         """
-        task_invitation = TaskInvitation.objects.get(self.current.task_data['task_inv_key'])
+        task_invitation = TaskInvitation.objects.get(self.task_invitation_key)
         wfi = task_invitation.instance
         if wfi.current_actor.exist and wfi.current_actor == self.current.role:
 
@@ -155,6 +159,7 @@ class TaskManagerActionsView(BaseView):
             msg = _(u"This workflow does not belong to you.")
 
         self.current.msg_box(title=title, msg=msg)
+
     # - Postponed workflow -
 
     # - Suspend workflow -
@@ -172,8 +177,7 @@ class TaskManagerActionsView(BaseView):
                    }
 
         """
-        task_invitation_key = self.input['filters']['task_inv_id']['values'][0]
-        task_invitation = TaskInvitation.objects.get(task_invitation_key)
+        task_invitation = TaskInvitation.objects.get(self.task_invitation_key)
         wfi = task_invitation.instance
 
         if wfi.current_actor.exist and wfi.current_actor == self.current.role:
@@ -186,4 +190,4 @@ class TaskManagerActionsView(BaseView):
             msg = _(u"Unfortunately, this workflow does not belong to you or is already idle.")
 
         self.current.msg_box(title=title, msg=msg)
-    # - Suspend workflow -
+        # - Suspend workflow -
