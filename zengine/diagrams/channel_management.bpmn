@@ -76,13 +76,13 @@
     <bpmn:sequenceFlow id="SequenceFlow_1mfddss" sourceRef="ChannelList" targetRef="ChannelChoiceControl" />
     <bpmn:sequenceFlow id="SequenceFlow_0rdup9m" sourceRef="ChannelChoiceControl" targetRef="ExclusiveGateway_1tn0pc9" />
     <bpmn:sequenceFlow id="SequenceFlow_15myrjl" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="SubscriberChannelChoice">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg == "create_new_channel"]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[option == "create_new_channel" and control == True]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="SequenceFlow_0v4l6zb" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="SubscriberChannelChoice">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg== "choose_existing_channel"]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[option== "choose_existing_channel" and control == True]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="SequenceFlow_1rmbriy" sourceRef="ExclusiveGateway_1tn0pc9" targetRef="FindChosenChannel">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[msg == "find_chosen_channel"]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[option == "find_chosen_channel" and control == True]]></bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="SequenceFlow_0y7jyof" sourceRef="ExclusiveGateway_0ij4t1a" targetRef="MoveCompleteChannel">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">split_operation == False</bpmn:conditionExpression>
