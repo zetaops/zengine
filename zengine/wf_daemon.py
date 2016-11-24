@@ -30,7 +30,7 @@ sys._zops_wf_state_log = ''
 
 wf_engine = ZEngine()
 
-LOGIN_REQUIRED_MESSAGE = {'error': "Login required", "code": 401}
+LOGIN_REQUIRED_MESSAGE = {"cmd": "error", "error": "Login required", "code": 401}
 
 
 class Worker(object):
@@ -206,7 +206,7 @@ class Worker(object):
             import sys
             if hasattr(sys, '_called_from_test'):
                 raise
-            output = {'cmd': 'error', 'error': self._prepare_error_msg(e.message), "code": e.code}
+            output = {"cmd": "error", "error": self._prepare_error_msg(e.message), "code": e.code}
             log.exception("Http error occurred")
         except:
             self.current = Current(session=session, input=data)
@@ -215,7 +215,7 @@ class Worker(object):
             if hasattr(sys, '_called_from_test'):
                 raise
             err = traceback.format_exc()
-            output = {'error': self._prepare_error_msg(err), "code": 500}
+            output = {"cmd": "error", "error": self._prepare_error_msg(err), "code": 500}
             log.exception("Worker error occurred with messsage body:\n%s" % body)
         if 'callbackID' in input:
             output['callbackID'] = input['callbackID']
