@@ -44,7 +44,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post(view='_zops_get_tasks', state='finished')
         # We control the get_tasks view
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
-        assert resp.json['task_list'][0]['title'] == 'workflow_management'
+        assert resp.json['task_list'][0]['title'] == 'Workflow Management'
         assert resp.json['task_list'][0][
                    'description'] == 'Test workflow management bpmn description'
         assert resp.json['task_count']['finished'] == finished_task_count + 1
@@ -94,7 +94,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post(view='_zops_get_tasks', state='active')
         # We control the get_tasks view
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
-        assert resp.json['task_list'][0]['title'] == 'workflow_management'
+        assert resp.json['task_list'][0]['title'] == 'Workflow Management'
         assert resp.json['task_list'][0]['state'] == 30
         assert resp.json['task_list'][0][
                    'description'] == 'Test workflow management bpmn description'
@@ -140,7 +140,7 @@ class TestCase(BaseTestCase):
         resp = self.client.post(view='_zops_get_tasks', state='future')
         # We control the get_tasks view
         assert resp.json['task_list'][0]['wf_type'] == 'workflow_management'
-        assert resp.json['task_list'][0]['title'] == 'workflow_management'
+        assert resp.json['task_list'][0]['title'] == 'Workflow Management'
         assert resp.json['task_list'][0]['state'] == 10
         assert resp.json['task_list'][0][
                    'description'] == 'Test workflow management bpmn description'

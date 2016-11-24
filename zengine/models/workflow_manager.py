@@ -317,6 +317,7 @@ class Task(Model):
             current_roles = roles or [wfi.current_actor]
             for role in current_roles:
                 TaskInvitation(
+                    title=self.name,
                     instance=wfi,
                     role=role,
                     wf_name=self.wf.name,
@@ -406,7 +407,6 @@ class Task(Model):
                         query_dict[k] = query_dict[k].__getattribute__(parse[i])
                 else:
                     query_dict[k] = parse[0]
-
 
         return model.objects.filter(**query_dict)
 
@@ -624,10 +624,11 @@ class TaskInvitation(Model):
         return six.text_type(self.instance.get_object())
 
     def pre_save(self):
-        self.title = "%s" % self.wf_name
+        self.title = "%s" % self.instance.task.name
         self.search_data = '\n'.join([self.wf_name,
                                       self.title]
                                      )
+        self.progress = get_progress(start=self.start_date, finish=self.finish_date)
 
     def __unicode__(self):
         return "%s invitation for %s" % (self.wf_name, self.role)

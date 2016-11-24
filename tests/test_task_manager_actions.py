@@ -33,10 +33,10 @@ class TestCase(BaseTestCase):
                 "task_inv_id": {"values": ["Ewn4V1Iih7htogD7kLyyWthswxr"]}})
             if i == 0:
                 # The first step is to be successful.
-                assert resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'] == "Successful"
             else:
                 # We will wait for the second step to fail because the workflow will be assigned.
-                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'] == "Unsuccessful"
 
     def test_assign_to_someone_else(self):
         for i in range(2):
@@ -46,9 +46,9 @@ class TestCase(BaseTestCase):
             resp = self.client.post(form={"select_role": "NdOZ5WODiDYSdmjHCKt6Ax1sryA",
                                           "explain_text": "Test"})
             if i == 0:
-                assert resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'] == "Successful"
             else:
-                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'] == "Unsuccessful"
 
 
 class TestCase2(BaseTestCase):
@@ -60,7 +60,7 @@ class TestCase2(BaseTestCase):
         resp = self.client.post(form={"start_date": "15.10.2017",
                                       "finish_date": "20.10.2017"})
 
-        assert resp.json['msgbox']['title'][0] == "Successful"
+        assert resp.json['msgbox']['title'] == "Successful"
 
     def test_suspend_workflow(self):
         for i in range(2):
@@ -69,6 +69,6 @@ class TestCase2(BaseTestCase):
                 "task_inv_id": {"values": ["Ewn4V1Iih7htogD7kLyyWthswxr"]}})
 
             if i == 0:
-                assert resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'] == "Successful"
             else:
-                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'] == "Unsuccessful"
