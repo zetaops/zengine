@@ -377,11 +377,7 @@ class PrepareMQ(Command):
                 # create notification subscription to private exchange
                 sb, new = Subscriber.objects.get_or_create(channel=ch,
                                                            user=usr,
-                                                           read_only=True,
-                                                           name='Notifications',
-                                                           defaults=dict(can_manage=True,
-                                                                         can_leave=False)
-                                                           )
+                                                           name='Notifications')
                 print("%s notify sub: %s" % ('created' if new else 'existing', ch.code_name))
 
     def create_channel_exchanges(self):

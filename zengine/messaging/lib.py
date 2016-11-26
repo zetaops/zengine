@@ -95,8 +95,7 @@ class BaseUser(object):
         # create private channel of user
         ch, new = Channel.objects.get_or_create(owner=self, typ=5)
         # create subscription entry for notification messages
-        sb, new = Subscriber.objects.get_or_create(channel=ch, user=self, is_visible=True,
-                                                   can_leave=False, inform_me=False)
+        sb, new = Subscriber.objects.get_or_create(channel=ch, user=self, name = 'Notifications')
 
     def check_password(self, raw_password):
         """
