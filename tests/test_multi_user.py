@@ -45,8 +45,6 @@ class TestCase(BaseTestCase):
         with BlockSave(Message):
             resp = self.client.post()
             resp.raw()
-            resp = self.client.post()
-            resp.raw()
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
 
     def test_multi_user_owner_fail(self):
