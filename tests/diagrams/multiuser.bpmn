@@ -14,7 +14,7 @@
       <bpmn:lane id="employee" name="Employee">
         <bpmn:extensionElements>
           <camunda:properties>
-            <camunda:property name="owners" value="manager.project_set[0].project.Employee" />
+            <camunda:property name="owners" value="[manager.project_set[0].project.Employee.employee]" />
             <camunda:property name="relations" value="self in manager.project_set[0].project.assigned_employees" />
           </camunda:properties>
         </bpmn:extensionElements>
