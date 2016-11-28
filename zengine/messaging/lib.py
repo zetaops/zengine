@@ -93,9 +93,17 @@ class BaseUser(object):
     def prepare_channels(self):
         from zengine.messaging.model import Channel, Subscriber
         # create private channel of user
-        ch, new = Channel.objects.get_or_create(owner=self, typ=5)
+        ch, new_ch = Channel.objects.get_or_create(owner=self, typ=5)
         # create subscription entry for notification messages
-        sb, new = Subscriber.objects.get_or_create(channel=ch, user=self, name = 'Notifications')
+        sb, new_sb = Subscriber.objects.get_or_create(
+            channel=ch,
+            user=self,
+            read_only=True,
+            name='Notifications',
+            defaults=dict(can_manage=True, can_leave=False, inform_me=False)
+        )
+
+        return ch, new_ch, sb, new_sb
 
     def check_password(self, raw_password):
         """
