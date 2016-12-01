@@ -9,8 +9,9 @@ from zengine.views.crud import CrudView
 from ulakbus.models import User
 from zengine.forms import fields
 from zengine.messaging.model import Channel, Subscriber, Message
-from pyoko import ListNode, exceptions
+from pyoko import ListNode
 from zengine.lib.translation import gettext as _, gettext_lazy as __
+from pyoko.db.adapter.db_riak import BlockDelete, BlockSave
 
 
 class NewChannelForm(JsonForm):
@@ -39,25 +40,38 @@ class SubscriberListForm(JsonForm):
         key = fields.String(hidden=True)
 
 
+CHANNEL_CHOICE_TEXT = _(u"""Please choose channel or channels you want to do operation.
+You should choose at least one channel for merging operation and
+you should choose just one channel to split.""")
+
+
 class Channel_Management(CrudView):
     """
-    It provides channel management which are editing, splitting, merging and moving operations
-    of channel. If there is an error message like zero choice, it is shown on the screen.
+    It provides channel management which consists of editing,
+    splitting, merging and moving operations of channel.
     """
 
     def channel_list(self):
+        """
+        Main screen for channel management.
+        Channels listed and operations can be chosen on the screen.
+        If there is an error message like non-choice,
+        it is shown here.
+
+        """
 
         if self.current.task_data.get('msg', False):
-            show_messages(self.current)
+            args = [self.current]
+            if self.current.task_data.get('title', False):
+                args.extend([self.current.task_data['title'], self.current.task_data['type']])
+            show_messages(*args)
 
+        self.current.task_data['new_channel'] = False
         _form = ChannelListForm(current=self.current, title=_(u'Public Channel List'))
-        _form.help_text = _(u"""Please choose channel or channels you want to do operation.
-        You should choose at least one channel for merging operation and you should choose just
-        one channel to split.""")
+        _form.help_text = CHANNEL_CHOICE_TEXT
 
         for channel in Channel.objects.filter(typ=15):
-            # Sometimes name or surname can be None.
-            owner_name = "%s %s" % (channel.owner.name, channel.owner.surname)
+            owner_name = "%s" % (channel.owner.username)
             _form.ChannelList(choice=False, name=channel.name, owner=owner_name, key=channel.key)
 
         _form.new_channel = fields.Button(_(u"Merge At New Channel"), cmd="create_new_channel")
@@ -68,14 +82,17 @@ class Channel_Management(CrudView):
 
     def channel_choice_control(self):
         """
-        It controls errors, for example for split operation just one channel should be chosen,
-        if chocices are different from one channel, it creates an error message to show.
+        It controls errors. If there is an error,
+        returns channel list screen with error message.
         """
-
-        self.current.task_data['option'] = self.input['cmd']
-        self.current.task_data['split_operation'] = False
         self.current.task_data['control'], self.current.task_data['msg'] \
             = selection_error_control(self.input['form'])
+        if self.current.task_data['control']:
+            self.current.task_data['option'] = self.input['cmd']
+            self.current.task_data['split_operation'] = False
+            keys, names = return_chosen(self.input['form']['ChannelList'])
+            self.current.task_data['chosen_channels'] = keys
+            self.current.task_data['chosen_channels_names'] = names
 
     def create_new_channel(self):
         """
@@ -83,56 +100,61 @@ class Channel_Management(CrudView):
         """
 
         self.current.task_data['new_channel'] = True
-        _form = NewChannelForm(Channel(), current=self.current,
-                               title=_(u"Specify Features of New Channel to Create"))
+        _form = NewChannelForm(Channel(), current=self.current)
+        _form.title = _(u"Specify Features of New Channel to Create")
         _form.forward = fields.Button(_(u"Create"), flow="find_target_channel")
         self.form_out(_form)
 
     def choose_existing_channel(self):
         """
-        It is a channel choice list and previous chosen channels shouldn't be chosen on the screen.
+        It is a channel choice list and chosen channels
+        at previous step shouldn't be on the screen.
         """
+
+        if self.current.task_data.get('msg', False):
+            show_messages(self.current)
 
         _form = ChannelListForm(current=self.current)
         _form.title = _(u"Choose a Channel Which Will Be Merged With Chosen Channels")
 
         for channel in Channel.objects.filter(typ=15):
-            if not channel.key in self.current.task_data['chosen_channels']:
-                owner_name = "%s %s" % (channel.owner.name, channel.owner.surname)
+            if channel.key not in self.current.task_data['chosen_channels']:
+                owner_name = "%s" % (channel.owner.username)
                 _form.ChannelList(choice=False, name=channel.name, owner=owner_name,
                                   key=channel.key)
 
         _form.choose = fields.Button(_(u"Choose"))
         self.form_out(_form)
 
-    def find_chosen_channel(self):
+    def existing_choice_control(self):
         """
-        It finds chosen channel to split.
+        It controls errors. It generates an error message
+        if zero or more than one channels are selected.
         """
-
-        self.current.task_data['split_operation'] = True
-        self.current.task_data['chosen_channels'] = return_chosen(self.input['form']['ChannelList'])
-        self.current.task_data['msg'] = None
+        self.current.task_data['existing'] = False
+        self.current.task_data['msg'] = _(u"You should choose just one channel to do operation.")
+        keys, names = return_chosen(self.input['form']['ChannelList'])
+        if len(keys) == 1:
+            self.current.task_data['existing'] = True
 
     def split_channel(self):
         """
-        Subscribers which are moved from chosen channel are chosen.
-        Chosen subscribers are moved to either new or existing channel.
-        If there is an error like zero choice from subscriber list, it is shown.
+        A channel can be splitted to new channel or other existing channel.
+        It creates subscribers list as selectable to moved.
         """
 
-        if self.current.task_data['msg']:
-            show_messages(self.current, 'Incorrect Operation', 'warning')
+        if self.current.task_data.get('msg', False):
+            show_messages(self.current)
 
+        self.current.task_data['split_operation'] = True
         channel = Channel.objects.get(self.current.task_data['chosen_channels'][0])
 
-        _form = SubscriberListForm(current=self.current,
-                                   title=_(u'Choose Subscribers to Migrate'))
+        _form = SubscriberListForm(current=self.current)
+        _form.title = _(u'Choose Subscribers to Migrate')
 
         for subscriber in Subscriber.objects.filter(channel=channel):
-            subscriber_name = "%s %s (%s)" % (
-                subscriber.user.name, subscriber.user.surname, subscriber.user.username)
-            _form.SubscriberList(secim=True, name=subscriber_name, key=subscriber.key)
+            subscriber_name = "%s" % (subscriber.user.username)
+            _form.SubscriberList(choice=False, name=subscriber_name, key=subscriber.key)
 
         _form.new_channel = fields.Button(_(u"Move to a New Channel"), cmd="create_new_channel")
         _form.existing_channel = fields.Button(_(u"Move to an Existing Channel"),
@@ -141,33 +163,20 @@ class Channel_Management(CrudView):
 
     def subscriber_choice_control(self):
         """
-        It controls subscribers choice list if there is a zero choice,
-        it creates an error message to show.
+        It controls subscribers choice and generates
+        error message if there is a non-choice.
         """
-        self.current.task_data['msg'] = self.input['cmd']
-        chosen_subscriber_number = len(return_chosen(self.input['form']['SubscriberList']))
-        if chosen_subscriber_number == 0:
-            self.current.task_data[
-                'msg'] = "You should choose at least one subscriber for migration operation."
-
-    def subscriber_channel_choice(self):
-        """
-        There are two option. Channels can be moved to new channel or existing
-        channel and Subscribers can be moved to new channel or existing channel.
-        It controls which one is intended.
-        """
-
-        self.current.task_data['new_channel'] = False
-
-        if self.current.task_data['split_operation']:
-            self.current.task_data['chosen_subscribers'] = return_chosen(
-                self.input['form']['SubscriberList'])
-        else:
-            self.current.task_data['chosen_channels'] = return_chosen(
-                self.input['form']['ChannelList'])
+        self.current.task_data['option'] = None
+        self.current.task_data['chosen_subscribers'], names = return_chosen(
+            self.input['form']['SubscriberList'])
+        self.current.task_data[
+            'msg'] = "You should choose at least one subscriber for migration operation."
+        if self.current.task_data['chosen_subscribers']:
+            self.current.task_data['option'] = self.input['cmd']
 
     def find_target_channel(self):
         """
+        This method finds target_channel.
         Channels can be merged, splitted and subscribers also can be moved.
         This method finds where will they move.
         """
@@ -175,12 +184,12 @@ class Channel_Management(CrudView):
         self.current.task_data['title'] = "Successful Operation"
         self.current.task_data['type'] = "info"
 
-        try:
-            chosen_channels = return_chosen(self.input['form']['ChannelList'])
-            self.current.task_data['target_channel_key'] = chosen_channels[0]
-        except:
+        if self.current.task_data.get('new_channel', False):
             channel = save_new_channel(self.input['form'])
             self.current.task_data['target_channel_key'] = channel.key
+        else:
+            chosen_channels, names = return_chosen(self.input['form']['ChannelList'])
+            self.current.task_data['target_channel_key'] = chosen_channels[0]
 
     def move_complete_channel(self):
         """
@@ -188,25 +197,23 @@ class Channel_Management(CrudView):
         """
 
         to_channel = Channel.objects.get(self.current.task_data['target_channel_key'])
-        chosen_channels = [Channel.objects.get(channel_key) for channel_key in
-                           self.current.task_data['chosen_channels']]
-        for from_channel in chosen_channels:
-            for s in Subscriber.objects.filter(channel=from_channel, typ=15):
+        chosen_channels = self.current.task_data['chosen_channels']
+        chosen_channels_names = self.current.task_data['chosen_channels_names']
+
+        with BlockSave(Subscriber, query_dict={'channel_id': to_channel.key}):
+            for s in Subscriber.objects.filter(channel_id__in=chosen_channels, typ=15):
                 s.channel = to_channel
                 s.save()
-            # for m in Message.objects.filter(channel = from_channel,typ = 15):
-            #     m.blocking_delete()
-            from_channel.blocking_delete()
 
-            # for i in range(2):
-            #     model = Subscriber if i == 0 else Message
-            #     for moved in model.objects.filter(channel=from_channel, typ=15):
-            #         moved.channel = to_channel
-            #         moved.save()
+        with BlockDelete(Message):
+            Message.objects.filter(channel_id__in=chosen_channels, typ=15).delete()
+
+        with BlockDelete(Channel):
+            Channel.objects.filter(key__in=chosen_channels).delete()
 
         self.current.task_data[
-            'msg'] = "Chosen channels has been merged to '%s' channel successfully." % (
-            to_channel.name)
+            'msg'] = "Chosen channels(%s) have been merged to '%s' channel successfully." % \
+                     ((', ').join(chosen_channels_names), to_channel.name)
 
     def move_chosen_subscribers(self):
         """
@@ -214,18 +221,34 @@ class Channel_Management(CrudView):
         """
         from_channel = Channel.objects.get(self.current.task_data['chosen_channels'][0])
         to_channel = Channel.objects.get(self.current.task_data['target_channel_key'])
-        chosen_subscribers = [Subscriber.objects.get(subscriber_key) for subscriber_key in
-                              self.current.task_data['chosen_subscribers']]
-        for subscriber in chosen_subscribers:
-            subscriber.channel = to_channel
-            subscriber.save()
+
+        with BlockSave(Subscriber, query_dict={'channel_id': to_channel.key}):
+            for subscriber in Subscriber.objects.filter(
+                    key__in=self.current.task_data['chosen_subscribers']):
+                subscriber.channel = to_channel
+                subscriber.save()
 
         if self.current.task_data['new_channel']:
-            copy_and_move_messages(from_channel, to_channel)
+            self.copy_and_move_messages(from_channel, to_channel)
 
         self.current.task_data[
             'msg'] = """Chosen subscribers and messages of them migrated from
              '%s' channel to '%s' channel successfully.""" % (from_channel.name, to_channel.name)
+
+    def copy_and_move_messages(self, from_channel, to_channel):
+        """
+         While splitting channel and moving chosen subscribers to new channel,
+         old channel's history and messages are copied and moved to new channel.
+
+         Args:
+            from_channel (Channel object): move messages from channel
+            to_channel (Channel object): move messages to channel
+        """
+        with BlockSave(Message, query_dict={'channel_id': to_channel.key}):
+            for message in Message.objects.filter(channel=from_channel, typ=15):
+                message.key = ''
+                message.channel = to_channel
+                message.save()
 
 
 def save_new_channel(form_info):
@@ -237,14 +260,11 @@ def save_new_channel(form_info):
     Returns:
         channel (Channel object): new created channel object
     """
-    channel = Channel()
-    channel.typ = 15
-    channel.name = form_info['name']
-    channel.description = form_info['description']
+    channel = Channel(typ=15, name=form_info['name'], description=form_info['description'])
     if form_info.get('owner_id', False):
         user = User.objects.get(form_info['owner_id'])
-        channel.owner = user
-    channel.save()
+        channel.owner_id = user
+    channel.blocking_save()
     return channel
 
 
@@ -257,32 +277,17 @@ def return_chosen(form_info):
     Returns:
         selected (key list): Chosen keys list
     """
-    selected = []
+    selected_keys = []
+    selected_names = []
     for chosen in form_info:
         if chosen['choice']:
-            selected.append(chosen['key'])
+            selected_keys.append(chosen['key'])
+            selected_names.append(chosen['name'])
 
-    return selected
-
-
-def copy_and_move_messages(from_channel, to_channel):
-    """
-     While splitting channel and moving chosen subscribers to new channel,
-     old channel's history and messages are copied and moved to new channel.
-
-     Args:
-        from_channel (Channel object): move messages from channel
-        to_channel (Channel object): move messages to channel
-    """
-    for message in Message.objects.filter(channel=from_channel, typ=15):
-        message.key = ''
-        message.save()
-        message = Message.objects.get(message.key)
-        message.channel = to_channel
-        message.save()
+    return selected_keys, selected_names
 
 
-def show_messages(current, title = _(u"Incorrect Operation") , type = 'warning'):
+def show_messages(current, title=_(u"Incorrect Operation"), type='warning'):
     """
     It shows incorrect operations or successful operation messages.
 
@@ -293,10 +298,13 @@ def show_messages(current, title = _(u"Incorrect Operation") , type = 'warning')
     current.output['msgbox'] = {
         'type': type, "title": title,
         "msg": current.task_data['msg']}
+    del current.task_data['msg']
+    current.task_data['title'] = current.task_data['type'] = None
+
 
 def selection_error_control(form_info):
-
-    chosen_channels_number = len(return_chosen(form_info['ChannelList']))
+    keys, names = return_chosen(form_info['ChannelList'])
+    chosen_channels_number = len(keys)
 
     if form_info['new_channel'] and chosen_channels_number < 2:
         return False, "You should choose at least two channel to merge operation at a new channel."
@@ -306,9 +314,9 @@ def selection_error_control(form_info):
     elif form_info['find_chosen_channel'] and chosen_channels_number != 1:
         return False, "You should choose one channel for split operation."
 
-    return True,''
+    return True, ''
 
-
+#
 # for c in Channel.objects.filter(typ = 15,deleted = False):
 #     for s in Subscriber.objects.filter(channel = c):
 #         s.blocking_delete()
@@ -340,4 +348,3 @@ def selection_error_control(form_info):
 #             m.msg_title = str(random.randrange(1, 1000))
 #             m.body = str(random.randrange(1, 1000))
 #             m.save()
-
