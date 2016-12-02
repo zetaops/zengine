@@ -26,6 +26,7 @@ class TestCase(BaseTestCase):
         ch, sb, msg = create_test_data()
 
         # INCORRECT_OPERATIONS_CONTROLS
+
         user = User.objects.get(username='super_user')
 
         self.prepare_client('channel_management', user=user)
@@ -96,6 +97,7 @@ class TestCase(BaseTestCase):
         # Two chosen channels are deleted and new channel is created.
         # Channel count should be decrease one.
         assert len(resp.json['forms']['model']["ChannelList"]) == len(channel_list) - 1
+        # The messages are tested for deletion.
         assert Message.objects.filter(typ=15, channel_id=channel_list[0]['key']).count() == 0
         assert Message.objects.filter(typ=15, channel_id=channel_list[1]['key']).count() == 0
 
@@ -140,9 +142,11 @@ class TestCase(BaseTestCase):
             'key']).count() == chosen_channel_count + exs_channel_first_count
         # One chosen channel should be deleted. Thus, channel count should be decrease one.
         assert len(resp.json['forms']['model']["ChannelList"]) == len(channel_list) - 1
+        # The messages are tested for deletion.
         assert Message.objects.filter(typ=15, channel_id=channel_list[0]['key']).count() == 0
 
         # SPLIT CHANNEL
+
         channel_list, chosen_channel = find_channel_to_choose(
             resp.json['forms']['model']["ChannelList"])
         # One channel is selected to split.

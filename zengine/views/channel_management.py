@@ -193,7 +193,8 @@ class Channel_Management(CrudView):
 
     def move_complete_channel(self):
         """
-        Channels and theirs subscribers are moved completely to new channel or existing channel.
+        Channels and theirs subscribers are moved
+        completely to new channel or existing channel.
         """
 
         to_channel = Channel.objects.get(self.current.task_data['target_channel_key'])
@@ -212,12 +213,13 @@ class Channel_Management(CrudView):
             Channel.objects.filter(key__in=chosen_channels).delete()
 
         self.current.task_data[
-            'msg'] = "Chosen channels(%s) have been merged to '%s' channel successfully." % \
+            'msg'] = _(u"Chosen channels(%s) have been merged to '%s' channel successfully.") % \
                      ((', ').join(chosen_channels_names), to_channel.name)
 
     def move_chosen_subscribers(self):
         """
-        After splitting operation, only chosen subscribers are moved to new channel or existing channel.
+        After splitting operation, only chosen subscribers
+        are moved to new channel or existing channel.
         """
         from_channel = Channel.objects.get(self.current.task_data['chosen_channels'][0])
         to_channel = Channel.objects.get(self.current.task_data['target_channel_key'])
@@ -232,13 +234,13 @@ class Channel_Management(CrudView):
             self.copy_and_move_messages(from_channel, to_channel)
 
         self.current.task_data[
-            'msg'] = """Chosen subscribers and messages of them migrated from
-             '%s' channel to '%s' channel successfully.""" % (from_channel.name, to_channel.name)
+            'msg'] = _(u"Chosen subscribers and messages of them migrated from '%s' channel to "
+                       u"'%s' channel successfully.") % (from_channel.name, to_channel.name)
 
     def copy_and_move_messages(self, from_channel, to_channel):
         """
          While splitting channel and moving chosen subscribers to new channel,
-         old channel's history and messages are copied and moved to new channel.
+         old channel's messages are copied and moved to new channel.
 
          Args:
             from_channel (Channel object): move messages from channel
@@ -253,17 +255,18 @@ class Channel_Management(CrudView):
 
 def save_new_channel(form_info):
     """
-    It saves new channel according to coming channel features.
+    It saves new channel according to specified channel features.
 
     Args:
-        form_info (Form): form contains channel list or subscriber list with some of them are chosen
+        form_info (Form):  Form containing the features
+                           of the new channel to be created.
     Returns:
         channel (Channel object): new created channel object
     """
     channel = Channel(typ=15, name=form_info['name'], description=form_info['description'])
     if form_info.get('owner_id', False):
         user = User.objects.get(form_info['owner_id'])
-        channel.owner_id = user
+        channel.owner = user
     channel.blocking_save()
     return channel
 
@@ -273,9 +276,10 @@ def return_chosen(form_info):
     It returns chosen keys list from a given form.
 
     Args:
-        form_info (Form): form contains channel list or subscriber list with some of them are chosen
+        form_info: Channel or subscriber form from the user
     Returns:
-        selected (key list): Chosen keys list
+        selected_keys(list): Chosen keys list
+        selected_names(list): Chosen channels' or subscribers' names.
     """
     selected_keys = []
     selected_names = []
@@ -303,48 +307,28 @@ def show_messages(current, title=_(u"Incorrect Operation"), type='warning'):
 
 
 def selection_error_control(form_info):
+    """
+    It controls the selection from the form according
+    to the operations, and returns an error message
+    if it does not comply with the rules.
+
+    Args:
+        form_info: Channel or subscriber form from the user
+
+    Returns: True or False
+             error message
+
+    """
     keys, names = return_chosen(form_info['ChannelList'])
     chosen_channels_number = len(keys)
 
     if form_info['new_channel'] and chosen_channels_number < 2:
-        return False, "You should choose at least two channel to merge operation at a new channel."
+        return False, _(
+            u"You should choose at least two channel to merge operation at a new channel.")
     elif form_info['existing_channel'] and chosen_channels_number == 0:
-        return False, """You should choose at least one channel to
-        merge operation with existing channel."""
+        return False, _(
+            u"You should choose at least one channel to merge operation with existing channel.")
     elif form_info['find_chosen_channel'] and chosen_channels_number != 1:
-        return False, "You should choose one channel for split operation."
+        return False, _(u"You should choose one channel for split operation.")
 
     return True, ''
-
-#
-# for c in Channel.objects.filter(typ = 15,deleted = False):
-#     for s in Subscriber.objects.filter(channel = c):
-#         s.blocking_delete()
-#     for m in Message.objects.filter(channel = c):
-#         m.blocking_delete()
-#     c.blocking_delete()
-# import random
-# a = [u for u in User.objects.filter() if u.name != None]
-# for i in range(10):
-#     c = Channel()
-#     c.name = "%i Şubesi" % random.randrange(1000, 9000)
-#     c.owner = random.choice(a)
-#     c.typ = 15
-#     c.save()
-#     for i in range(10):
-#         s = Subscriber()
-#         s.channel = c
-#         s.typ = 15
-#         u = random.choice(a)
-#         s.name = u.username
-#         s.user = u
-#         s.save()
-#         for i in range(2):
-#             m = Message()
-#             m.channel = c
-#             m.typ = 15
-#             m.sender = random.choice(a)
-#             m.receiver = random.choice(a)
-#             m.msg_title = str(random.randrange(1, 1000))
-#             m.body = str(random.randrange(1, 1000))
-#             m.save()
