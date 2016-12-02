@@ -6,13 +6,15 @@
 
 from zengine.forms import JsonForm
 from zengine.views.crud import CrudView
-from ulakbus.models import User
 from zengine.forms import fields
 from zengine.messaging.model import Channel, Subscriber, Message
 from pyoko import ListNode
 from zengine.lib.translation import gettext as _, gettext_lazy as __
 from pyoko.db.adapter.db_riak import BlockDelete, BlockSave
+from pyoko.conf import settings
+from pyoko.lib.utils import get_object_from_path
 
+User = get_object_from_path(settings.USER_MODEL)
 
 class NewChannelForm(JsonForm):
     class Meta:

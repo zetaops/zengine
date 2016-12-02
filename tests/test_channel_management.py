@@ -7,7 +7,7 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from zengine.lib.test_utils import BaseTestCase
-from zengine.models import User, ObjectDoesNotExist
+from zengine.models import User
 from zengine.messaging.model import Channel, Subscriber, Message
 from pyoko.db.adapter.db_riak import BlockDelete
 import random
