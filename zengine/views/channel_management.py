@@ -173,6 +173,7 @@ class Channel_Management(CrudView):
             'msg'] = "You should choose at least one subscriber for migration operation."
         if self.current.task_data['chosen_subscribers']:
             self.current.task_data['option'] = self.input['cmd']
+            del self.current.task_data['msg']
 
     def find_target_channel(self):
         """
