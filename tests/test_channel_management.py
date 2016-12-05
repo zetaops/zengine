@@ -76,7 +76,8 @@ class TestCase(BaseTestCase):
         # New's channel features are specified.
         resp = self.client.post(flow="find_target_channel",
                                 form={'description': "New_Trial_Channel", 'forward': 1,
-                                      'name': 'New_Channel', 'owner_id': None})
+                                      'name': 'New_Channel',
+                                      'owner_id': "HjgPuHelltHC9USbj8wqd286vbS"})
 
         # It is checked come back again to channel screen.
         assert resp.json['forms']['schema']["title"] == 'Public Channel List'
@@ -91,6 +92,8 @@ class TestCase(BaseTestCase):
         msg.extend([msg.key for msg in Message.objects.filter(channel_id=new_channel_key)])
         # It is checked that 'New Channel' is there and chosen channels aren't there.
         assert 'New_Channel' in channel_name_list
+        # Channel's owner is controlled.
+        assert "HjgPuHelltHC9USbj8wqd286vbS" == Channel.objects.get('new_channel').owner.key
         assert channel_list[0]['name'] and channel_list[1]['name'] not in channel_name_list
         # New channel's subscriber count should be as much as chosen two channels.
         assert Subscriber.objects.filter(channel_id=new_channel_key).count() == subs_ch1 + subs_ch2
@@ -185,7 +188,8 @@ class TestCase(BaseTestCase):
         # New channel's features are specified.
         resp = self.client.post(flow="find_target_channel",
                                 form={'description': "New_Split_Channel", 'forward': 1,
-                                      'name': 'New_Split_Channel', 'owner_id': None})
+                                      'name': 'New_Split_Channel',
+                                      'owner_id': 'HjgPuHelltHC9USbj8wqd286vbS'})
         # It is checked come back again to channel screen.
         assert resp.json['forms']['schema']["title"] == 'Public Channel List'
         # Successful Operation title is checked.
