@@ -31,6 +31,7 @@ class SubscriberListForm(JsonForm):
         name = fields.String(__(u'Subscriber Name'))
         key = fields.String(hidden=True)
 
+
 class ChannelListForm(JsonForm):
     class Meta:
         inline_edit = ['choice']
@@ -90,11 +91,11 @@ class ChannelManagement(CrudView):
         returns channel list screen with error message.
         """
         self.current.task_data['control'], self.current.task_data['msg'] \
-            = selection_error_control(self.input['form'])
+            = self.selection_error_control(self.input['form'])
         if self.current.task_data['control']:
             self.current.task_data['option'] = self.input['cmd']
             self.current.task_data['split_operation'] = False
-            keys, names = return_selected_form_items(self.input['form']['ChannelList'])
+            keys, names = self.return_selected_form_items(self.input['form']['ChannelList'])
             self.current.task_data['chosen_channels'] = keys
             self.current.task_data['chosen_channels_names'] = names
 
@@ -133,11 +134,11 @@ class ChannelManagement(CrudView):
         _form = ChannelListForm()
         _form.title = _(u"Choose a Channel Which Will Be Merged With Chosen Channels")
 
-        for channel in Channel.objects.filter(typ=15):
-            if channel.key not in self.current.task_data['chosen_channels']:
-                owner_name = channel.owner.username
-                _form.ChannelList(choice=False, name=channel.name, owner=owner_name,
-                                  key=channel.key)
+        for channel in Channel.objects.filter(typ=15).exclude(
+                key__in=self.current.task_data['chosen_channels']):
+            owner_name = channel.owner.username
+            _form.ChannelList(choice=False, name=channel.name, owner=owner_name,
+                              key=channel.key)
 
         _form.choose = fields.Button(_(u"Choose"))
         self.form_out(_form)
@@ -149,7 +150,7 @@ class ChannelManagement(CrudView):
         """
         self.current.task_data['existing'] = False
         self.current.task_data['msg'] = _(u"You should choose just one channel to do operation.")
-        keys, names = return_selected_form_items(self.input['form']['ChannelList'])
+        keys, names = self.return_selected_form_items(self.input['form']['ChannelList'])
         if len(keys) == 1:
             self.current.task_data['existing'] = True
             self.current.task_data['target_channel_key'] = keys[0]
@@ -183,7 +184,7 @@ class ChannelManagement(CrudView):
         error message if there is a non-choice.
         """
         self.current.task_data['option'] = None
-        self.current.task_data['chosen_subscribers'], names = return_selected_form_items(
+        self.current.task_data['chosen_subscribers'], names = self.return_selected_form_items(
             self.input['form']['SubscriberList'])
         self.current.task_data[
             'msg'] = "You should choose at least one subscriber for migration operation."
@@ -214,7 +215,7 @@ class ChannelManagement(CrudView):
 
         self.current.task_data[
             'msg'] = _(u"Chosen channels(%s) have been merged to '%s' channel successfully.") % \
-                     ((', ').join(chosen_channels_names), to_channel.name)
+                     (', '.join(chosen_channels_names), to_channel.name)
 
     def move_chosen_subscribers(self):
         """
@@ -237,7 +238,8 @@ class ChannelManagement(CrudView):
             'msg'] = _(u"Chosen subscribers and messages of them migrated from '%s' channel to "
                        u"'%s' channel successfully.") % (from_channel.name, to_channel.name)
 
-    def copy_and_move_messages(self, from_channel, to_channel):
+    @staticmethod
+    def copy_and_move_messages(from_channel, to_channel):
         """
          While splitting channel and moving chosen subscribers to new channel,
          old channel's messages are copied and moved to new channel.
@@ -252,62 +254,61 @@ class ChannelManagement(CrudView):
                 message.channel = to_channel
                 message.save()
 
-    def show_warning_messages(self, title=_(u"Incorrect Operation"), type='warning'):
+    def show_warning_messages(self, title=_(u"Incorrect Operation"), box_type='warning'):
         """
         It shows incorrect operations or successful operation messages.
 
         Args:
             title (string): title of message box
-            type (string): type of message box (warning, info)
+            box_type (string): type of message box (warning, info)
         """
         msg = self.current.task_data['msg']
-        self.current.output['msgbox'] = {'type': type, "title": title, "msg": msg}
+        self.current.output['msgbox'] = {'type': box_type, "title": title, "msg": msg}
         del self.current.task_data['msg']
 
+    @staticmethod
+    def return_selected_form_items(form_info):
+        """
+        It returns chosen keys list from a given form.
 
-def return_selected_form_items(form_info):
-    """
-    It returns chosen keys list from a given form.
+        Args:
+            form_info: serialized list of dict form data
+        Returns:
+            selected_keys(list): Chosen keys list
+            selected_names(list): Chosen channels' or subscribers' names.
+        """
+        selected_keys = []
+        selected_names = []
+        for chosen in form_info:
+            if chosen['choice']:
+                selected_keys.append(chosen['key'])
+                selected_names.append(chosen['name'])
 
-    Args:
-        form_info: serialized list of dict form data
-    Returns:
-        selected_keys(list): Chosen keys list
-        selected_names(list): Chosen channels' or subscribers' names.
-    """
-    selected_keys = []
-    selected_names = []
-    for chosen in form_info:
-        if chosen['choice']:
-            selected_keys.append(chosen['key'])
-            selected_names.append(chosen['name'])
+        return selected_keys, selected_names
 
-    return selected_keys, selected_names
+    def selection_error_control(self, form_info):
+        """
+        It controls the selection from the form according
+        to the operations, and returns an error message
+        if it does not comply with the rules.
 
+        Args:
+            form_info: Channel or subscriber form from the user
 
-def selection_error_control(form_info):
-    """
-    It controls the selection from the form according
-    to the operations, and returns an error message
-    if it does not comply with the rules.
+        Returns: True or False
+                 error message
 
-    Args:
-        form_info: Channel or subscriber form from the user
+        """
+        keys, names = self.return_selected_form_items(form_info['ChannelList'])
+        chosen_channels_number = len(keys)
 
-    Returns: True or False
-             error message
+        if form_info['new_channel'] and chosen_channels_number < 2:
+            return False, _(
+                u"You should choose at least two channel to merge operation at a new channel.")
+        elif form_info['existing_channel'] and chosen_channels_number == 0:
+            return False, _(
+                u"You should choose at least one channel to merge operation with existing channel.")
+        elif form_info['find_chosen_channel'] and chosen_channels_number != 1:
+            return False, _(u"You should choose one channel for split operation.")
 
-    """
-    keys, names = return_selected_form_items(form_info['ChannelList'])
-    chosen_channels_number = len(keys)
-
-    if form_info['new_channel'] and chosen_channels_number < 2:
-        return False, _(
-            u"You should choose at least two channel to merge operation at a new channel.")
-    elif form_info['existing_channel'] and chosen_channels_number == 0:
-        return False, _(
-            u"You should choose at least one channel to merge operation with existing channel.")
-    elif form_info['find_chosen_channel'] and chosen_channels_number != 1:
-        return False, _(u"You should choose one channel for split operation.")
-
-    return True, None
+        return True, None

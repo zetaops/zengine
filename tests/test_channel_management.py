@@ -6,6 +6,8 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import time
+
 from zengine.lib.test_utils import BaseTestCase
 from zengine.models import User
 from zengine.messaging.model import Channel, Subscriber, Message
@@ -24,6 +26,7 @@ class TestCase(BaseTestCase):
         #             m.delete()
 
         ch, sb, msg = create_test_data()
+        time.sleep(2)
 
         # INCORRECT_OPERATIONS_CONTROLS
 
