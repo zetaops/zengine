@@ -142,6 +142,16 @@ class BPMNWorkflow(Model):
     requires_object = field.Boolean(default=False)
     object_field_name = field.String("Object field name")
 
+    # field programmable is for task manager
+    # to specify wf instances can be triggered automatically
+    # by setting a schedule or not
+    programmable = field.Boolean(default=False)
+
+    # field task_type is for task manager
+    # to determine how wf instances will be created and delivered.
+    # A, B, C or D which are detailed in Task model's task_type property
+    task_type = field.String()
+
     class Pool(ListNode):
         order = field.Integer("Lane order")
         actor_name = field.String("Actor name")
@@ -250,7 +260,6 @@ class Task(Model):
     notification_density = field.Integer(_("Notification density"),
                                          choices=JOB_NOTIFICATION_DENSITY)
     recursive_units = field.Boolean("Get roles from all sub-units")
-    deliver_by_related_role = field.Boolean()
 
     class Meta:
         verbose_name = "Workflow Task"
