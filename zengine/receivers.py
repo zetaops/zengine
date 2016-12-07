@@ -6,6 +6,8 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+from zengine.models import TaskInvitation, WFInstance
+
 __all__ = [
     'send_message_for_lane_change',
     'set_password',
@@ -30,25 +32,31 @@ def send_message_for_lane_change(sender, *args, **kwargs):
     Args:
         **kwargs: ``current`` and ``possible_owners`` are required.
     """
-    from pyoko.lib.utils import get_object_from_path
-    UserModel = get_object_from_path(settings.USER_MODEL)
     current = kwargs['current']
-    old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']
     if 'lane_change_invite' in current.task_data:
         msg_context = current.task_data.pop('lane_change_invite')
     else:
         msg_context = DEFAULT_LANE_CHANGE_INVITE_MSG
+
+    wfi = WFInstance.objects.get(key=current.token)
+
     for recipient in owners:
-        if not isinstance(recipient, UserModel):
-            recipient = recipient.get_user()
         recipient.send_notification(title=msg_context['title'],
                                     message=msg_context['body'],
-                                    typ=1, # info
+                                    typ=1,  # info
                                     url=current.get_wf_link(),
                                     sender=sender
 
                                     )
+
+        TaskInvitation(
+            title=wfi.wf.name,
+            instance=wfi,
+            role=recipient,
+            wf_name=wfi.wf.name,
+            progress=30
+        ).save()
 
 
 # encrypting password on save
