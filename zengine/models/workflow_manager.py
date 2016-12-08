@@ -22,7 +22,7 @@ from SpiffWorkflow.bpmn.parser.util import BPMN_MODEL_NS, ATTRIBUTE_NS
 from pyoko.modelmeta import model_registry
 from zengine.client_queue import get_mq_connection
 from zengine.lib.cache import Cache
-from zengine.lib.translation import gettext_lazy as _
+from zengine.lib.translation import gettext_lazy as __
 import xml.etree.ElementTree as ET
 
 from zengine.lib.decorators import ROLE_GETTER_CHOICES, bg_job, ROLE_GETTER_METHODS
@@ -36,8 +36,8 @@ class DiagramXML(Model):
     """
     Diagram XML versions
     """
-    body = field.String("XML content", index=False)
-    name = field.String("Name")
+    body = field.String(__(u"XML content"), index=False)
+    name = field.String(__(u"Name"))
 
     @classmethod
     def get_or_create_by_content(cls, name, content):
@@ -140,12 +140,12 @@ class BPMNWorkflow(Model):
 
     """
     xml = DiagramXML()
-    name = field.String("File name")
-    title = field.String("Workflow Title")
-    description = field.String("Description")
+    name = field.String(__(u"File name"))
+    title = field.String(__(u"Workflow Title"))
+    description = field.String(__(u"Description"))
     show_in_menu = field.Boolean(default=False)
     requires_object = field.Boolean(default=False)
-    object_field_name = field.String("Object field name")
+    object_field_name = field.String(__(u"Object field name"))
 
     # field programmable is for task manager
     # to specify wf instances can be triggered automatically
@@ -158,12 +158,12 @@ class BPMNWorkflow(Model):
     task_type = field.String()
 
     class Pool(ListNode):
-        order = field.Integer("Lane order")
-        actor_name = field.String("Actor name")
-        wf_name = field.String("Actor specific name of WF")
-        relations = field.String("Lane relations")
-        possible_owners = field.String("Possible owners")
-        permissions = field.String("Permissions")
+        order = field.Integer(__(u"Lane order"))
+        actor_name = field.String(__(u"Actor name"))
+        wf_name = field.String(__(u"Actor specific name of WF"))
+        relations = field.String(__(u"Lane relations"))
+        possible_owners = field.String(__(u"Possible owners"))
+        permissions = field.String(__(u"Permissions"))
 
     class Meta:
         verbose_name = "Workflow"
@@ -172,7 +172,7 @@ class BPMNWorkflow(Model):
         list_fields = ['name', ]
 
     def __unicode__(self):
-        return self.name
+        return self.title or self.name
 
     def set_xml(self, diagram, force=False):
         """
@@ -198,24 +198,24 @@ class BPMNWorkflow(Model):
 
 
 JOB_REPEATING_PERIODS = (
-    (0, 'No repeat'),
-    (5, 'Hourly'),
-    (10, 'Daily'),
-    (15, 'Weekly'),
-    (20, 'Monthly'),
-    (25, 'Yearly'),
+    (0, __(u'No repeat')),
+    (5, __(u'Hourly')),
+    (10, __(u'Daily')),
+    (15, __(u'Weekly')),
+    (20, __(u'Monthly')),
+    (25, __(u'Yearly')),
 )
 
 JOB_NOTIFICATION_DENSITY = (
-    (0, _('None')),
-    (5, _('15 day before, once in 3 days')),
-    (10, _('1 week before, daily')),
-    (15, _('Day before start time')),
+    (0, __(u'None')),
+    (5, __(u'15 day before, once in 3 days')),
+    (10, __(u'1 week before, daily')),
+    (15, __(u'Day before start time')),
 )
 
 ROLE_SEARCH_DEPTH = (
-    (1, _('Selected unit')),
-    (2, _('Selected unit and all sub-units of it'))
+    (1, __(u'Selected unit')),
+    (2, __(u'Selected unit and all sub-units of it'))
 )
 
 
@@ -251,23 +251,23 @@ class Task(Model):
     Task definition for workflows
 
     """
-    run = field.Boolean("Create tasks now!", default=False)
+    run = field.Boolean(__(u"Create tasks now!"), default=False)
     wf = BPMNWorkflow()
-    name = field.String(_("Name of task"))
-    abstract_role = AbstractRoleModel("Abstract Role", null=True)
+    name = field.String(__(u"Name of task"))
+    abstract_role = AbstractRoleModel(__(u"Abstract Role"), null=True)
     role = RoleModel(null=True)
     unit = UnitModel(null=True)
-    get_roles_from = field.String(_("Get roles from"), choices=ROLE_GETTER_CHOICES)
-    role_query_code = field.String(_("Role query dict"), null=True)
-    object_query_code = field.String(_("Object query dict"), null=True)
-    object_key = field.String(_("Subject ID"), null=True)
-    object_type = field.String(_("Object type"), null=True, choices=get_model_choices)
-    start_date = field.DateTime(_("Start time"))
-    finish_date = field.DateTime(_("Finish time"))
-    repeat = field.Integer(_("Repeating period"), default=0, choices=JOB_REPEATING_PERIODS)
-    notification_density = field.Integer(_("Notification density"),
+    get_roles_from = field.String(__(u"Get roles from"), choices=ROLE_GETTER_CHOICES)
+    role_query_code = field.String(__(u"Role query dict"), null=True)
+    object_query_code = field.String(__(u"Object query dict"), null=True)
+    object_key = field.String(__(u"Subject ID"), null=True)
+    object_type = field.String(__(u"Object type"), null=True, choices=get_model_choices)
+    start_date = field.DateTime(__(u"Start time"))
+    finish_date = field.DateTime(__(u"Finish time"))
+    repeat = field.Integer(__(u"Repeating period"), default=0, choices=JOB_REPEATING_PERIODS)
+    notification_density = field.Integer(__(u"Notification density"),
                                          choices=JOB_NOTIFICATION_DENSITY)
-    recursive_units = field.Boolean("Get roles from all sub-units")
+    recursive_units = field.Boolean(__(u"Get roles from all sub-units"))
 
     class Meta:
         verbose_name = "Workflow Task"
@@ -562,20 +562,20 @@ class WFInstance(Model):
     """
     wf = BPMNWorkflow()
     task = Task()
-    name = field.String("WF Name")
-    subject = field.String(_("Subject ID"))
-    current_actor = RoleModel("Current Actor")
-    wf_object = field.String("Subject ID")
-    wf_object_type = field.String(_("Object type"), null=True, choices=get_model_choices)
-    last_activation = field.DateTime("Last activation")
+    name = field.String(__(u"WF Name"))
+    subject = field.String(__(u"Subject ID"))
+    current_actor = RoleModel(__(u"Current Actor"))
+    wf_object = field.String(__(u"Subject ID"))
+    wf_object_type = field.String(__(u"Object type"), null=True, choices=get_model_choices)
+    last_activation = field.DateTime(__(u"Last activation"))
     finished = field.Boolean(default=False)
     started = field.Boolean(default=False)
     in_external = field.Boolean(default=False)
-    start_date = field.DateTime("Start time")
-    finish_date = field.DateTime("Finish time")
-    step = field.String("Last executed WF Step")
-    data = field.String("Task Data")
-    pool = field.String("Pool Data")
+    start_date = field.DateTime(__(u"Start time"))
+    finish_date = field.DateTime(__(u"Finish time"))
+    step = field.String(__(u"Last executed WF Step"))
+    data = field.String(__(u"Task Data"))
+    pool = field.String(__(u"Pool Data"))
 
     class Meta:
         verbose_name = "Workflow Instance"
@@ -608,17 +608,17 @@ class WFInstance(Model):
 
 
 OWNERSHIP_STATES = (
-    (10, 'Unclaimed'),  # waiting in job pool
-    (20, 'Claimed'),  # claimed by user
-    (30, 'Assigned'),  # assigned to user
-    (40, 'Transferred'),  # transferred from another user
+    (10, __(u'Unclaimed')),  # waiting in job pool
+    (20, __(u'Claimed')),  # claimed by user
+    (30, __(u'Assigned')),  # assigned to user
+    (40, __(u'Transferred')),  # transferred from another user
 )
 PROGRESS_STATES = (
-    (10, 'Future'),  # work will be done in the future
-    (20, 'Waiting'),  # (Active) waiting for owner to start to work on it
-    (30, 'In Progress'),  # (Active) work in progress
-    (40, 'Finished'),  # task completed
-    (90, 'Expired'),  # task does not finished before it's due date
+    (10, __(u'Future')),  # work will be done in the future
+    (20, __(u'Waiting')),  # (Active) waiting for owner to start to work on it
+    (30, __(u'In Progress')),  # (Active) work in progress
+    (40, __(u'Finished')),  # task completed
+    (90, __(u'Expired')),  # task does not finished before it's due date
 )
 
 
@@ -631,11 +631,11 @@ class TaskInvitation(Model):
     role = RoleModel()
     ownership = field.Integer(default=10, choices=OWNERSHIP_STATES)
     progress = field.Integer(default=10, choices=PROGRESS_STATES)
-    wf_name = field.String("WF Name")
-    title = field.String("Task Name")
-    search_data = field.String("Combined full-text search data")
-    start_date = field.DateTime("Start time")
-    finish_date = field.DateTime("Finish time")
+    wf_name = field.String(__(u"WF Name"))
+    title = field.String(__(u"Task Name"))
+    search_data = field.String(__(u"Combined full-text search data"))
+    start_date = field.DateTime(__(u"Start time"))
+    finish_date = field.DateTime(__(u"Finish time"))
 
     def get_object_name(self):
         return six.text_type(self.instance.get_object())
