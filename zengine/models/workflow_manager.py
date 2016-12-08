@@ -126,6 +126,11 @@ class BPMNParser(object):
                 if name:
                     return name
 
+    def get_wf_extensions(self):
+        path = 'bpmn:collaboration/bpmn:participant/bpmn:extensionElements/camunda:properties/camunda:property'
+        elements = self.root.findall(path, NS)
+        return [(el.get('name'), el.get('value')) for el in elements]
+
 
 class BPMNWorkflow(Model):
     """
@@ -186,6 +191,9 @@ class BPMNWorkflow(Model):
             parser = BPMNParser(diagram.body)
             self.description = parser.get_description()
             self.title = parser.get_name() or self.name.replace('_', ' ').title()
+            extensions = dict(parser.get_wf_extensions())
+            self.programmable = extensions.get('programmable', False)
+            self.task_type = extensions.get('task_type', None)
             self.save()
 
 
