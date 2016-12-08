@@ -57,7 +57,7 @@ class Channel(Model):
     name = field.String("Ad")
     code_name = field.String("İç ad")
     description = field.String("Tanım")
-    owner = UserModel(reverse_name='created_channels', null=True)
+    owner = UserModel(null=True,reverse_link = True)
 
     def __unicode__(self):
         return "%s (%s's %s channel)" % (self.name or '',
@@ -189,7 +189,7 @@ class Subscriber(Model):
     channel = Channel()
     typ = field.Integer("Tip", choices=CHANNEL_TYPES)
     name = field.String("Abonelik adı")
-    user = UserModel(reverse_name='subscriptions')
+    user = UserModel(reverse_name='subscriptions',reverse_link = True)
     is_muted = field.Boolean("Kanalı sustur", default=False)
     pinned = field.Boolean("Yukarı sabitle", default=False)
     inform_me = field.Boolean("Adım geçtiğinde haber ver", default=True)
@@ -337,9 +337,9 @@ class Message(Model):
         verbose_name = "Mesaj"
         verbose_name_plural = "Mesajlar"
 
-    channel = Channel()
-    sender = UserModel(reverse_name='sent_messages')
-    receiver = UserModel(reverse_name='received_messages')
+    channel = Channel(reverse_link = True)
+    sender = UserModel(reverse_link = True)
+    receiver = UserModel(reverse_link = True)
     typ = field.Integer("Tip", choices=MSG_TYPES, default=1)
     status = field.Integer("Durum", choices=MESSAGE_STATUS, default=1)
     msg_title = field.String("Başlık")
@@ -386,7 +386,7 @@ class Message(Model):
             'updated_at': self.updated_at,
             'timestamp': self.updated_at,
             'is_update': not hasattr(self, 'unsaved'),
-            'attachments': [attachment.serialize() for attachment in self.attachment_set],
+            'attachments': [attachment.serialize() for attachment in self.attachment_message_set],
             'title': self.msg_title,
             'url': self.url,
             'sender_name': self.sender.full_name,
@@ -432,7 +432,7 @@ class Attachment(Model):
     name = field.String("Dosya Adı")
     description = field.String("Tanım")
     channel = Channel()
-    message = Message()
+    message = Message(reverse_link= True)
 
     def serialize(self):
         return {

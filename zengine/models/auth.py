@@ -114,7 +114,7 @@ class User(Model, BaseUser):
 
     def last_login_role(self):
         last_key = self.last_login_role_key
-        return Role.objects.get(last_key) if last_key else self.role_set[0].role
+        return Role.objects.get(last_key) if last_key else self.role_user_set[0].role
 
     def get_permissions(self):
         """
@@ -123,7 +123,7 @@ class User(Model, BaseUser):
         Returns:
             List of Permission objects.
         """
-        user_role = self.last_login_role() if self.last_login_role_key else self.role_set[0].role
+        user_role = self.last_login_role() if self.last_login_role_key else self.role_user_set[0].role
         return user_role.get_permissions()
 
 class PermissionCache(Cache):

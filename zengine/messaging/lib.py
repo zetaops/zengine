@@ -70,7 +70,7 @@ class BaseUser(object):
             return ConnectionStatus(self.key).get() or False
         else:
             mq_channel = self._connect_mq()
-            for sbs in self.subscriptions.objects.filter():
+            for sbs in self.subscriber_user_set.objects.filter():
                 if sbs.channel.typ == 10:
                     other_party = self.get_prv_exchange(
                         sbs.channel.code_name.replace(self.key, '').replace('_', ''))
@@ -167,7 +167,7 @@ class BaseUser(object):
             url:
             typ:
         """
-        self.created_channels.channel.add_message(
+        self.channel_owner_set.channel.add_message(
             channel_key=self.prv_exchange,
             body=message,
             title=title,
