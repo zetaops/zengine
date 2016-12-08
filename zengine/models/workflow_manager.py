@@ -122,7 +122,7 @@ class BPMNParser(object):
         for path in paths:
             tag = self.root.find(path, NS)
             if tag is not None and len(tag):
-                name = tag[0].get('name')
+                name = tag.get('name')
                 if name:
                     return name
 
