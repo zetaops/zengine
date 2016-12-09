@@ -103,7 +103,7 @@ class Channel(Model):
 
     def get_avatar(self, user):
         if self.typ == 10:
-            return self.subscriber_set.objects.exclude(user=user)[0].user.get_avatar_url()
+            return self.subscriber_channel_set.objects.exclude(user=user)[0].user.get_avatar_url()
         else:
             return None
 
@@ -120,11 +120,11 @@ class Channel(Model):
         return msg_object.save()
 
     def get_subscription_for_user(self, user_id):
-        return self.subscriber_set.objects.get(user_id=user_id)
+        return self.subscriber_channel_set.objects.get(user_id=user_id)
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
-        return self.message_set.objects.filter().set_params(sort="updated_at desc")[:20]
+        return self.message_channel_set.objects.filter().set_params(sort="updated_at desc")[:20]
 
     @classmethod
     def _connect_mq(cls):
@@ -242,24 +242,24 @@ class Subscriber(Model):
         # TODO: Cache this method
         if self.channel.typ == 10:
             try:
-                return self.channel.subscriber_set.objects.exclude(
+                return self.channel.subscriber_channel_set.objects.exclude(
                     user=self.user).get().user.is_online()
             except:
                 return False
 
     def unread_count(self):
         if self.last_seen_msg_time:
-            return self.channel.message_set.objects.filter(
+            return self.channel.message_channel_set.objects.filter(
                 updated_at__gt=self.last_seen_msg_time).count()
         else:
-            return self.channel.message_set.objects.filter().count()
+            return self.channel.message_channel_set.objects.filter().count()
 
     def get_unread_messages(self, amount):
         if self.last_seen_msg_time:
-            return self.channel.message_set.objects.filter(
+            return self.channel.message_channel_set.objects.filter(
                 updated_at__gt=self.last_seen_msg_time)[:amount]
         else:
-            return self.channel.message_set.objects.filter()[:amount]
+            return self.channel.message_channel_set.objects.filter()[:amount]
 
     def create_exchange(self):
         """
