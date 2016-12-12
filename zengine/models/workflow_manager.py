@@ -645,7 +645,9 @@ class TaskInvitation(Model):
         self.search_data = '\n'.join([self.wf_name,
                                       self.title]
                                      )
-        self.progress = get_progress(start=self.start_date, finish=self.finish_date)
+
+        self.progress = self.progress or get_progress(
+            start=self.start_date, finish=self.finish_date)
 
     def __unicode__(self):
         return "%s invitation for %s" % (self.wf_name, self.role)
