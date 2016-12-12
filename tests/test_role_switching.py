@@ -66,7 +66,7 @@ class TestCase(BaseTestCase):
             # Controlled in role select screen.
             assert 'Switch Role' == resp.json['forms']['schema']["title"]
             # All user's roles' keys are put to roles list.
-            roles_list = [role_set.role.key for role_set in user.role_set]
+            roles_list = [role_set.role.key for role_set in user.role_user_set]
             switch_key = resp.json['forms']['model']["role_options"]
             # Role to switch is controlled whether in roles_list or not.
             assert resp.json['forms']['model']["role_options"] in roles_list

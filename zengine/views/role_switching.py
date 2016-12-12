@@ -59,7 +59,7 @@ class RoleSwitching(CrudView):
 
         """
         roles = []
-        for rs in self.current.user.role_set:
+        for rs in self.current.user.role_user_set:
             # rs.role != self.current.role is not True after python version 2.7.12
             if rs.role.key != self.current.role.key:
                 roles.append((rs.role.key, '%s %s' % (rs.role.unit.name,

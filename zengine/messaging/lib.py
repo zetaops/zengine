@@ -130,7 +130,7 @@ class BaseUser(object):
             dict: Role nesnesi
 
         """
-        return self.role_set.node_dict[role_id]
+        return self.role_user_set.node_dict[role_id]
 
     @property
     def full_name(self):

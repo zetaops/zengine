@@ -70,7 +70,7 @@ class Permission(Model):
         Returns:
             User list
         """
-        return [r.role.user for r in self.role_set]
+        return [r.role.user for r in self.role_user_set]
 
     def get_permitted_roles(self):
         """
@@ -79,7 +79,7 @@ class Permission(Model):
         Returns:
             Role list
         """
-        return [rset.role for rset in self.role_set]
+        return [rset.role for rset in self.role_user_set]
 
 
 class User(Model, BaseUser):
@@ -210,7 +210,7 @@ class Role(Model):
     This model binds group of Permissions with a certain User.
     """
     abstract_role = AbstractRole()
-    user = User()
+    user = User(reverse_link = True)
     unit = Unit()
 
     class Meta:

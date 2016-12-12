@@ -189,7 +189,7 @@ class Subscriber(Model):
     channel = Channel()
     typ = field.Integer("Tip", choices=CHANNEL_TYPES)
     name = field.String("Abonelik adı")
-    user = UserModel(reverse_name='subscriptions',reverse_link = True)
+    user = UserModel(reverse_link = True)
     is_muted = field.Boolean("Kanalı sustur", default=False)
     pinned = field.Boolean("Yukarı sabitle", default=False)
     inform_me = field.Boolean("Adım geçtiğinde haber ver", default=True)
