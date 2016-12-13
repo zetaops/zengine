@@ -514,10 +514,10 @@ class ZEngine(object):
         if self.current.lane_owners:
             return eval(self.current.lane_owners, self.get_pool_context())
         else:
-            users = set()
+            roles = set()
             perm = self.current.lane_permission
-            users.update(self.permission_model.objects.get(perm).get_permitted_users())
-            return list(users)
+            roles.update(self.permission_model.objects.get(perm).get_permitted_roles())
+            return list(roles)
 
     def run_activity(self):
         """

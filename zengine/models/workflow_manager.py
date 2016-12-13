@@ -641,7 +641,8 @@ class TaskInvitation(Model):
         return six.text_type(self.instance.get_object())
 
     def pre_save(self):
-        self.title = "%s" % self.instance.task.name
+        if not self.title:
+            self.title = "%s" % self.instance.name
         self.search_data = '\n'.join([self.wf_name,
                                       self.title]
                                      )
