@@ -181,8 +181,8 @@ def get_tasks(current):
             'title': inv.title,
             'wf_type': inv.wf_name,
             'state': inv.progress,
-            'start_date': inv.instance.task.start_date.strftime(DATE_FORMAT),
-            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT),
+            'start_date': check_date(inv.instance.task.start_date),
+            'finish_date': check_date(inv.instance.task.finish_date),
             'description': inv.instance.wf.description,
             'status': inv.ownership}
         for inv in queryset
@@ -194,3 +194,11 @@ def get_tasks(current):
         'finished' : task_inv_list.filter(progress=STATE_DICT['finished']).count(),
         'expired' : task_inv_list.filter(progress=STATE_DICT['expired']).count()
     }
+
+
+def check_date(obj):
+    if obj:
+        r = obj.strftime(DATE_FORMAT)
+    else:
+        r = ''
+    return r

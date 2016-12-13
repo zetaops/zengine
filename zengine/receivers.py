@@ -12,6 +12,7 @@ from zengine.models import TaskInvitation, WFInstance, WFCache
 from pyoko.conf import settings
 from zengine.dispatch.dispatcher import receiver
 from zengine.signals import lane_user_change, crud_post_save
+from datetime import datetime, timedelta
 
 __all__ = [
     'send_message_for_lane_change',
@@ -50,14 +51,19 @@ def send_message_for_lane_change(sender, **kwargs):
                                     url=current.get_wf_link(),
                                     sender=sender
                                     )
+        now = datetime.now()
+        two_week = now + timedelta(15)
 
-        TaskInvitation(
-            title=wfi.wf.name,
+        inv = TaskInvitation(
             instance=wfi,
             role=recipient,
             wf_name=wfi.wf.name,
-            progress=30
-        ).save()
+            progress=30,
+            start_date=datetime.strptime(now.strftime("%d.%m.%Y"), '%d.%m.%Y'),
+            finish_date=datetime.strptime(two_week.strftime("%d.%m.%Y"), '%d.%m.%Y')
+        )
+        inv.title = wfi.wf.title
+        inv.save()
 
 
 # encrypting password on save
