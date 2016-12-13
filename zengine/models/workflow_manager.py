@@ -639,11 +639,12 @@ class TaskInvitation(Model):
         return six.text_type(self.instance.get_object())
 
     def pre_save(self):
-        if not self.title:
-            self.title = "%s" % self.instance.name
+        self.title = self.title or self.instance.name
+
         self.search_data = '\n'.join([self.wf_name,
                                       self.title]
                                      )
+
         self.progress = get_progress(
             start=self.start_date,
             finish=self.finish_date) if self.start_date and self.finish_date else 30

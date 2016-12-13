@@ -7,12 +7,13 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 
-from pyoko.exceptions import ObjectDoesNotExist
-from zengine.models import TaskInvitation, WFInstance, WFCache
+from zengine.models import TaskInvitation, WFCache
 from pyoko.conf import settings
 from zengine.dispatch.dispatcher import receiver
 from zengine.signals import lane_user_change, crud_post_save
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
+
 
 __all__ = [
     'send_message_for_lane_change',
@@ -51,16 +52,15 @@ def send_message_for_lane_change(sender, **kwargs):
                                     url=current.get_wf_link(),
                                     sender=sender
                                     )
-        now = datetime.now()
-        two_week = now + timedelta(15)
+        today = datetime.today()
 
         inv = TaskInvitation(
             instance=wfi,
             role=recipient,
             wf_name=wfi.wf.name,
             progress=30,
-            start_date=datetime.strptime(now.strftime("%d.%m.%Y"), '%d.%m.%Y'),
-            finish_date=datetime.strptime(two_week.strftime("%d.%m.%Y"), '%d.%m.%Y')
+            start_date=today,
+            finish_date=today + timedelta(15)
         )
         inv.title = wfi.wf.title
         inv.save()
