@@ -12,7 +12,7 @@ from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist
 from zengine.lib.exceptions import HTTPError
 from zengine.lib.test_utils import BaseTestCase
-from zengine.models import User
+from zengine.models import User, TaskInvitation, Role
 from zengine.messaging.model import Message
 
 
@@ -33,19 +33,32 @@ class TestCase(BaseTestCase):
         _wf_engine.role_model = self._role_model
 
     def test_multi_user_success(self):
+        TaskInvitation.objects.filter(wf_name='multiuser').delete()
         # Start the workflow with the first user
         test_user = User.objects.get(username='test_user')
         self.prepare_client('/multiuser/', user=test_user)
         with BlockSave(Message):
             resp = self.client.post()
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
+
         # This user has the necessary permissions and relations, should be able to join the workflow
         token, user = self.get_user_token('test_user2')
         self.prepare_client('/multiuser/', user=user, token=token)
+        task_inv = TaskInvitation.objects.filter(wf_name='multiuser',
+                                                 role=self.client.current.role)
+        assert task_inv.count() == 1
+
+        task_inv.delete()
+
         with BlockSave(Message):
             resp = self.client.post()
-            resp.raw()
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
+
+        token, user = self.get_user_token('test_user')
+        self.prepare_client('/multiuser/', user=user, token=token)
+        task_inv = TaskInvitation.objects.filter(wf_name='multiuser',
+                                                 role=self.client.current.role)
+        assert task_inv.count() == 1
 
     def test_multi_user_owner_fail(self):
         Message.objects.delete()
