@@ -6,6 +6,11 @@
   <bpmn:process id="multiuser" name="Manager - Employee Interaction" isExecutable="false">
     <bpmn:laneSet>
       <bpmn:lane id="manager" name="Manager">
+        <bpmn:extensionElements>
+          <camunda:properties>
+            <camunda:property name="owners" value="[manager.project_set[0].project.manager]" />
+          </camunda:properties>
+        </bpmn:extensionElements>
         <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>assign</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_0lk561c</bpmn:flowNodeRef>
