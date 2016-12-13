@@ -33,7 +33,6 @@ class TestCase(BaseTestCase):
         _wf_engine.role_model = self._role_model
 
     def test_multi_user_success(self):
-        TaskInvitation.objects.filter(wf_name='multiuser').delete()
         # Start the workflow with the first user
         test_user = User.objects.get(username='test_user')
         self.prepare_client('/multiuser/', user=test_user)
@@ -76,3 +75,4 @@ class TestCase(BaseTestCase):
         # This user has the necessary permissions and relations, should have recieved the invitation
         token, user = self.get_user_token('test_user2')
         assert token
+        TaskInvitation.objects.filter(wf_name='multiuser').delete()
