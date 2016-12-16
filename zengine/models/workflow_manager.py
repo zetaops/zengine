@@ -262,8 +262,8 @@ class Task(Model):
     object_query_code = field.String(__(u"Object query dict"), null=True)
     object_key = field.String(__(u"Subject ID"), null=True)
     object_type = field.String(__(u"Object type"), null=True, choices=get_model_choices)
-    start_date = field.DateTime(__(u"Start time"))
-    finish_date = field.DateTime(__(u"Finish time"))
+    start_date = field.DateTime(__(u"Start time"), format="%d.%m.%Y")
+    finish_date = field.DateTime(__(u"Finish time"), format="%d.%m.%Y")
     repeat = field.Integer(__(u"Repeating period"), default=0, choices=JOB_REPEATING_PERIODS)
     notification_density = field.Integer(__(u"Notification density"),
                                          choices=JOB_NOTIFICATION_DENSITY)
@@ -371,9 +371,7 @@ class Task(Model):
         else:
             # comma separated, key=value pairs. wrapping spaces will be ignored
             # eg: "key=val, key2 = val2 , key3= value with spaces"
-            return dict(
-                [map(str.strip, pair.split('=')) for pair in self.object_query_code.split(',')]
-            )
+            return dict(pair.split('=') for pair in self.object_query_code.split(','))
 
     def get_object_keys(self, wfi_role=None):
         """returns object keys according to task definition
@@ -645,7 +643,9 @@ class TaskInvitation(Model):
         self.search_data = '\n'.join([self.wf_name,
                                       self.title]
                                      )
-        self.progress = get_progress(start=self.start_date, finish=self.finish_date)
+        self.progress = get_progress(
+            start=self.start_date,
+            finish=self.finish_date) if self.start_date and self.finish_date else 30
 
     def __unicode__(self):
         return "%s invitation for %s" % (self.wf_name, self.role)
