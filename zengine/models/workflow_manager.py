@@ -333,14 +333,15 @@ class Task(Model):
         for wfi in instances:
             current_roles = roles or [wfi.current_actor]
             for role in current_roles:
-                TaskInvitation(
-                    title=self.name,
+                inv = TaskInvitation(
                     instance=wfi,
                     role=role,
                     wf_name=self.wf.name,
                     progress=get_progress(start=self.start_date, finish=self.finish_date),
                     start_date=self.start_date, finish_date=self.finish_date
-                ).save()
+                )
+                inv.title = self.name
+                inv.save()
 
     def create_tasks(self):
         """

@@ -59,6 +59,8 @@ class TestCase(BaseTestCase):
                                                  role=self.client.current.role)
         assert task_inv.count() == 1
 
+        task_inv.delete()
+
     def test_multi_user_owner_fail(self):
         Message.objects.delete()
         # Start the workflow with the first user
