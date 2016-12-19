@@ -89,10 +89,13 @@ class ZEngine(object):
                 del task_data[k]
         if 'cmd' in task_data:
             del task_data['cmd']
+
         self.wf_state.update({'step': serialized_wf_instance,
                               'data': task_data,
                               'name': self.current.workflow_name,
+                              'wf_id': self.workflow_spec.wf_id
                               })
+
         if self.current.lane_id:
             self.current.pool[self.current.lane_id] = self.current.role.key
         self.wf_state['pool'] = self.current.pool
@@ -207,6 +210,7 @@ class ZEngine(object):
             xml_content = self.current.wf_object.xml.body
             spec = ZopsSerializer().deserialize_workflow_spec(xml_content, self.current.workflow_name)
 
+            spec.wf_id = self.current.wf_object.key
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
@@ -510,10 +514,10 @@ class ZEngine(object):
         if self.current.lane_owners:
             return eval(self.current.lane_owners, self.get_pool_context())
         else:
-            users = set()
+            roles = set()
             perm = self.current.lane_permission
-            users.update(self.permission_model.objects.get(perm).get_permitted_users())
-            return list(users)
+            roles.update(self.permission_model.objects.get(perm).get_permitted_roles())
+            return list(roles)
 
     def run_activity(self):
         """

@@ -11,6 +11,7 @@ from datetime import datetime
 from zengine.lib.decorators import view
 from zengine.models import TaskInvitation, BPMNWorkflow
 from zengine.lib.translation import gettext_lazy as __
+from zengine.lib.translation import format_date
 
 
 @view()
@@ -181,8 +182,8 @@ def get_tasks(current):
             'title': inv.title,
             'wf_type': inv.wf_name,
             'state': inv.progress,
-            'start_date': inv.instance.task.start_date.strftime(DATE_FORMAT),
-            'finish_date': inv.instance.task.finish_date.strftime(DATE_FORMAT),
+            'start_date': format_date(inv.start_date),
+            'finish_date': format_date(inv.finish_date),
             'description': inv.instance.wf.description,
             'status': inv.ownership}
         for inv in queryset

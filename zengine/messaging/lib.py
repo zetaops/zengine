@@ -166,8 +166,6 @@ class BaseUser(object):
             sender:
             url:
             typ:
-
-
         """
         self.created_channels.channel.add_message(
             channel_key=self.prv_exchange,
@@ -175,7 +173,8 @@ class BaseUser(object):
             title=title,
             typ=typ,
             url=url,
-            sender=sender
+            sender=sender,
+            receiver=self
         )
 
     def send_client_cmd(self, data, cmd=None, via_queue=None):

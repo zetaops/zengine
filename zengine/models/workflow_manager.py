@@ -333,14 +333,15 @@ class Task(Model):
         for wfi in instances:
             current_roles = roles or [wfi.current_actor]
             for role in current_roles:
-                TaskInvitation(
-                    title=self.name,
+                inv = TaskInvitation(
                     instance=wfi,
                     role=role,
                     wf_name=self.wf.name,
                     progress=get_progress(start=self.start_date, finish=self.finish_date),
                     start_date=self.start_date, finish_date=self.finish_date
-                ).save()
+                )
+                inv.title = self.name
+                inv.save()
 
     def create_tasks(self):
         """
@@ -639,10 +640,12 @@ class TaskInvitation(Model):
         return six.text_type(self.instance.get_object())
 
     def pre_save(self):
-        self.title = "%s" % self.instance.task.name
+        self.title = self.title or self.instance.name
+
         self.search_data = '\n'.join([self.wf_name,
                                       self.title]
                                      )
+
         self.progress = get_progress(
             start=self.start_date,
             finish=self.finish_date) if self.start_date and self.finish_date else 30

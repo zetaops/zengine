@@ -6,14 +6,19 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+
+from zengine.models import TaskInvitation, WFCache
+from pyoko.conf import settings
+from zengine.dispatch.dispatcher import receiver
+from zengine.signals import lane_user_change, crud_post_save
+from datetime import datetime
+from datetime import timedelta
+
+
 __all__ = [
     'send_message_for_lane_change',
     'set_password',
 ]
-
-from pyoko.conf import settings
-from zengine.dispatch.dispatcher import receiver
-from zengine.signals import lane_user_change, crud_post_save
 
 DEFAULT_LANE_CHANGE_INVITE_MSG = {
     'title': settings.MESSAGES['lane_change_invite_title'],
@@ -22,38 +27,48 @@ DEFAULT_LANE_CHANGE_INVITE_MSG = {
 
 
 @receiver(lane_user_change)
-def send_message_for_lane_change(sender, *args, **kwargs):
+def send_message_for_lane_change(sender, **kwargs):
     """
     Sends a message to possible owners of the current workflows
      next lane.
 
     Args:
         **kwargs: ``current`` and ``possible_owners`` are required.
+        sender (User): User object
     """
-    from pyoko.lib.utils import get_object_from_path
-    UserModel = get_object_from_path(settings.USER_MODEL)
     current = kwargs['current']
-    old_lane = kwargs['old_lane']
     owners = kwargs['possible_owners']
     if 'lane_change_invite' in current.task_data:
         msg_context = current.task_data.pop('lane_change_invite')
     else:
         msg_context = DEFAULT_LANE_CHANGE_INVITE_MSG
+
+    wfi = WFCache(current).get_instance()
+
     for recipient in owners:
-        if not isinstance(recipient, UserModel):
-            recipient = recipient.get_user()
         recipient.send_notification(title=msg_context['title'],
                                     message=msg_context['body'],
-                                    typ=1, # info
+                                    typ=1,  # info
                                     url=current.get_wf_link(),
                                     sender=sender
-
                                     )
+        today = datetime.today()
+
+        inv = TaskInvitation(
+            instance=wfi,
+            role=recipient,
+            wf_name=wfi.wf.name,
+            progress=30,
+            start_date=today,
+            finish_date=today + timedelta(15)
+        )
+        inv.title = wfi.wf.title
+        inv.save()
 
 
 # encrypting password on save
 @receiver(crud_post_save)
-def set_password(sender, *args, **kwargs):
+def set_password(sender, **kwargs):
     """
     Encrypts password of the user.
     """
