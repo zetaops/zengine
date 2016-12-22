@@ -14,7 +14,7 @@ class Project(Model):
     manager = Role('Project Manager')
 
     class Employee(ListNode):
-        employee = Role('Employee')
+        employee = Role('Employee',reverse_link = True)
 
         def get_user(self):
             return self.employee
