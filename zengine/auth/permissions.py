@@ -109,7 +109,7 @@ def _get_object_menu_models():
     return enabled_models
 
 def _get_model_permissions(permission_list=None):
-    from pyoko.model import model_registry
+    from pyoko.modelmeta import model_registry
     from zengine.views.crud import CrudView
     generic_commands = CrudView().VIEW_METHODS.keys()
     permissions = permission_list or []

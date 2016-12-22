@@ -324,7 +324,7 @@ def unread_count(current):
         """
     unread_ntf = 0
     unread_msg = 0
-    for sbs in current.user.subscriber_user_set.objects.filter(is_visible=True):
+    for sbs in current.user.subscriptions.objects.filter(is_visible=True):
         try:
             if sbs.channel.key == current.user.prv_exchange:
                 unread_ntf += sbs.unread_count()

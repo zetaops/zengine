@@ -57,7 +57,7 @@ class Channel(Model):
     name = field.String("Ad")
     code_name = field.String("İç ad")
     description = field.String("Tanım")
-    owner = UserModel(null=True,reverse_link = True)
+    owner = UserModel(reverse_name='created_channels', null=True)
 
     def __unicode__(self):
         return "%s (%s's %s channel)" % (self.name or '',
@@ -189,7 +189,7 @@ class Subscriber(Model):
     channel = Channel()
     typ = field.Integer("Tip", choices=CHANNEL_TYPES)
     name = field.String("Abonelik adı")
-    user = UserModel(reverse_link = True)
+    user = UserModel(reverse_name='subscriptions')
     is_muted = field.Boolean("Kanalı sustur", default=False)
     pinned = field.Boolean("Yukarı sabitle", default=False)
     inform_me = field.Boolean("Adım geçtiğinde haber ver", default=True)
@@ -338,8 +338,8 @@ class Message(Model):
         verbose_name_plural = "Mesajlar"
 
     channel = Channel(reverse_link = True)
-    sender = UserModel(reverse_link = True)
-    receiver = UserModel(reverse_link = True)
+    sender = UserModel(reverse_name='sent_messages')
+    receiver = UserModel(reverse_name='received_messages')
     typ = field.Integer("Tip", choices=MSG_TYPES, default=1)
     status = field.Integer("Durum", choices=MESSAGE_STATUS, default=1)
     msg_title = field.String("Başlık")
