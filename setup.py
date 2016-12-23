@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='zengine',
-    version='0.7.6',
+    version='0.7.7',
     url='https://github.com/zetaops/zengine',
     license='GPL v3',
     packages=find_packages(exclude=['tests', 'tests.*']),
