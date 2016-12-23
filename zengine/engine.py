@@ -10,34 +10,25 @@ Zengine's engine!
 from __future__ import division
 from __future__ import print_function, absolute_import, division
 
-import gettext
 import importlib
 import os
 import sys
 import traceback
-from copy import deepcopy
-import babel
-
 import lazy_object_proxy
 from SpiffWorkflow import Task
 from SpiffWorkflow.bpmn.BpmnWorkflow import BpmnWorkflow
-from SpiffWorkflow.bpmn.storage.BpmnSerializer import BpmnSerializer
-from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import \
-    CompactWorkflowSerializer
+from SpiffWorkflow.bpmn.storage.CompactWorkflowSerializer import CompactWorkflowSerializer
 from SpiffWorkflow.specs import WorkflowSpec
 from datetime import datetime
-
-from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
-from pyoko.model import super_context, model_registry
+from pyoko.model import super_context
 from zengine.auth.permissions import PERM_REQ_TASK_TYPES
 from zengine.config import settings
 from zengine.current import WFCurrent
-from zengine.lib.camunda_parser import InMemoryPackager, ZopsSerializer
+from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
-
 
 # crud_view = CrudView()
 from zengine.models import BPMNWorkflow
@@ -98,10 +89,13 @@ class ZEngine(object):
                 del task_data[k]
         if 'cmd' in task_data:
             del task_data['cmd']
+
         self.wf_state.update({'step': serialized_wf_instance,
                               'data': task_data,
                               'name': self.current.workflow_name,
+                              'wf_id': self.workflow_spec.wf_id
                               })
+
         if self.current.lane_id:
             self.current.pool[self.current.lane_id] = self.current.role.key
         self.wf_state['pool'] = self.current.pool
@@ -216,6 +210,7 @@ class ZEngine(object):
             xml_content = self.current.wf_object.xml.body
             spec = ZopsSerializer().deserialize_workflow_spec(xml_content, self.current.workflow_name)
 
+            spec.wf_id = self.current.wf_object.key
             self.workflow_spec_cache[self.current.workflow_name] = spec
         return self.workflow_spec_cache[self.current.workflow_name]
 
@@ -255,8 +250,15 @@ class ZEngine(object):
                 self.current.task_data['object_id'] = self.wf_state['subject']
         self.check_for_authentication()
         self.check_for_permission()
-
         self.workflow = self.load_or_create_workflow()
+
+        # in wf diagram, if property is stated as init = True
+        # demanded initial values are assigned and put to cache
+        start_init_values = self.workflow_spec.wf_properties.get('init', 'False') == 'True'
+        if start_init_values:
+            WFInit = get_object_from_path(settings.WF_INITIAL_VALUES)()
+            WFInit.assign_wf_initial_values(self.current)
+
         log_msg = ("\n\n::::::::::: ENGINE STARTED :::::::::::\n"
                    "\tWF: %s (Possible) TASK:%s\n"
                    "\tCMD:%s\n"
@@ -512,10 +514,10 @@ class ZEngine(object):
         if self.current.lane_owners:
             return eval(self.current.lane_owners, self.get_pool_context())
         else:
-            users = set()
+            roles = set()
             perm = self.current.lane_permission
-            users.update(self.permission_model.objects.get(perm).get_permitted_users())
-            return list(users)
+            roles.update(self.permission_model.objects.get(perm).get_permitted_roles())
+            return list(roles)
 
     def run_activity(self):
         """
@@ -651,10 +653,13 @@ class ZEngine(object):
         else:
             permission = self.current.workflow_name
         log.debug("CHECK PERM: %s" % permission)
+
         if (self.current.task_type not in PERM_REQ_TASK_TYPES or
-                permission.startswith(
-                    tuple(settings.ANONYMOUS_WORKFLOWS))):  # FIXME:needs hardening
+                permission.startswith(tuple(settings.ANONYMOUS_WORKFLOWS)) or
+                (self.current.is_auth and permission.startswith(tuple(settings.COMMON_WORKFLOWS)))):
             return
+        # FIXME:needs hardening
+
         log.debug("REQUIRE PERM: %s" % permission)
         if not self.current.has_permission(permission):
             raise HTTPError(403, "You don't have required permission: %s" % permission)

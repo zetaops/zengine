@@ -29,44 +29,46 @@ class TestCase(BaseTestCase):
         # We will take the workflow to ourselves.
         for i in range(2):
             self.prepare_client('/task_assign_yourself/', username='test_user')
-            resp = self.client.post(task_inv_key="Ewn4V1Iih7htogD7kLyyWthswxr")
+            resp = self.client.post(filters={
+                "task_inv_id": {"values": ["Ewn4V1Iih7htogD7kLyyWthswxr"]}})
             if i == 0:
                 # The first step is to be successful.
-                assert resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'] == "Successful"
             else:
                 # We will wait for the second step to fail because the workflow will be assigned.
-                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'] == "Unsuccessful"
 
     def test_assign_to_someone_else(self):
         for i in range(2):
             self.prepare_client('/assign_same_abstract_role/', username='test_user')
-            self.client.post()
-            resp = self.client.post(task_inv_key="Ewn4V1Iih7htogD7kLyyWthswxr",
-                                    form={"select_role": "NdOZ5WODiDYSdmjHCKt6Ax1sryA",
+            self.client.post(filters={
+                "task_inv_id": {"values": ["Ewn4V1Iih7htogD7kLyyWthswxr"]}})
+            resp = self.client.post(form={"select_role": "NdOZ5WODiDYSdmjHCKt6Ax1sryA",
                                           "explain_text": "Test"})
             if i == 0:
-                assert resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'] == "Successful"
             else:
-                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'] == "Unsuccessful"
 
 
 class TestCase2(BaseTestCase):
 
     def test_postponed_workflow(self):
         self.prepare_client('/postpone_workflow/', username='test_user2')
-        self.client.post()
-        resp = self.client.post(task_inv_key="Ewn4V1Iih7htogD7kLyyWthswxr",
-                                form={"start_date": "15.10.2017",
+        self.client.post(filters={
+                "task_inv_id": {"values": ["Ewn4V1Iih7htogD7kLyyWthswxr"]}})
+        resp = self.client.post(form={"start_date": "15.10.2017",
                                       "finish_date": "20.10.2017"})
 
-        assert resp.json['msgbox']['title'][0] == "Successful"
+        assert resp.json['msgbox']['title'] == "Successful"
 
     def test_suspend_workflow(self):
         for i in range(2):
             self.prepare_client('/suspend_workflow/', username='test_user2')
-            resp = self.client.post(task_inv_key="Ewn4V1Iih7htogD7kLyyWthswxr")
+            resp = self.client.post(filters={
+                "task_inv_id": {"values": ["Ewn4V1Iih7htogD7kLyyWthswxr"]}})
 
             if i == 0:
-                assert resp.json['msgbox']['title'][0] == "Successful"
+                assert resp.json['msgbox']['title'] == "Successful"
             else:
-                assert resp.json['msgbox']['title'][0] == "Unsuccessful"
+                assert resp.json['msgbox']['title'] == "Unsuccessful"

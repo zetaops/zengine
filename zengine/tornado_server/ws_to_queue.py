@@ -143,6 +143,8 @@ class QueueManager(object):
                                           _zops_source= 'Internal',
                                           _zops_remote_ip='')))
 
+        self.websockets[sess_id].write_message(json.dumps({"cmd": "status", "status": "closing"}))
+
     def unregister_websocket(self, sess_id):
         # user_id = sys.sessid_to_userid.get(sess_id, None)
         try:

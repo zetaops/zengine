@@ -88,7 +88,8 @@ class Login(SimpleView):
         if existing_sess_id and self.current.session.sess_id != existing_sess_id:
             if Session(existing_sess_id).delete():
                 log.info("EXISTING LOGIN DEDECTED, WE SHOULD LOGUT IT FIRST")
-                self.current.user.send_client_cmd({'error': "Login required", "code": 401},
+                self.current.user.send_client_cmd({
+                    "cmd": "error", "error": "Login required", "code": 401},
                                                   via_queue=existing_sess_id)
                 self.current.user.unbind_private_channel(existing_sess_id)
 

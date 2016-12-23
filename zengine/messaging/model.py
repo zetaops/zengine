@@ -47,6 +47,8 @@ class Channel(Model):
     class Meta:
         verbose_name = "Kanal"
         verbose_name_plural = "Kanallar"
+        search_fields = ['name']
+        list_filters = ['typ']
 
     mq_channel = None
     mq_connection = None
@@ -168,7 +170,6 @@ class Channel(Model):
     def post_save(self):
         self.create_exchange()
         # self.subscribe_owner()
-
 
 class Subscriber(Model):
     """

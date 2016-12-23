@@ -42,6 +42,9 @@ WORKFLOW_PACKAGES_PATHS = [os.path.join(BASE_DIR, 'diagrams')]
 #: Authentication backend
 AUTH_BACKEND = 'zengine.auth.auth_backend.AuthBackend'
 
+#: WF_Initial_Values class
+WF_INITIAL_VALUES = 'zengine.lib.wf_initial_values.WFValues'
+
 #: Permissions model
 PERMISSION_MODEL = 'zengine.models.Permission'
 
@@ -80,7 +83,10 @@ LOG_FILE = os.environ.get('LOG_FILE', './zengine.log')
 DEFAULT_CACHE_EXPIRE_TIME = 99999999
 
 #: Workflows that dosen't require logged in user.
-ANONYMOUS_WORKFLOWS = ['login', 'reset_cache',]
+ANONYMOUS_WORKFLOWS = ['login', 'reset_cache']
+
+#: Workflows which are available for all authenticated users.
+COMMON_WORKFLOWS = ['role_switching']
 
 #: Currently only affects logging level
 DEBUG = bool(int(os.environ.get('DEBUG', 0)))

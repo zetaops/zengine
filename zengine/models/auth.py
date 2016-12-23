@@ -241,6 +241,9 @@ class Role(Model):
         """
         return [p.permission.code for p in self.Permissions]
 
+    def get_user(self):
+        return self.user
+
     def add_permission(self, perm):
         """
         Adds a :class:`Permission` to the role
@@ -283,4 +286,5 @@ class Role(Model):
         sends a message to user of this role's private mq exchange
 
         """
-        self.user.send_notification(title=title, message=message, typ=typ, url=url, sender=sender)
+        self.user.send_notification(title=title, message=message, typ=typ, url=url,
+                                    sender=sender)
