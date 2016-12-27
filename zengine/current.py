@@ -213,14 +213,15 @@ class WFCurrent(Current):
         self.wf_instance = lazy_object_proxy.Proxy(lambda: self.wf_cache.get_instance())
         self.set_client_cmds()
 
-    def get_wf_link(self):
+    def get_wf_link(self, role_id=False):
         """
         Create an "in app" anchor for accessing this workflow instance.
 
         Returns: String. Anchor link.
 
         """
-        return "#cwf/%s/%s" % (self.workflow_name, self.token)
+        wf_link = "#cwf/%s/%s" % (self.workflow_name, self.token)
+        return "%s?%s" % (wf_link, self.role_id) if role_id else wf_link
 
     def sendoff_current_user(self):
         """
