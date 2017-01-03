@@ -44,7 +44,7 @@ def logout(current):
     """
     current.user.is_online(False)
     current.session.delete()
-    current.output['cmd'] = 'reload'
+    current.output['cmd'] = 'logout'
     if current.task_data.get('show_logout_message', False):
         current.output['title'] = current.task_data.get('logout_title', None)
         current.output['msg'] = current.task_data.get('logout_message', None)
