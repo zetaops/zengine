@@ -514,7 +514,7 @@ class CrudView(BaseView):
                 elif '.' in f:
                     field_str = six.text_type(attrgetter(f)(obj))
                 else:
-                    field_str = obj.get_humane_value(f)
+                    field_str = six.text_type(obj.get_humane_value(f))
                 result['fields'].append(field_str)
         else:
             result['fields'] = [six.text_type(obj)]
@@ -780,7 +780,7 @@ class CrudView(BaseView):
             if d['type'] == 'file' and d['value'] and d['value'][-3:] in ('jpg', 'png'):
                 continue  # passing for now, needs client support
 
-            obj_data[key] = val
+            obj_data[key] = six.text_type(val) if val is not None else val
         self.output['object_title'] = "%s : %s" % (self.model_class.Meta.verbose_name, self.object)
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data
