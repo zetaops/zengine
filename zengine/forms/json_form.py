@@ -261,11 +261,16 @@ class JsonForm(ModelForm):
             # this adds default directives for building
             # add and list views of linked models
             if item_props['type'] == 'model':
-                item_props.update({
-                    'add_cmd': 'add_edit_form',
-                    'list_cmd': 'select_list',
-                    'wf': 'crud',
-                })
+                if self.context.has_permission("%s.select_list" % item_props['model_name']):
+                    item_props.update({
+                        'list_cmd': 'select_list',
+                        'wf': 'crud',
+                    })
+                if self.context.has_permission("%s.add_edit_form" % item_props['model_name']):
+                    item_props.update({
+                        'add_cmd': 'add_edit_form',
+                        'wf': 'crud',
+                    })
             result["schema"]["properties"][itm['name']] = item_props
 
 
