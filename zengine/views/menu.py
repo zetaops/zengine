@@ -25,6 +25,7 @@ class Menu(SysView):
     Menu view class
     """
     PATH = '_zops_menu'
+
     def __init__(self, current):
         super(Menu, self).__init__(current)
         self.output['cmd'] = 'dashboard'
@@ -38,7 +39,8 @@ class Menu(SysView):
             result[k].extend(v)
         self.output.update(result)
 
-    def simple_crud(self):
+    @staticmethod
+    def simple_crud():
         """
         Prepares menu entries for auto-generated model CRUD views.
         This is simple version of :attr:`get_crud_menus()` without
@@ -128,23 +130,3 @@ class Menu(SysView):
                 results['other'].append(wf_dict)
                 self._add_to_quick_menu(name, wf_dict)
         return results
-
-    def _add_wf(self, wf, results):
-        """
-        Creates a menu entry for given model data.
-        Updates results in place.
-
-        Args:
-            wf: Workflow data
-            results: Results dict.
-        """
-        category = wf.spec.wf_properties.get("menu_category", settings.DEFAULT_WF_CATEGORY_NAME)
-        object_of_wf = wf.spec.wf_properties.get('object', 'other')
-        if category != 'hidden':
-            wf_dict = {
-                "text": wf.spec.wf_name,
-                "wf": wf.spec.name,
-                "kategori": category,
-                "param": "id"}
-            results[object_of_wf].append(wf_dict)
-            self._add_to_quick_menu(wf_dict['wf'], wf_dict)
