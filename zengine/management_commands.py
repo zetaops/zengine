@@ -452,6 +452,7 @@ class LoadDiagrams(Command):
         tries to update if there aren't any running instances of that wf
         """
         from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, RunningInstancesExist
+        from zengine.lib.cache import WFSpecNames
 
         if self.manager.args.clear:
             self._clear_models()
@@ -474,6 +475,8 @@ class LoadDiagrams(Command):
                 except RunningInstancesExist as e:
                     print(e.message)
                     print("Give \"--force\" parameter to enforce")
+        WFSpecNames().refresh()
+
         print("%s BPMN file loaded" % count)
 
     def _clear_models(self):
