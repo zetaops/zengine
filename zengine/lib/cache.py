@@ -347,3 +347,31 @@ class Session(object):
          If sessid is empty, all sessions will be cleaned up.
         """
         return _remove_keys([], [self.key + '*'])
+
+
+class WFSpecNames(Cache):
+    """
+
+    """
+    PREFIX = "WFSPECNAMES"
+
+    def __init__(self):
+        super(WFSpecNames, self).__init__('wf_spec_names')
+
+    def get_or_set(self):
+        cache_data = self.get()
+
+        if not cache_data:
+            cache_data = self.get_data()
+            self.set(cache_data, 8 * 60 * 60)
+
+        return cache_data
+
+    @staticmethod
+    def get_data():
+        from zengine.models import BPMNWorkflow
+        return BPMNWorkflow.objects.values_list('name', 'title', 'menu_category')
+
+    def refresh(self):
+        self.delete()
+        self.get_or_set()

@@ -127,8 +127,14 @@ class BPMNParser(object):
                     return name
 
     def get_wf_extensions(self):
-        path = 'bpmn:collaboration/bpmn:participant/bpmn:extensionElements/camunda:properties/camunda:property'
-        elements = self.root.findall(path, NS)
+        paths = [
+            'bpmn:collaboration/bpmn:participant/bpmn:extensionElements/camunda:properties/camunda:property',
+            'bpmn:collaboration/bpmn:extensionElements/camunda:properties/camunda:property',
+            'bpmn:process/bpmn:extensionElements/camunda:properties/camunda:property'
+        ]
+        elements = []
+        for path in paths:
+            elements.extend(self.root.findall(path, NS))
         return [(el.get('name'), el.get('value')) for el in elements]
 
 
@@ -146,6 +152,7 @@ class BPMNWorkflow(Model):
     show_in_menu = field.Boolean(default=False)
     requires_object = field.Boolean(default=False)
     object_field_name = field.String(__(u"Object field name"))
+    menu_category = field.String(__(u"Menu Category"))
 
     # field programmable is for task manager
     # to specify wf instances can be triggered automatically
@@ -194,6 +201,7 @@ class BPMNWorkflow(Model):
             extensions = dict(parser.get_wf_extensions())
             self.programmable = extensions.get('programmable', False)
             self.task_type = extensions.get('task_type', None)
+            self.menu_category = extensions.get('menu_category', settings.DEFAULT_WF_CATEGORY_NAME)
             self.save()
 
 

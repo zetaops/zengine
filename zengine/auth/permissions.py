@@ -6,8 +6,6 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-import glob
-import os
 from SpiffWorkflow.bpmn.specs.UserTask import UserTask
 from SpiffWorkflow.bpmn.specs.ServiceTask import ServiceTask
 
@@ -47,15 +45,14 @@ PERM_REQ_TASK_TYPES = ('UserTask', 'ServiceTask')
 
 
 def _get_workflows():
-    from zengine.config import settings
     from zengine.engine import ZEngine, WFCurrent
+    from zengine.models import BPMNWorkflow
+
     workflows = []
-    for package_dir in settings.WORKFLOW_PACKAGES_PATHS:
-        for bpmn_diagram_path in glob.glob(package_dir + "/*.bpmn"):
-            wf_name = os.path.splitext(os.path.basename(bpmn_diagram_path))[0]
-            engine = ZEngine()
-            engine.current = WFCurrent(workflow_name=wf_name)
-            workflows.append(engine.load_or_create_workflow())
+    for wf in BPMNWorkflow.objects.filter():
+        engine = ZEngine()
+        engine.current = WFCurrent(workflow_name=wf.name)
+        workflows.append(engine.load_or_create_workflow())
     return workflows
 
 
