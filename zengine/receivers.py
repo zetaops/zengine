@@ -6,14 +6,13 @@
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-
-from zengine.models import TaskInvitation, WFCache
+from pyoko.exceptions import ObjectDoesNotExist
+from zengine.models import TaskInvitation, WFCache, Message
 from pyoko.conf import settings
 from zengine.dispatch.dispatcher import receiver
 from zengine.signals import lane_user_change, crud_post_save
 from datetime import datetime
 from datetime import timedelta
-
 
 __all__ = [
     'send_message_for_lane_change',
@@ -44,7 +43,7 @@ def send_message_for_lane_change(sender, **kwargs):
         msg_context = DEFAULT_LANE_CHANGE_INVITE_MSG
 
     wfi = WFCache(current).get_instance()
-
+    update_old_notification(current)
     for recipient in owners:
         recipient.send_notification(title=msg_context['title'],
                                     message=msg_context['body'],
@@ -77,3 +76,13 @@ def set_password(sender, **kwargs):
         if not usr.password.startswith('$pbkdf2'):
             usr.set_password(usr.password)
             usr.save()
+
+
+def update_old_notification(current):
+    try:
+        msg = Message.objects.get(url=current.get_wf_link(), receiver_id=current.user.key, typ=1)
+        msg.url = ""
+        msg.body = "'%s' iş akışını başarıyla tamamladınız." % current.workflow.spec.description
+        msg.blocking_save()
+    except ObjectDoesNotExist:
+        pass

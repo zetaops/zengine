@@ -29,6 +29,7 @@ from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
+from .receivers import update_old_notification
 
 # crud_view = CrudView()
 from zengine.models import BPMNWorkflow
@@ -403,6 +404,7 @@ class ZEngine(object):
                                self.current.task_type == 'Simple')
         if wf_in_progress and self.wf_state['finished']:
             wf_in_progress = False
+            update_old_notification(self.current)
 
         if not wf_in_progress and self.are_we_in_subprocess():
             wf_in_progress = True
@@ -427,6 +429,7 @@ class ZEngine(object):
         is_lane_changed = False
 
         while self._should_we_run():
+            self.check_for_rerun_user_task()
             task = None
             for task in self.workflow.get_tasks(state=Task.READY):
                 self.current.old_lane = self.current.lane_name
@@ -453,6 +456,18 @@ class ZEngine(object):
             self.current._update_task(task)
             self.catch_lane_change()
             self.handle_wf_finalization()
+
+    def check_for_rerun_user_task(self):
+        pre_task = self.workflow.get_tasks(Task.COMPLETED)[-1]
+        current_task = self.workflow.get_tasks(Task.READY)[0]
+        if pre_task.task_spec.__class__.__name__ == 'UserTask':
+            pre_lane = pre_task.task_spec.data['lane_data']['name']
+            cur_lane = current_task.task_spec.data['lane_data']['name']
+            data = self.current.input
+            #if pre_task.task_spec.name != data['task_name']:
+            if not ('cmd' in data or 'form' in data) and pre_lane == cur_lane:
+                pre_task._set_state(Task.READY)
+                current_task._set_state(Task.MAYBE)
 
     def switch_lang(self):
         """Switch to the language of the current user.
