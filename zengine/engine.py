@@ -459,11 +459,9 @@ class ZEngine(object):
         pre_task = self.workflow.get_tasks(Task.COMPLETED)[-1]
         current_task = self.workflow.get_tasks(Task.READY)[0]
         if pre_task.task_spec.__class__.__name__ == 'UserTask':
-            pre_lane = pre_task.task_spec.data['lane_data']['name']
-            cur_lane = current_task.task_spec.data['lane_data']['name']
             data = self.current.input
             #if pre_task.task_spec.name != data['task_name']:
-            if not ('cmd' in data or 'form' in data) and pre_lane == cur_lane:
+            if not ('cmd' in data or 'form' in data):
                 pre_task._set_state(Task.READY)
                 current_task._set_state(Task.MAYBE)
 
