@@ -771,9 +771,8 @@ def sync_wf_cache(current):
             # we just started the wf
             try:
                 inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
-                inv.delete()
                 # inv.delete_other_invitations()
-                # inv.progress = 20
+                # inv.state = 20
                 # inv.save()
             except ObjectDoesNotExist:
                 current.log.exception("Invitation not found: %s" % wf_state)
@@ -786,7 +785,6 @@ def sync_wf_cache(current):
             wfi.finished = True
             wfi.finish_date = wf_state['finish_date']
             wf_cache.delete()
-            TaskInvitation.objects.filter(instance=wfi).delete()
         wfi.save()
     else:
         # if cache already cleared, we have nothing to sync

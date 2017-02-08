@@ -29,7 +29,6 @@ from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
-from .receivers import update_old_notification
 
 # crud_view = CrudView()
 from zengine.models import BPMNWorkflow
@@ -404,8 +403,7 @@ class ZEngine(object):
                                self.current.task_type == 'Simple')
         if wf_in_progress and self.wf_state['finished']:
             wf_in_progress = False
-            update_old_notification(self.current)
-
+            self.current.update_old_invitation_and_notification()
         if not wf_in_progress and self.are_we_in_subprocess():
             wf_in_progress = True
         return self.current.flow_enabled and not_a_user_task and wf_in_progress
@@ -495,6 +493,7 @@ class ZEngine(object):
                         self.current.sendoff_current_user()
                     self.current.flow_enabled = False
                     if self.current.lane_auto_invite:
+                        self.current.update_old_invitation_and_notification()
                         self.current.invite_other_parties(self._get_possible_lane_owners())
                     return True
                     # self.current.old_lane = self.current.lane_name
