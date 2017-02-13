@@ -651,3 +651,28 @@ class CheckList(Command):
         for k, v in env.items():
             if k in check_env_list:
                 print(__(u"{0}{1} : {2}{3}").format(CheckList.BOLD, k, v, CheckList.ENDC))
+
+
+class ClearCache(Command):
+    CMD_NAME = 'clear_cache'
+    HELP = 'DELETES the contents of cache with given cache model'
+    PARAMS = [{'name': 'prefix', 'required': True,
+               'help': 'Comma separated prefix(es) to be cleared. Say "all" to clear ALL data in cache'}]
+
+    def run(self):
+        from pyoko.db.connection import cache
+
+        prefix_name = self.manager.args.prefix
+        if prefix_name != "":
+            if prefix_name != 'all':
+                for name in prefix_name.split(','):
+                    keys = cache.keys(name+"*")
+                    for key in keys:
+                        cache.delete(key)
+                    print("%d object(s) deleted from cache with PREFIX %s " % (len(keys), name))
+            else:
+                all_success = cache.flushall()
+                if all_success:
+                    print("All objects deleted from cache ")
+        else:
+            print("\"%s\" not a legal argument!" % prefix_name)
