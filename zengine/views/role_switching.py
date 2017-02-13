@@ -7,7 +7,7 @@
 from zengine.views.crud import CrudView
 from zengine.forms import JsonForm
 from zengine.forms import fields
-from zengine.lib.translation import gettext as _
+from zengine.lib.utils import gettext as _
 from zengine import settings
 from pyoko.lib.utils import get_object_from_path
 
