@@ -10,7 +10,7 @@ from zengine.models import TaskInvitation
 from pyoko.lib.utils import get_object_from_path
 from pyoko.conf import settings
 from datetime import datetime
-from zengine.lib.translation import gettext as _
+from zengine.lib.utils import gettext as _
 
 RoleModel = get_object_from_path(settings.ROLE_MODEL)
 
