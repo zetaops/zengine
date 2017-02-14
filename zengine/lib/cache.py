@@ -101,12 +101,11 @@ class Cache(object):
                   lifetime or settings.DEFAULT_CACHE_EXPIRE_TIME)
         return val
 
-    def prepare_data(self):
-        pass
+    def get_data_to_cache(self):
+        return ""
 
     def get_or_set(self, lifetime=None):
-        val = self.prepare_data()
-        return self.get() or self.set(val, lifetime)
+        return self.get() or self.set(self.get_data_to_cache(), lifetime)
 
     def delete(self):
         """
@@ -365,7 +364,7 @@ class WFSpecNames(Cache):
     def __init__(self):
         super(WFSpecNames, self).__init__('wf_spec_names')
 
-    def prepare_data(self):
+    def get_data_to_cache(self):
         return self.get_data()
 
     @staticmethod
