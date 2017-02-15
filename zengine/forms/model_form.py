@@ -310,7 +310,7 @@ class ModelForm(object):
         elif isinstance(val, BaseField):
             return None
         else:
-            return val if val is not None else ''
+            return val
 
     def _get_fields(self, result, model_obj):
         for name, field in model_obj._ordered_fields:

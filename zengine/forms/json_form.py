@@ -238,7 +238,10 @@ class JsonForm(ModelForm):
             if 'kwargs' in itm and 'widget' in itm['kwargs']:
                 item_props['widget'] = itm['kwargs'].pop('widget')
 
-            result["model"][itm['name']] = itm['value'] if itm['value'] is not None else itm['default']
+            # if value is None and default value is not None returns default value
+            # if value is not None returns value
+            # if both are None returns value as None
+            result["model"][itm['name']] = itm['default'] if itm['value'] is None and itm['default'] is not None else itm['value']
 
             if itm['type'] == 'model':
                 item_props['model_name'] = itm['model_name']
