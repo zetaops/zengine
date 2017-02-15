@@ -10,7 +10,7 @@ from pyoko.fields import DATE_FORMAT
 from datetime import datetime
 from zengine.lib.decorators import view
 from zengine.models import TaskInvitation, BPMNWorkflow
-from zengine.lib.translation import gettext_lazy as __
+from zengine.lib.utils import gettext_lazy as __
 from zengine.lib.translation import format_date
 
 
