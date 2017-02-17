@@ -558,15 +558,15 @@ class CheckList(Command):
         """
         from pyoko.db.schema_update import SchemaUpdater
         from socket import error as socket_error
-        from pyoko.model import model_registry
         from pyoko.conf import settings
         from importlib import import_module
 
         import_module(settings.MODELS_MODULE)
-
+        registry = import_module('pyoko.model').model_registry
+        models = [model for model in registry.get_base_models()]
         try:
             print(__(u"Checking migration and solr ..."))
-            updater = SchemaUpdater(model_registry, 'all', 1, False)
+            updater = SchemaUpdater(models, 1, False)
             updater.run(check_only=True)
 
         except socket_error as e:
