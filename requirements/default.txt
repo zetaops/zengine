@@ -13,3 +13,4 @@ celery
 tornado
 pika
 babel
+futures
