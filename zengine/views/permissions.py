@@ -21,7 +21,7 @@ class PermissionForm(forms.JsonForm):
     class Permissions(ListNode):
         perm_name = fields.String('Permission Name')
 
-    save_edit = fields.Button("Save", cmd="finish")
+    save_edit = fields.Button("Save", cmd="set_permission")
 
 
 class PermissionTreeBuilder(object):
@@ -176,7 +176,7 @@ class Permissions(BaseView):
         "children" field is the sub-permissions of the permission.
         """
         # Get the role that was selected in the CRUD view
-        key = self.current.input['object_id']
+        key = self.current.input['object_id'] if 'object_id' in self.current.input else self.current.task_data['role_id']
         self.current.task_data['role_id'] = key
         role = RoleModel.objects.get(key=key)
         # Get the cached permission tree, or build a new one if there is none cached
@@ -264,13 +264,14 @@ class Permissions(BaseView):
         that was sent to the UI (see `Permissions.edit_permissions`).
         'checked' field is the new state of the element.
         """
-        changes = self.input['change']
-        key = self.current.task_data['role_id']
-        role = RoleModel.objects.get(key=key)
-        for change in changes:
-            permission = PermissionModel.objects.get(code=change['id'])
-            if change['checked'] is True:
-                role.add_permission(permission)
-            else:
-                role.remove_permission(permission)
-        role.save()
+        if 'change' in self.input and len(self.input['change']) > 0:
+            changes = self.input['change']
+            key = self.current.task_data['role_id']
+            role = RoleModel.objects.get(key=key)
+            for change in changes:
+                permission = PermissionModel.objects.get(code=change['id'])
+                if change['checked'] is True:
+                    role.add_permission(permission)
+                else:
+                    role.remove_permission(permission)
+            role.save()
