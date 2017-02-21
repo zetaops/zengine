@@ -299,7 +299,7 @@ class CrudView(BaseView):
         for base in self.__class__.__bases__:
             items.extend(list(base.__dict__.items()))
         for name, func in items:
-            if hasattr(func, 'view_method'):
+            if hasattr(func, 'view_method') and name not in self.VIEW_METHODS:
                 self.VIEW_METHODS[name] = func
             elif hasattr(func, 'filter_method'):
                 self.FILTER_METHODS.append(func)
