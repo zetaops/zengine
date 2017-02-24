@@ -51,6 +51,11 @@ class ObjectForm(forms.JsonForm):
     save_as_new_list = fields.Button(_(u"Save as New and List"),
                                      cmd="save_as_new::list")
 
+class DeletionConfirmForm(forms.JsonForm):
+    """
+    """
+    cancel = fields.Button(_(u"Cancel"), cmd="list")
+    confirm = fields.Button(_(u"Confirm"), cmd="delete")
 
 class CrudMeta(type):
     """
@@ -242,7 +247,7 @@ class CrudView(BaseView):
         allow_selection = False
         objects_per_page = 10
         object_actions = {
-            'delete': {'name': _(u'Delete'), 'cmd': 'delete', 'mode': 'normal', 'show_as': 'button'},
+            'delete': {'name': _(u'Delete'), 'cmd': 'confirm_deletion', 'mode': 'normal', 'show_as': 'button'},
             'add_edit_form': {'name': _(u'Edit'), 'cmd': 'add_edit_form', 'mode': 'normal',
                               'show_as': 'button'},
             'show': {'fields': [0, ], 'cmd': 'show', 'mode': 'normal', 'show_as': 'link'},
@@ -846,3 +851,13 @@ class CrudView(BaseView):
         self.object.blocking_delete()
         signals.crud_post_delete.send(self, current=self.current, object_data=object_data)
         self.set_client_cmd('reload')
+
+    @view_method
+    def confirm_deletion(self):
+        """
+        :return:
+        """
+        form = DeletionConfirmForm(title=_(u"Deletion Confirmation"))
+        form.help_text = _(u"Do you confirm the deletion of %s ?" % self.object)
+        self.form_out(form)
+
