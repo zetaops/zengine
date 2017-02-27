@@ -456,6 +456,26 @@ class ZEngine(object):
             self.handle_wf_finalization()
 
     def check_for_rerun_user_task(self):
+<<<<<<< HEAD
+        """
+        Checks that the user task needs to re-run.
+        If necessary, current task and pre task's states are changed and re-run.
+        """
+        try:
+            pre_task = self.workflow.get_tasks(Task.COMPLETED)[-1]
+            current_task = self.workflow.get_tasks(Task.READY)[0]
+            pre_task_type = pre_task.task_spec.__class__.__name__
+            current_task_type = current_task.task_spec.__class__.__name__
+            if pre_task_type == 'UserTask' and current_task_type != 'EndEvent':
+                if pre_task.task_spec.lane == current_task.task_spec.lane:
+                    data = self.current.input
+                    # if pre_task.task_spec.name != data['task_name']:
+                    if not ('cmd' in data or 'form' in data):
+                        pre_task._set_state(Task.READY)
+                        current_task._set_state(Task.MAYBE)
+        except:
+            pass
+=======
         pre_task = self.workflow.get_tasks(Task.COMPLETED)[-1]
         current_task = self.workflow.get_tasks(Task.READY)[0]
         if pre_task.task_spec.__class__.__name__ == 'UserTask':
@@ -464,6 +484,7 @@ class ZEngine(object):
             if not ('cmd' in data or 'form' in data):
                 pre_task._set_state(Task.READY)
                 current_task._set_state(Task.MAYBE)
+>>>>>>> b36ea142a6c9d033e63cf0e197ae41500aca430a
 
     def switch_lang(self):
         """Switch to the language of the current user.
