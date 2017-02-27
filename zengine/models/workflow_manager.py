@@ -771,9 +771,9 @@ def sync_wf_cache(current):
             # we just started the wf
             try:
                 inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
-                # inv.delete_other_invitations()
-                # inv.state = 20
-                # inv.save()
+                inv.delete_other_invitations()
+                inv.state = 20
+                inv.save()
             except ObjectDoesNotExist:
                 current.log.exception("Invitation not found: %s" % wf_state)
         wfi.step = wf_state['step']

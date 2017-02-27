@@ -18,7 +18,6 @@ from uuid import uuid4
 import lazy_object_proxy
 from SpiffWorkflow.specs import WorkflowSpec
 
-from pyoko.exceptions import ObjectDoesNotExist
 from pyoko.lib.utils import get_object_from_path, lazy_property
 from zengine import signals
 from zengine.client_queue import ClientQueue
@@ -27,7 +26,7 @@ from zengine.lib.utils import merge_truthy
 from zengine.lib import translation
 from zengine.lib.cache import Session
 from zengine.log import log
-from zengine.models import WFCache, TaskInvitation, Message
+from zengine.models import WFCache
 from zengine.models import WFInstance
 
 DEFAULT_LANE_CHANGE_MSG = {
@@ -240,20 +239,6 @@ class WFCurrent(Current):
                                       old_lane=self.old_lane,
                                       possible_owners=possible_owners
                                       )
-
-    def update_old_invitation_and_notification(self):
-        try:
-            wfi = WFInstance.objects.get(self.token)
-            inv = TaskInvitation.objects.get(instance=wfi, role_id=self.role_id,
-                                             wf_name=self.workflow.name)
-            inv.delete()
-            msg = Message.objects.get(url=self.get_wf_link(), receiver_id=self.user_id,
-                                      typ=1)
-            msg.url = ""
-            msg.body = "'%s' workflow is completed successfully." % self.workflow.spec.description
-            msg.blocking_save()
-        except ObjectDoesNotExist:
-            pass
 
     def _set_lane_data(self):
         # TODO: Cache lane_data in process
