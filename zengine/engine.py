@@ -464,14 +464,14 @@ class ZEngine(object):
             pre_task = self.workflow.get_tasks(Task.COMPLETED)[-1]
             current_task = self.workflow.get_tasks(Task.READY)[0]
             pre_task_type = pre_task.task_spec.__class__.__name__
-            current_task_type = current_task.task_spec.__class__.__name__
-            if pre_task_type == 'UserTask' and current_task_type != 'EndEvent':
-                if pre_task.task_spec.lane == current_task.task_spec.lane:
-                    data = self.current.input
-                    # if pre_task.task_spec.name != data['task_name']:
-                    if not ('cmd' in data or 'form' in data):
-                        pre_task._set_state(Task.READY)
-                        current_task._set_state(Task.MAYBE)
+            pre_name = pre_task.task_spec.name
+            pre_lane = pre_task.task_spec.lane
+            current_lane = current_task.task_spec.lane
+            if pre_task_type == 'UserTask' and pre_lane == current_lane:
+                data = self.current.input
+                if 'wf_meta' not in data:
+                    pre_task._set_state(Task.READY)
+                    current_task._set_state(Task.MAYBE)
         except:
             pass
 
