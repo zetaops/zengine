@@ -75,14 +75,26 @@ class TestCase(BaseTestCase):
         # sleep(1)
         # resp = self.client.post(model=model_name, filters={"username": "fake_user"})
 
+        # attempt to delete the first object, and cancel the confirmation
+        obj_id = resp.json['object_key']
+        self.client.post(model=model_name, cmd='confirm_deletion',
+                         object_id=obj_id)
+        resp = self.client.post(model=model_name, cmd='list')
+
+        # after adding one user and cancelling the delete
+        assert num_of_objects + 1 == len(resp.json['objects']) - 1
+
         # delete the first object then go to list view
-        print("Delete this %s" % resp.json['object_key'])
-        resp = self.client.post(model=model_name, cmd='delete', object_id=resp.json['object_key'])
+        print("Delete this %s" % obj_id)
+        self.client.post(model=model_name, cmd='confirm_deletion',
+                         object_id=obj_id)
+        self.client.post(model=model_name, cmd='delete', object_id=obj_id)
         # resp = self.client.post(model=model_name, cmd='list')
         # number of objects should be equal to starting point
         # sleep(1)
         resp = self.client.post(model=model_name, cmd='list')
         resp.raw()
+        # perform delete
         assert num_of_objects == len(resp.json['objects']) - 1
 
     def test_make_list_header(self):
