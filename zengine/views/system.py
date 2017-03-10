@@ -42,7 +42,7 @@ def get_task_types(current):
     """
     current.output['task_types'] = [{'name': bpmn_wf.name,
                                      'title': bpmn_wf.title}
-                                    for bpmn_wf in BPMNWorkflow.objects.filter()
+                                    for bpmn_wf in BPMNWorkflow.objects.all()
                                     if current.has_permission(bpmn_wf.name)]
 
 
@@ -160,7 +160,7 @@ def get_tasks(current):
 
     if 'inverted' in current.input:
         # show other user's tasks
-        allowed_workflows = [bpmn_wf.name for bpmn_wf in BPMNWorkflow.objects.filter()
+        allowed_workflows = [bpmn_wf.name for bpmn_wf in BPMNWorkflow.objects.all()
                              if current.has_permission(bpmn_wf.name)]
         queryset = queryset.exclude(role_id=current.role_id).filter(wf_name__in=allowed_workflows)
     else:

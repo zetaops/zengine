@@ -70,7 +70,7 @@ class BaseUser(object):
             return ConnectionStatus(self.key).get() or False
         else:
             mq_channel = self._connect_mq()
-            for sbs in self.subscriptions.objects.filter():
+            for sbs in self.subscriptions.objects.all():
                 if sbs.channel.typ == 10:
                     other_party = self.get_prv_exchange(
                         sbs.channel.code_name.replace(self.key, '').replace('_', ''))

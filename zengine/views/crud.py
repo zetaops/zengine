@@ -700,7 +700,7 @@ class CrudView(BaseView):
         """
         Creates object listings for the model.
         """
-        query = self._apply_list_queries(self.object.objects.filter())
+        query = self._apply_list_queries(self.object.objects.all())
         self.output['objects'] = []
         self.make_list_header()
         self.display_list_filters()
@@ -746,7 +746,7 @@ class CrudView(BaseView):
             :class:`SelectBoxCache` object.
 
         """
-        query = self.object.objects.filter()
+        query = self.object.objects.all()
         query = self._apply_list_search(query)
         num_of_rec = query.count()
         searched = 'query' in self.input

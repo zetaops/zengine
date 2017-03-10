@@ -180,7 +180,7 @@ def show_channel(current, waited=False):
                       'member_list': [{'name': sb.user.full_name,
                                        'is_online': sb.user.is_online(),
                                        'avatar_url': sb.user.get_avatar_url()
-                                       } for sb in ch.subscriber_set.objects.filter()],
+                                       } for sb in ch.subscriber_set.objects.all()],
                       'last_messages': [],
                       'status': 'OK',
                       'code': 200
@@ -383,7 +383,7 @@ def get_notifications(current):
         sbs = current.user.subscriptions.objects.filter(channel_id=current.user.prv_exchange)
         sbs[0].delete()
         notif_sbs = sbs[1]
-    for msg in notif_sbs.channel.message_set.objects.filter()[:amount]:
+    for msg in notif_sbs.channel.message_set.objects.all()[:amount]:
         current.output['notifications'].insert(0, {
             'title': msg.msg_title,
             'body': msg.body,
@@ -731,7 +731,7 @@ def edit_channel(current):
     ch.name = current.input['name']
     ch.description = current.input['description']
     ch.save()
-    for sbs in ch.subscriber_set.objects.filter():
+    for sbs in ch.subscriber_set.objects.all():
         sbs.name = ch.name
         sbs.save()
     current.output = {'status': 'OK', 'code': 200}

@@ -370,7 +370,7 @@ class PrepareMQ(Command):
         from zengine.messaging.model import Channel, Subscriber
         user_model = get_object_from_path(settings.USER_MODEL)
         with BlockSave(Channel):
-            for usr in user_model.objects.filter():
+            for usr in user_model.objects.all():
                 # create private exchange of user
                 # create notification subscription to private exchange
 
@@ -381,7 +381,7 @@ class PrepareMQ(Command):
 
     def create_channel_exchanges(self):
         from zengine.messaging.model import Channel
-        for ch in Channel.objects.filter():
+        for ch in Channel.objects.all():
             print("(re)creation exchange: %s" % ch.code_name)
             ch.create_exchange()
 

@@ -58,7 +58,7 @@ class TestCase(BaseTestCase):
         # We control the get_task_types view
 
         assert len(resp.json['task_types']) == len(
-            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.all()
              if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_workflow_management_state_active(self):
@@ -82,7 +82,7 @@ class TestCase(BaseTestCase):
         task.role = Role.objects.get(user=usr)
         task.object_type = 'Exam'  # Exam model
         # search operation is done in Exam model
-        task.object_query_code = {'teacher_id': Teacher.objects.filter()[0].key}
+        task.object_query_code = {'teacher_id': Teacher.objects.all()[0].key}
         task.start_date = datetime.strptime(yesterday.strftime("%d.%m.%Y"), '%d.%m.%Y')
         task.finish_date = datetime.strptime(tomorrow.strftime("%d.%m.%Y"), '%d.%m.%Y')
         task.run = True
@@ -109,7 +109,7 @@ class TestCase(BaseTestCase):
         # We control the get_task_types view
 
         assert len(resp.json['task_types']) == len(
-            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.all()
              if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_workflow_management_state_future(self):
@@ -155,7 +155,7 @@ class TestCase(BaseTestCase):
         # We control the get_task_types view
 
         assert len(resp.json['task_types']) == len(
-            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.filter()
+            [bpmn_wf for bpmn_wf in BPMNWorkflow.objects.all()
              if self.client.current.has_permission(bpmn_wf.name)])
 
     def test_object_and_query_task_manager(self):
