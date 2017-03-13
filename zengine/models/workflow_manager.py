@@ -422,7 +422,7 @@ class Task(Model):
         query_dict = {}
         for k, v in kwargs.items():
             if isinstance(v, list):
-                query_dict[k] = map(str, v)
+                query_dict[k] = [str(x) for x in v]
             else:
                 parse = str(v).split('.')
                 if parse[0] == 'role' and wfi_role:
