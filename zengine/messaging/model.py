@@ -124,7 +124,7 @@ class Channel(Model):
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
-        return self.message_set.objects.filter().set_params(sort="updated_at desc")[:20]
+        return self.message_set.objects.all().set_params(sort="updated_at desc")[:20]
 
     @classmethod
     def _connect_mq(cls):
@@ -252,14 +252,14 @@ class Subscriber(Model):
             return self.channel.message_set.objects.filter(
                 updated_at__gt=self.last_seen_msg_time).count()
         else:
-            return self.channel.message_set.objects.filter().count()
+            return self.channel.message_set.objects.count()
 
     def get_unread_messages(self, amount):
         if self.last_seen_msg_time:
-            return self.channel.message_set.objects.filter(
+            return self.channel.message_set.objects.all(
                 updated_at__gt=self.last_seen_msg_time)[:amount]
         else:
-            return self.channel.message_set.objects.filter()[:amount]
+            return self.channel.message_set.objects.all()[:amount]
 
     def create_exchange(self):
         """

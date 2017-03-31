@@ -323,7 +323,7 @@ def find_channel_to_choose(channel_list):
 def create_test_data():
     # Channels, subscribers and messages are created for test environment.
     ch = sb = msg = []
-    a = [u for u in User.objects.filter() if u.username != None]
+    a = [u for u in User.objects.all() if u.username != None]
     for i in range(5):
         c = Channel(name="%i Class" % random.randrange(1000, 9000), owner=random.choice(a),
                     typ=15).save()

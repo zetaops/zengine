@@ -49,7 +49,7 @@ def _get_workflows():
     from zengine.models import BPMNWorkflow
 
     workflows = []
-    for wf in BPMNWorkflow.objects.filter():
+    for wf in BPMNWorkflow.objects.all():
         engine = ZEngine()
         engine.current = WFCurrent(workflow_name=wf.name)
         workflows.append(engine.load_or_create_workflow())
