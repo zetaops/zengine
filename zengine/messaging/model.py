@@ -124,7 +124,7 @@ class Channel(Model):
 
     def get_last_messages(self):
         # TODO: Try to refactor this with https://github.com/rabbitmq/rabbitmq-recent-history-exchange
-        return self.message_set.objects.all().set_params(sort="updated_at desc")[:20]
+        return self.message_set.objects.order_by('-updated_at').all()[:20]
 
     @classmethod
     def _connect_mq(cls):
