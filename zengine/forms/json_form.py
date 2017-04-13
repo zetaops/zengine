@@ -24,6 +24,8 @@ from zengine.forms.fields import Button
 from zengine.lib.cache import Cache
 from zengine.lib.exceptions import FormValidationError
 from .model_form import ModelForm
+from zengine.settings import DATE_DEFAULT_FORMAT
+from datetime import datetime
 
 class FormCache(Cache):
     """
@@ -241,7 +243,23 @@ class JsonForm(ModelForm):
             # if value is None and default value is not None returns default value
             # if value is not None returns value
             # if both are None returns value as None
-            result["model"][itm['name']] = itm['default'] if itm['value'] is None and itm['default'] is not None else itm['value']
+            value = None
+            if 'always_blank' in self.Meta.__dict__ and not self.Meta.always_blank \
+                    and self.__class__.__name__ in self.context.task_data:
+                value = self.context.task_data[self.__class__.__name__][itm['name']]
+                if itm['type'] == 'date':
+                    date_field = datetime.strptime(value, DATE_DEFAULT_FORMAT)
+                    value = date_field.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+            if not value:
+                if itm['value'] is not None:
+                    value = itm['value']
+                elif itm['default'] is not None:
+                    value = itm['default']
+                else:
+                    value = itm['value']
+
+            result["model"][itm['name']] = value
 
             if itm['type'] == 'model':
                 item_props['model_name'] = itm['model_name']
@@ -312,7 +330,7 @@ class JsonForm(ModelForm):
         """
         cache = FormCache()
         form['model']['form_key'] = cache.form_id
-        form['model']['form_title'] = self.__class__.__name__
+        form['model']['form_name'] = self.__class__.__name__
         cache.set(
             {
                 'model': list(form['model'].keys()),  # In Python 3, dictionary keys are not serializable
