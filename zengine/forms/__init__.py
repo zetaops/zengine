@@ -20,3 +20,4 @@ Zengine's Forms module contains two form classes and a custom field;
 
 from .model_form import ModelForm
 from .json_form import JsonForm
+from .fillable_form import FillableForm

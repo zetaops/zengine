@@ -312,6 +312,7 @@ class JsonForm(ModelForm):
         """
         cache = FormCache()
         form['model']['form_key'] = cache.form_id
+        form['model']['form_title'] = self.__class__.__name__
         cache.set(
             {
                 'model': list(form['model'].keys()),  # In Python 3, dictionary keys are not serializable
