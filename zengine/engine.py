@@ -252,6 +252,13 @@ class ZEngine(object):
         self.check_for_permission()
         self.workflow = self.load_or_create_workflow()
 
+        if True:
+            try:
+                self.current.task_data[self.current.input['form']['form_title']] = \
+                    self.current.input['form']
+            except KeyError:
+                pass
+
         # in wf diagram, if property is stated as init = True
         # demanded initial values are assigned and put to cache
         start_init_values = self.workflow_spec.wf_properties.get('init', 'False') == 'True'
