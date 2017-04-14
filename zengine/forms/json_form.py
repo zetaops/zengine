@@ -240,9 +240,6 @@ class JsonForm(ModelForm):
             if 'kwargs' in itm and 'widget' in itm['kwargs']:
                 item_props['widget'] = itm['kwargs'].pop('widget')
 
-            # if value is None and default value is not None returns default value
-            # if value is not None returns value
-            # if both are None returns value as None
             value = None
             if 'always_blank' in self.Meta.__dict__ and not self.Meta.always_blank \
                     and self.__class__.__name__ in self.context.task_data:
@@ -251,7 +248,11 @@ class JsonForm(ModelForm):
                     date_field = datetime.strptime(value, DATE_DEFAULT_FORMAT)
                     value = date_field.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
-            if not value:
+            # if value is not retrieved from task_data
+            if value is None:
+                # if itm['value'] is None and default value is not None returns default value
+                # if itm['value'] is not None returns itm['value']
+                # if both are None returns itm['value'] as None
                 if itm['value'] is not None:
                     value = itm['value']
                 elif itm['default'] is not None:
