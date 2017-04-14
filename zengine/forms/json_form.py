@@ -24,7 +24,7 @@ from zengine.forms.fields import Button
 from zengine.lib.cache import Cache
 from zengine.lib.exceptions import FormValidationError
 from .model_form import ModelForm
-from zengine.settings import DATE_DEFAULT_FORMAT
+from zengine.settings import DATE_DEFAULT_FORMAT, DATETIME_DEFAULT_FORMAT
 from datetime import datetime
 
 class FormCache(Cache):
@@ -231,6 +231,12 @@ class JsonForm(ModelForm):
             result["model"]['model_type'] = self._model.__class__.__name__
             result["model"]['unicode'] = six.text_type(self._model)
 
+        # if form intentionally marked as fillable from task data by assigning False to always_blank
+        # field in Meta class, form_data is retrieved from task_data if exist in else None
+        form_data = None
+        if not self.Meta.always_blank:
+            form_data = self.context.task_data.get(self.__class__.__name__, None)
+
         for itm in self._serialize():
             item_props = {'type': itm['type'], 'title': itm['title']}
 
@@ -240,25 +246,22 @@ class JsonForm(ModelForm):
             if 'kwargs' in itm and 'widget' in itm['kwargs']:
                 item_props['widget'] = itm['kwargs'].pop('widget')
 
-            value = None
-            if 'always_blank' in self.Meta.__dict__ and not self.Meta.always_blank \
-                    and self.__class__.__name__ in self.context.task_data:
-                value = self.context.task_data[self.__class__.__name__][itm['name']]
-                if itm['type'] == 'date':
-                    date_field = datetime.strptime(value, DATE_DEFAULT_FORMAT)
-                    value = date_field.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-            # if value is not retrieved from task_data
-            if value is None:
-                # if itm['value'] is None and default value is not None returns default value
+            if form_data:
+                if itm['type'] == 'date' or itm['type'] == 'datetime':
+                    value_to_serialize = datetime.strptime(
+                        form_data[itm['name']], itm['format'])
+                else:
+                    value_to_serialize = form_data[itm['name']]
+                value = self._serialize_value(value_to_serialize)
+            # if form_data is empty, value will be None, so it is needed to fill the form from model
+            # or leave empty
+            else:
                 # if itm['value'] is not None returns itm['value']
-                # if both are None returns itm['value'] as None
+                # else itm['default']
                 if itm['value'] is not None:
                     value = itm['value']
-                elif itm['default'] is not None:
-                    value = itm['default']
                 else:
-                    value = itm['value']
+                    value = itm['default']
 
             result["model"][itm['name']] = value
 

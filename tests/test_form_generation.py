@@ -7,6 +7,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import datetime
+
+from zengine.current import Current
 from zengine.forms import ModelForm, JsonForm
 from zengine.forms import fields
 
@@ -32,6 +34,17 @@ class LoginForm(JsonForm):
     password = fields.String("Password", type="password")
 
 
+class FillableForm(JsonForm):
+    class Meta:
+        title = "Fillable Form"
+        always_blank = False
+    duration = fields.Integer()
+    name = fields.String()
+    budget = fields.Float()
+    date = fields.Date()
+    ddate = fields.DateTime()
+    submit = fields.Button()
+
 
 class TestCase:
     def test_plain_form(self):
@@ -52,3 +65,25 @@ class TestCase:
         model = LoginForm().deserialize(login_data, do_validation=False)
         assert model.password == login_data["password"]
         assert model.username == login_data["username"]
+
+    def test_fillable_form(self):
+        current = Current()
+        current.task_data = {
+            'FillableForm': {
+                'duration': 123,
+                'name': 'some dummy name',
+                'budget': 12345,
+                'date': '13.04.2017',
+                'ddate': '13.04.2017T00:00:00.00Z',
+                'submit': 1
+            }
+        }
+        form = FillableForm(current=current)
+        serialized_form = form.serialize()
+        assert serialized_form['model']['duration'] == 123
+        assert serialized_form['model']['name'] == 'some dummy name'
+        assert serialized_form['model']['budget'] == 12345
+        assert serialized_form['model']['date'] == '2017-04-13T00:00:00.000000Z'
+        assert serialized_form['model']['ddate'] == '2017-04-13T00:00:00.000000Z'
+        assert serialized_form['model']['submit'] == 1
+

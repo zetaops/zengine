@@ -256,7 +256,8 @@ class ZEngine(object):
         # put form data in wf task_data
         if 'form' in self.current.input:
             form = self.current.input['form']
-            self.current.task_data[form['form_name']] = form
+            if 'form_name' in form:
+                self.current.task_data[form['form_name']] = form
 
         # in wf diagram, if property is stated as init = True
         # demanded initial values are assigned and put to cache

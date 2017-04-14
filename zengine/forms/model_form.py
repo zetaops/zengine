@@ -89,6 +89,8 @@ class ModelForm(object):
         exclude = []
         grouping = []
         constraints = {}
+        # if the intention is to fill the form from task_data, it must be passed False
+        always_blank = True
 
     def __init__(self, model=None, exclude=None, include=None, types=None, title=None, **kwargs):
         """
@@ -322,7 +324,8 @@ class ModelForm(object):
                 val = model_obj.get_humane_value(name)
             else:
                 val = self._serialize_value(getattr(model_obj, name))
-            result.append({'name': name,
+
+            item = {'name': name,
                            'type': self.customize_types.get(name,
                                                             field.solr_type),
                            'value': val,
@@ -333,7 +336,11 @@ class ModelForm(object):
                            'title': field.title,
                            'default': field.default() if callable(
                                    field.default) else field.default,
-                           })
+                           }
+
+            if isinstance(field, Date) or isinstance(field, DateTime):
+                item['format'] = field.format
+            result.append(item)
 
     def _node_schema(self, node, parent_name):
         result = []
