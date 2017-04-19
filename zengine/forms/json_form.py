@@ -253,6 +253,8 @@ class JsonForm(ModelForm):
                 else:
                     value_to_serialize = form_data[itm['name']]
                 value = self._serialize_value(value_to_serialize)
+                if itm['type'] == 'button':
+                    value = None
             # if form_data is empty, value will be None, so it is needed to fill the form from model
             # or leave empty
             else:
