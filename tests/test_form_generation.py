@@ -85,5 +85,5 @@ class TestCase:
         assert serialized_form['model']['budget'] == 12345
         assert serialized_form['model']['date'] == '2017-04-13T00:00:00.000000Z'
         assert serialized_form['model']['ddate'] == '2017-04-13T00:00:00.000000Z'
-        assert serialized_form['model']['submit'] == 1
+        assert not serialized_form['model']['submit']
 
