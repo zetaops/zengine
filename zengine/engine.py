@@ -469,9 +469,9 @@ class ZEngine(object):
             current_lane = current_task.task_spec.lane
             if pre_task_type == 'UserTask' and pre_lane == current_lane:
                 data = self.current.input
-                if 'wf_meta' not in data:
-                    pre_task._set_state(Task.READY)
-                    current_task._set_state(Task.MAYBE)
+                # if 'wf_meta' not in data:
+                #     pre_task._set_state(Task.READY)
+                #     current_task._set_state(Task.MAYBE)
         except:
             pass
 

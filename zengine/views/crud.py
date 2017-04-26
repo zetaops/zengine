@@ -289,11 +289,6 @@ class CrudView(BaseView):
                 'allow_selection': self.Meta.allow_selection,
                 'allow_search': self.Meta.allow_search and bool(self.object.Meta.search_fields),
             }
-            self.output['wf_meta'] = {
-                'name': current.workflow_name,
-                'current_lane': current.spec.lane,
-                'current_step': current.task_name,
-            }
 
     def _prepare_decorated_methods(self):
         """
