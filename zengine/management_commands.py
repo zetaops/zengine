@@ -464,7 +464,7 @@ class LoadDiagrams(Command):
             paths = self.get_workflows()
         count = 0
         for wf_name, content in paths:
-            wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name)
+            wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name, key=wf_name)
             content = self._tmp_fix_diagram(content)
             diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
             if wf_is_new or diagram_is_updated or self.manager.args.force:
