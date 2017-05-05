@@ -15,7 +15,7 @@ from pika.exceptions import ChannelClosed
 from pika.exceptions import ConnectionClosed
 from pyoko import Model, field, ListNode
 from pyoko.conf import settings
-from pyoko.exceptions import ObjectDoesNotExist
+from pyoko.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from pyoko.fields import DATE_TIME_FORMAT
 from pyoko.lib.utils import get_object_from_path
 from SpiffWorkflow.bpmn.parser.util import BPMN_MODEL_NS, ATTRIBUTE_NS
@@ -728,11 +728,18 @@ class WFCache(Cache):
         return self.wf_state
 
     def get_instance(self):
-        wfi = WFInstance.objects.get(self.db_key)
         data_from_cache = super(WFCache, self).get()
         if data_from_cache:
-            wfi._load_data(data_from_cache, from_db=True)
-        return wfi
+            try:
+                wfi = WFInstance.objects.get(self.db_key)
+                wfi._load_data(data_from_cache, from_db=True)
+            except ObjectDoesNotExist:
+                wfi = WFInstance()
+                wfi._load_data(data_from_cache, from_db=True)
+                wfi.key = self.db_key
+            return wfi
+        else:
+            return WFInstance.objects.get(self.db_key)
 
     def save(self, wf_state):
         """
@@ -764,6 +771,17 @@ def sync_wf_cache(current):
             # wf's that not started from a task invitation
             wfi = WFInstance(key=current.input['token'])
             wfi.wf = BPMNWorkflow.objects.get(name=wf_state['name'])
+        if not wfi.current_actor.exist:
+            # we just started the wf
+            try:
+                inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
+                inv.delete_other_invitations()
+                inv.progress = 20
+                inv.save()
+            except ObjectDoesNotExist:
+                current.log.exception("Invitation not found: %s" % wf_state)
+            except MultipleObjectsReturned:
+                current.log.exception("Multiple invitations found: %s" % wf_state)
         wfi.step = wf_state['step']
         wfi.name = wf_state['name']
         wfi.pool = wf_state['pool']
@@ -774,15 +792,6 @@ def sync_wf_cache(current):
             wfi.finish_date = wf_state['finish_date']
             wf_cache.delete()
         wfi.save()
-        if not wfi.current_actor.exist:
-            # we just started the wf
-            try:
-                inv = TaskInvitation.objects.get(instance=wfi, role_id=wf_state['role_id'])
-                inv.delete_other_invitations()
-                inv.progress = 20
-                inv.save()
-            except ObjectDoesNotExist:
-                current.log.exception("Invitation not found: %s" % wf_state)
 
     else:
         # if cache already cleared, we have nothing to sync
