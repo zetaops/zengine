@@ -728,18 +728,17 @@ class WFCache(Cache):
         return self.wf_state
 
     def get_instance(self):
+        try:
+            wfi = WFInstance.objects.get(self.db_key)
+        except ObjectDoesNotExist:
+            wfi = WFInstance()
+            wfi.key = self.db_key
+
         data_from_cache = super(WFCache, self).get()
         if data_from_cache:
-            try:
-                wfi = WFInstance.objects.get(self.db_key)
-                wfi._load_data(data_from_cache, from_db=True)
-            except ObjectDoesNotExist:
-                wfi = WFInstance()
-                wfi._load_data(data_from_cache, from_db=True)
-                wfi.key = self.db_key
-            return wfi
-        else:
-            return WFInstance.objects.get(self.db_key)
+            wfi._load_data(data_from_cache, from_db=True)
+
+        return wfi
 
     def save(self, wf_state):
         """
