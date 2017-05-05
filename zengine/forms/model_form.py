@@ -338,7 +338,7 @@ class ModelForm(object):
                                    field.default) else field.default,
                            }
 
-            if isinstance(field, Date) or isinstance(field, DateTime):
+            if isinstance(field, (Date, DateTime)):
                 item['format'] = field.format
             result.append(item)
 
