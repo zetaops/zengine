@@ -210,7 +210,6 @@ class WFCurrent(Current):
             # log.info("TOKEN NEW: %s " % self.token)
 
         self.wf_cache = WFCache(self)
-        self.wf_instance = lazy_object_proxy.Proxy(lambda: self.wf_cache.get_instance())
         self.set_client_cmds()
 
     def get_wf_link(self):
