@@ -97,7 +97,7 @@ class BaseTestClient(Worker):
         self.path = path
         self.token = token
 
-    def _prepare_post(self, data):
+    def _prepare_post(self, wf_meta, data):
         """
         by default data dict encoded as json and
         content type set as application/json
@@ -122,6 +122,11 @@ class BaseTestClient(Worker):
 
         data['form'] = form_data
 
+        if wf_meta:
+            data['wf_meta'] = {'name': 'fake_wf_name',
+                               'current_lane': 'fake_lane',
+                               'current_step': 'fake_step'}
+
         post_data = {'data': data,
                      '_zops_remote_ip': '127.0.0.1',
                      '_zops_source': 'Remote',
@@ -130,14 +135,13 @@ class BaseTestClient(Worker):
         print("PostData : %s" % post_data)
         return post_data
 
-    def post(self, **data):
-        post_data = json.dumps(self._prepare_post(data))
+    def post(self, wf_meta=True, **data):
+        post_data = json.dumps(self._prepare_post(wf_meta, data))
         fake_method = type('FakeMethod', (object,), {'routing_key': self.sess_id})
         self.handle_message(None, fake_method, None, post_data)
         # update client token from response
         self.token = self.response_wrapper.token
         return self.response_wrapper
-
 
 
 class TestClient(BaseTestClient):
