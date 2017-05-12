@@ -99,12 +99,14 @@ class BaseTestClient(Worker):
 
     def _prepare_post(self, wf_meta, data):
         """
-        by default data dict encoded as json and
-        content type set as application/json
+        by default data dict encoded as json and content type set as application/json
+        when form data is post, UI should send wf_meta info to backend, but some tests works on
+        lack of wf_meta scenario so wf_meta info is done optional as True, False.
 
         :param dict conf: additional configs for test client's post method.
                           pass "no_json" in conf dict to prevent json encoding
         :param data: post data,
+        wf_meta(bool): fake wf_meta will be created or not
         :return: RWrapper response object
         :rtype: ResponseWrapper
         """
@@ -142,6 +144,7 @@ class BaseTestClient(Worker):
         # update client token from response
         self.token = self.response_wrapper.token
         return self.response_wrapper
+
 
 
 class TestClient(BaseTestClient):
