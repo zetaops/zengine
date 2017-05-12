@@ -24,11 +24,12 @@ class BaseView(object):
         self.client_cmd = set()
         if current:
             self.set_current(current)
-        if hasattr(current,'spec'):
+
+        if hasattr(current, 'spec') and current.spec.__class__.__name__ == 'UserTask':
             self.output['wf_meta'] = {
                 'name': current.workflow_name,
                 'current_lane': current.spec.lane,
-                'current_step': current.task_name,
+                'current_step': current.task_name
             }
 
     def set_current(self, current):
