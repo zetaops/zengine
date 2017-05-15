@@ -124,7 +124,7 @@ class BaseTestClient(Worker):
 
         data['form'] = form_data
 
-        if wf_meta and hasattr(self, 'current') and hasattr(self.current,'spec'):
+        if wf_meta and hasattr(self, 'current') and hasattr(self.current, 'spec'):
             if self.current.task.parent.task_spec.__class__.__name__ == 'UserTask':
                 data['wf_meta'] = {'name': self.current.workflow_name,
                                    'current_lane': self.current.task.parent.task_spec.lane,
