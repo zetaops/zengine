@@ -124,10 +124,11 @@ class BaseTestClient(Worker):
 
         data['form'] = form_data
 
-        if wf_meta:
-            data['wf_meta'] = {'name': 'fake_wf_name',
-                               'current_lane': 'fake_lane',
-                               'current_step': 'fake_step'}
+        if wf_meta and hasattr(self, 'current') and hasattr(self.current,'spec'):
+            if self.current.task.parent.task_spec.__class__.__name__ == 'UserTask':
+                data['wf_meta'] = {'name': self.current.workflow_name,
+                                   'current_lane': self.current.task.parent.task_spec.lane,
+                                   'current_step': self.current.task.parent.task_spec.name}
 
         post_data = {'data': data,
                      '_zops_remote_ip': '127.0.0.1',

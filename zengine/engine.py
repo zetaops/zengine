@@ -474,13 +474,14 @@ class ZEngine(object):
         if 'wf_meta' in data:
             return
 
-        pre_task = self.workflow.get_tasks(Task.COMPLETED)[-1]
+        current_task = self.workflow.get_tasks(Task.READY)[0]
+        current_task_type = current_task.task_spec.__class__.__name__
+        pre_task = current_task.parent
         pre_task_type = pre_task.task_spec.__class__.__name__
+
         if pre_task_type != 'UserTask':
             return
 
-        current_task = self.workflow.get_tasks(Task.READY)[0]
-        current_task_type = current_task.task_spec.__class__.__name__
         if current_task_type == 'EndEvent':
             return
 
