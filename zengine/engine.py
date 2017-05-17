@@ -29,9 +29,8 @@ from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
-
-# crud_view = CrudView()
 from zengine.models import BPMNWorkflow
+from zengine.models.workflow_manager import TaskInvitation, WFCache
 
 
 class ZEngine(object):
@@ -223,6 +222,13 @@ class ZEngine(object):
                 self.wf_state['finished'] = True
                 self.wf_state['finish_date'] = datetime.now().strftime(
                     settings.DATETIME_DEFAULT_FORMAT)
+
+                if self.current.workflow_name not in settings.EPHEMERAL_WORKFLOWS and not \
+                self.wf_state['in_external']:
+                    wfi = WFCache(self.current).get_instance()
+                    TaskInvitation.objects.filter(instance=wfi, role=self.current.role,
+                                              wf_name=wfi.wf.name).delete()
+
                 self.current.log.info("Delete WFCache: %s %s" % (self.current.workflow_name,
                                                                  self.current.token))
             self.save_workflow_to_cache(self.serialize_workflow())
