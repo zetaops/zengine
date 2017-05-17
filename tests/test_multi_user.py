@@ -7,6 +7,8 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import pytest
+import time
+
 from pyoko.conf import settings
 from pyoko.db.adapter.db_riak import BlockSave
 from pyoko.exceptions import ObjectDoesNotExist
@@ -36,6 +38,8 @@ class TestCase(BaseTestCase):
         # Start the workflow with the first user
         test_user = User.objects.get(username='test_user')
         self.prepare_client('/multiuser/', user=test_user)
+        TaskInvitation.objects.filter(wf_name='multiuser').delete()
+        time.sleep(1)
         with BlockSave(Message):
             resp = self.client.post()
         assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
@@ -48,6 +52,7 @@ class TestCase(BaseTestCase):
         assert task_inv.count() == 1
 
         task_inv.delete()
+        time.sleep(1)
 
         with BlockSave(Message):
             resp = self.client.post()
@@ -60,21 +65,30 @@ class TestCase(BaseTestCase):
         assert task_inv.count() == 1
 
         task_inv.delete()
+        time.sleep(1)
 
     def test_multi_user_owner_fail(self):
-        Message.objects.delete()
         # Start the workflow with the first user
         wf_name = '/multiuser/'
-        mananger_user = User.objects.get(username='test_user')
-        self.prepare_client(wf_name, user=mananger_user)
+        manager_user = User.objects.get(username='test_user')
+        self.prepare_client(wf_name, user=manager_user)
         with BlockSave(Message):
             self.client.post()
-        # The owners extension of the workflow limits the possible users, this user has the correct
-        # permissions but is not included in owners, so shouldn't even receive the join message
-        with pytest.raises(ObjectDoesNotExist) as exc_info:
-            token, user = self.get_user_token('test_user3')
-        assert exc_info.value.args[0].startswith('zengine_models_message')  # message doesn't exist
-        # This user has the necessary permissions and relations, should have recieved the invitation
+
+        # This user has not the necessary permissions and relations,
+        # should not have join to workflow.
+        token, user = self.get_user_token('test_user3')
+        self.prepare_client(wf_name, user=user, token=token)
+
+        with pytest.raises(HTTPError):
+            self.client.post()
+
+        # This user has the necessary permissions and relations, should have join to workflow.
         token, user = self.get_user_token('test_user2')
-        assert token
+        self.prepare_client(wf_name, user=user, token=token)
+
+        resp = self.client.post()
+        assert resp.json['msgbox']['title'] == settings.MESSAGES['lane_change_message_title']
+
+        time.sleep(1)
         TaskInvitation.objects.filter(wf_name='multiuser').delete()
