@@ -172,8 +172,8 @@ QUICK_MENU = []
 #: System Messages
 MESSAGES = {
     'lane_change_invite_title': 'System needs you!',
-    'lane_change_invite_body': 'Some workflow reached a state that needs your action, '
-                               'please follow the link bellow',
+    'lane_change_invite_body': 'workflow needs your action, '
+                               'you can reach to workflow from your task manager.',
     'lane_change_message_title': 'Thank you!',
     'lane_change_message_body': 'You have completed your part on this workflow. '
                                 'Interested parties are notified to join and take over the job.',

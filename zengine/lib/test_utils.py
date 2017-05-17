@@ -245,9 +245,7 @@ class BaseTestCase:
         log.debug("login result :\n%s" % resp.json)
         assert resp.json['cmd'] == 'upgrade'
 
-    @staticmethod
-    def get_user_token(username):
+    def get_user_token(self, username):
         user = User.objects.get(username=username)
-        msg = Message.objects.filter(channel_id=user.prv_exchange)[0]
-        token = msg.url.split('/')[-1]
+        token = self.client.current.token
         return token, user

@@ -45,11 +45,14 @@ def send_message_for_lane_change(sender, **kwargs):
 
     wfi = WFCache(current).get_instance()
 
+    # Deletion of used passive task invitation which belongs to previous lane.
+    TaskInvitation.objects.filter(instance=wfi, role=current.role, wf_name=wfi.wf.name).delete()
+
     for recipient in owners:
         recipient.send_notification(title=msg_context['title'],
-                                    message=msg_context['body'],
+                                    message="%s %s" % (wfi.wf.title, msg_context['body']),
                                     typ=1,  # info
-                                    url=current.get_wf_link(),
+                                    url='',
                                     sender=sender
                                     )
         today = datetime.today()
