@@ -35,6 +35,9 @@ class TestCase(BaseTestCase):
         self.prepare_client('channel_management', user=user)
         resp = self.client.post()
         channel_list = resp.json['forms']['model']["ChannelList"]
+        assert 'wf_meta' in resp.json
+        assert resp.json['wf_meta']['name'] == 'channel_management'
+        assert resp.json['wf_meta']['current_step'] == 'ChannelList'
 
         assert resp.json['forms']['schema']["title"] == 'Public Channel List'
         assert len(channel_list) == Channel.objects.filter(typ=15).count()
@@ -116,6 +119,9 @@ class TestCase(BaseTestCase):
 
         resp = self.client.post(cmd="choose_existing_channel",
                                 form={'ChannelList': channel_list, 'existing_channel': 1})
+        assert 'wf_meta' in resp.json
+        assert resp.json['wf_meta']['name'] == 'channel_management'
+        assert resp.json['wf_meta']['current_step'] == 'ChooseExistingChannel'
         # Channel choosing screen is expected.
         assert 'Choose a Channel' in resp.json['forms']['schema']['title']
         exist_channel_list = resp.json['forms']['model']["ChannelList"]

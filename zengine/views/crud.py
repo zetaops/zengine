@@ -700,7 +700,7 @@ class CrudView(BaseView):
         """
         Creates object listings for the model.
         """
-        query = self._apply_list_queries(self.object.objects.all())
+        query = self._apply_list_queries(self.object.objects.all().order_by())
         self.output['objects'] = []
         self.make_list_header()
         self.display_list_filters()

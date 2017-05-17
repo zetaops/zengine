@@ -58,6 +58,9 @@ class TestCase(BaseTestCase):
             # After re-starting wf, current role is controlled about no role change.
             assert current_role == self.client.current.role
             resp = self.client.post()
+            assert 'wf_meta' in resp.json
+            assert resp.json['wf_meta']['name'] == 'role_switching'
+            assert resp.json['wf_meta']['current_step'] == 'ListUserRoles'
             # If user's last_login_role_key is exist, controlled login operation
             # with this role.
             if i == 1:
