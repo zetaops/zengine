@@ -406,6 +406,15 @@ class ModelForm(object):
 
         self._fields[field].choices = choices
 
+    def set_default_of(self, field, default):
+        """
+        Can be used to dynamically set/modify default of fields.
+
+        Args:
+            field str: Name of field.
+        """
+        self._fields[field].default = default
+
     def _node_data(self, nodes, parent_name):
         results = []
         for real_node in nodes:
