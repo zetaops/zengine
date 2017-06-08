@@ -247,7 +247,7 @@ class JsonForm(ModelForm):
                 item_props['widget'] = itm['kwargs'].pop('widget')
 
             if form_data:
-                if itm['type'] == 'date' or itm['type'] == 'datetime':
+                if form_data[itm['name']] and (itm['type'] == 'date' or itm['type'] == 'datetime'):
                     value_to_serialize = datetime.strptime(
                         form_data[itm['name']], itm['format'])
                 else:
