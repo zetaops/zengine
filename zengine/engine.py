@@ -29,7 +29,7 @@ from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
-from zengine.models import BPMNWorkflow
+from zengine.models import BPMNWorkflow, WFInstance
 from zengine.models.workflow_manager import TaskInvitation, WFCache
 
 
@@ -456,6 +456,7 @@ class ZEngine(object):
                 self.workflow.complete_task_from_id(self.current.task.id)
                 self._save_or_delete_workflow()
                 self.switch_to_external_wf()
+                self.jump_to_unordered_task(task)
 
             if task is None:
                 break
@@ -496,6 +497,10 @@ class ZEngine(object):
         if pre_lane == current_lane:
             pre_task._set_state(Task.READY)
             current_task._set_state(Task.MAYBE)
+
+    def jump_to_unordered_task(self, task):
+        if 'download' in task.task_spec.data:
+            WFCache(self.current).delete()
 
     def switch_lang(self):
         """Switch to the language of the current user.
