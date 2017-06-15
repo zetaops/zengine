@@ -379,7 +379,10 @@ class ZEngine(object):
             main_wf = self.wf_state.copy()
 
             # workflow name from main wf diagram is assigned to current workflow name.
-            self.current.workflow_name = self.current.task.task_spec.topic
+            # workflow name must be either in task_data with key 'external_wf' or in main diagram's
+            # topic.
+            self.current.workflow_name = self.current.task_data.pop('external_wf', False) or self.\
+                current.task.task_spec.topic
 
             # For external WF, check permission and authentication. But after cleaning current task.
             self._clear_current_task()

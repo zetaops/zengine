@@ -2,6 +2,7 @@
 """
 """
 
+
 # Copyright (C) 2015 ZetaOps Inc.
 #
 # This file is licensed under the GNU General Public License v3
@@ -19,3 +20,7 @@ def jumped_wf(current):
     current.output['from_main'] = current.task_data['from_main']
     current.task_data['from_jumped'] = True
     assert current.workflow.name == 'jump_to_wf2'
+
+
+def set_external_wf(current):
+    current.task_data['external_wf'] = 'jump_to_wf2'
