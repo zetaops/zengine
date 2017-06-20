@@ -326,17 +326,18 @@ class ModelForm(object):
                 val = self._serialize_value(getattr(model_obj, name))
 
             item = {'name': name,
-                           'type': self.customize_types.get(name,
-                                                            field.solr_type),
-                           'value': val,
-                           'required': (False if BYPASS_REQUIRED_FIELDS or
-                                                 field.solr_type is 'boolean' else field.required),
-                           'choices': getattr(field, 'choices', None),
-                           'kwargs': field.kwargs,
-                           'title': field.title,
-                           'default': field.default() if callable(
-                                   field.default) else field.default,
-                           }
+                    'type': self.customize_types.get(name,
+                                                     field.solr_type),
+                    'value': val,
+                    'required': (False if BYPASS_REQUIRED_FIELDS or
+                                          field.solr_type is 'boolean' else field.required),
+                    'choices': getattr(field, 'choices', None),
+                    'kwargs': field.kwargs,
+                    'title': field.title,
+                    'default': field.default() if callable(
+                        field.default) else field.default,
+                    'help_text': field.help_text,
+                    }
 
             if isinstance(field, (Date, DateTime)):
                 item['format'] = field.format

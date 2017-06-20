@@ -282,6 +282,9 @@ class JsonForm(ModelForm):
             else:
                 result["form"].append(itm['name'])
 
+            if 'help_text' in itm:
+                item_props['help_text'] = itm['help_text']
+
             if 'schema' in itm:
                 item_props['schema'] = itm['schema']
 
