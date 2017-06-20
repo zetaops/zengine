@@ -353,7 +353,8 @@ class ModelForm(object):
                            'model_name': model_instance.__class__.__name__,
                            'type': 'model',
                            'title': model_instance.Meta.verbose_name,
-                           'required': None,})
+                           'required': None,
+                           'help_text': model_instance.help_text})
         for name, field in node._ordered_fields:
             if field.kwargs.get('hidden'):
                 continue
@@ -365,6 +366,7 @@ class ModelForm(object):
                 'title': field.title,
                 'required': field.required,
                 'default': field.default() if callable(field.default) else field.default,
+                'help_text': field.help_text,
             }
             if choices:
                 data['titleMap'] = self.get_choices(choices)
