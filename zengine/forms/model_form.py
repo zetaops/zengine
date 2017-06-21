@@ -12,6 +12,7 @@ import os
 from pyoko.lib.utils import un_camel_id
 from .fields import *
 import six
+from pyoko.model import Model
 
 BYPASS_REQUIRED_FIELDS = os.getenv('BYPASS_REQUIRED_FIELDS')
 
@@ -247,9 +248,11 @@ class ModelForm(object):
         :param name: field, node or model name.
         :return:
         """
+        if not isinstance(self._model, Model) or not getattr(self._model.__class__, name, False):
+            return False
         if self.exclude and name in self.exclude:
             return True
-        if self.include and name not in self.include:
+        if self.include and name not in self.include and name not in dict(self._ordered_fields):
             return True
 
     def _get_nodes(self, result):
