@@ -227,14 +227,17 @@ class ModelForm(object):
         result = []
         if self._config['fields']:
             self._get_fields(result, self._model)
+        if self._config['models']:
+            self._get_models(result, self._model)
         if self is not self._model:  # to allow additional fields
             try:
                 self._get_fields(result, self)
+                # If self._model is instance of Model and it has linked models
+                self._get_models(result, self)
             except AttributeError:
                 # TODO: all "forms" of world, unite!
                 pass
-        if self._config['models']:
-            self._get_models(result)
+
         if self._config['nodes'] or self._config['list_nodes']:
             self._get_nodes(result)
 
@@ -287,12 +290,12 @@ class ModelForm(object):
                            'default': None,
                            })
 
-    def _get_models(self, result):
-        for lnk in self._model.get_links(is_set=False):
+    def _get_models(self, result, model_obj):
+        for lnk in model_obj.get_links(is_set=False):
             if self._filter_out(lnk['field']):
                 continue
             model = lnk['mdl']
-            model_instance = getattr(self._model, lnk['field'])
+            model_instance = getattr(model_obj, lnk['field'])
             result.append({'name': un_camel_id(lnk['field']),
                            'model_name': model.__name__,
                            'type': 'model',
@@ -302,7 +305,7 @@ class ModelForm(object):
                                                       models=False,
                                                       list_nodes=False,
                                                       nodes=False)._serialize()
-                                       if self._model.is_in_db() else None),
+                                       if model_obj.is_in_db() else None),
                            'required': None,
                            'default': None,
                            })

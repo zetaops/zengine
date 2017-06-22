@@ -18,14 +18,14 @@ three main goals:
 from uuid import uuid4
 
 import six
-
+from pyoko.listnode import ListNode
 from pyoko.fields import BaseField
 from zengine.forms.fields import Button
 from zengine.lib.cache import Cache
 from zengine.lib.exceptions import FormValidationError
 from .model_form import ModelForm
-from zengine.settings import DATE_DEFAULT_FORMAT, DATETIME_DEFAULT_FORMAT
 from datetime import datetime
+
 
 class FormCache(Cache):
     """
@@ -92,8 +92,38 @@ class JsonForm(ModelForm):
         self.process_form()
 
     def get_links(self, **kw):
-        """ Fake method to emulate pyoko model API. """
-        return []
+        """"""
+        unpermitted = ['META_TO_FORM_META', 'META_TO_FORM_ROOT', 'Meta', 'catalog_data_manager',
+                       'context', 'convert_choices', 'customize_types', 'deserialize', 'exclude',
+                       'exist', 'get_choices', 'get_humane_value', 'get_links',
+                       'get_unpermitted_fields', 'get_verbose_name', 'help_text', 'include',
+                       'is_in_db', 'key', 'non_data_fields', 'process_form', 'processed_nodes',
+                       'readable', 'serialize', 'set_choices_of', 'set_data', 'set_default_of',
+                       'title']
+        links = [a for a in dir(self) if not a.startswith("__") and not a.startswith("_") and
+                 a not in unpermitted and callable(
+             getattr(self, a)) and not isinstance(getattr(self, a), ListNode)]
+        startswith = kw.pop('startswith', False)
+        kwitems = list(kw.items())  # Dictionary items is not indexible in Python 3
+        constraint = set(kwitems)
+        models = []
+        for l in links:
+            lnk = {
+                'field': l,
+                'is_set': False,
+                'link_source': False,
+                'm2m': False,
+                'mdl': getattr(self, l).__class__,
+                'null': False,
+                'o2o': False,
+                'reverse': '',
+                'verbose': None
+            }
+            if not constraint or constraint.issubset(set(lnk.items())):
+                models.append(lnk)
+            elif startswith and lnk[kwitems[0][0]].startswith(kwitems[0][1]):
+                models.append(lnk)
+        return models
 
     def _get_bucket_name(self):
         """ Fake method to emulate pyoko model API. """
