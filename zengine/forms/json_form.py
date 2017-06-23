@@ -15,6 +15,7 @@ three main goals:
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
+import types
 from uuid import uuid4
 
 import six
@@ -102,7 +103,9 @@ class JsonForm(ModelForm):
                        'title']
         links = [a for a in dir(self) if not a.startswith("__") and not a.startswith("_") and
                  a not in unpermitted and callable(
-             getattr(self, a)) and not isinstance(getattr(self, a), ListNode)]
+             getattr(self, a)) and not isinstance(getattr(self, a), ListNode) and
+                 not isinstance(getattr(self, a), types.MethodType) and
+                 not isinstance(getattr(self, a), types.FunctionType)]
         startswith = kw.pop('startswith', False)
         kwitems = list(kw.items())  # Dictionary items is not indexible in Python 3
         constraint = set(kwitems)
