@@ -45,10 +45,12 @@ Commercial support from ZetaOps_ requires a valid support contract.
 Authors
 -------
 
-* Evren Esat Özkan
-* Ali Rıza Keleş
+* Samuel Abels
 * Gökhan Boranalp
-
+* Ali Rıza Keleş
+* Evren Esat Özkan
+* Furkan Uyar
+* Anıl Can Aydın
 
 License
 -------
