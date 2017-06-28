@@ -95,7 +95,8 @@ class JsonForm(ModelForm):
     def get_links(self, **kw):
         """"""
 
-        links = [a for a in dir(self) if isinstance(getattr(self, a), Model)]
+        links = [a for a in dir(self) if isinstance(getattr(self, a), Model) and
+                 not a.startswith("_model")]
 
         models = []
         for l in links:

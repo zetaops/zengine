@@ -69,6 +69,22 @@ class BothFormAndModelLinksForm(JsonForm):
     exam = Exam()
 
 
+class IncludeForm(JsonForm):
+    class Meta:
+        title = "Include Form"
+        include = ['name']
+
+    explanation = fields.Text('Explanation')
+
+
+class ExcludeForm(JsonForm):
+    class Meta:
+        title = "Include Form"
+        exclude = ['name']
+
+    explanation = fields.Text('Explanation')
+
+
 class TestCase:
     def test_plain_form(self):
         serialized_model = sorted(LoginForm()._serialize(), key=lambda d: d['name'])
@@ -135,4 +151,16 @@ class TestCase:
         assert 'unit_id' in serialized_form['schema']['properties']
         assert serialized_form['schema']['properties']['unit_id']['list_cmd'] == 'select_list'
 
+    def test_include_exclude(self):
+        form = IncludeForm(Teacher())
 
+        serialized_form = form.serialize()
+
+        assert 'name' in serialized_form['model']
+        assert 'explanation' in serialized_form['model']
+
+        form = ExcludeForm(Teacher())
+        serialized_form = form.serialize()
+
+        assert 'name' not in serialized_form['model']
+        assert 'explanation' in serialized_form['model']
