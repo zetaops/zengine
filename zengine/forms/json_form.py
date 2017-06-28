@@ -15,9 +15,7 @@ three main goals:
 #
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
-import types
 from uuid import uuid4
-
 import six
 from pyoko.model import Model
 from pyoko.fields import BaseField
@@ -43,6 +41,7 @@ class FormCache(Cache):
             form_id = uuid4().hex
         self.form_id = form_id
         super(FormCache, self).__init__(form_id)
+
 
 class JsonForm(ModelForm):
     """
@@ -93,19 +92,25 @@ class JsonForm(ModelForm):
         self.process_form()
 
     def get_links(self, **kw):
-        """"""
+        """
+        Prepare links of form by mimicing pyoko's get_links method's result
 
-        links = [a for a in dir(self) if isinstance(getattr(self, a), Model) and
-                 not a.startswith("_model")]
+        Args:
+            **kw:
 
-        models = []
-        for l in links:
-            lnk = {
+        Returns: list of link dicts
+
+        """
+
+        links = [a for a in dir(self) if isinstance(getattr(self, a), Model)
+                 and not a.startswith('_model')]
+
+        return [
+            {
                 'field': l,
                 'mdl': getattr(self, l).__class__,
-            }
-            models.append(lnk)
-        return models
+            } for l in links
+        ]
 
     def _get_bucket_name(self):
         """ Fake method to emulate pyoko model API. """
