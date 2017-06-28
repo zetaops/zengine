@@ -16,16 +16,15 @@ three main goals:
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 from uuid import uuid4
-
 import six
-
+from pyoko.model import Model
 from pyoko.fields import BaseField
 from zengine.forms.fields import Button
 from zengine.lib.cache import Cache
 from zengine.lib.exceptions import FormValidationError
 from .model_form import ModelForm
-from zengine.settings import DATE_DEFAULT_FORMAT, DATETIME_DEFAULT_FORMAT
 from datetime import datetime
+
 
 class FormCache(Cache):
     """
@@ -42,6 +41,7 @@ class FormCache(Cache):
             form_id = uuid4().hex
         self.form_id = form_id
         super(FormCache, self).__init__(form_id)
+
 
 class JsonForm(ModelForm):
     """
@@ -92,8 +92,25 @@ class JsonForm(ModelForm):
         self.process_form()
 
     def get_links(self, **kw):
-        """ Fake method to emulate pyoko model API. """
-        return []
+        """
+        Prepare links of form by mimicing pyoko's get_links method's result
+
+        Args:
+            **kw:
+
+        Returns: list of link dicts
+
+        """
+
+        links = [a for a in dir(self) if isinstance(getattr(self, a), Model)
+                 and not a.startswith('_model')]
+
+        return [
+            {
+                'field': l,
+                'mdl': getattr(self, l).__class__,
+            } for l in links
+        ]
 
     def _get_bucket_name(self):
         """ Fake method to emulate pyoko model API. """
@@ -281,6 +298,9 @@ class JsonForm(ModelForm):
                 self._handle_choices(itm, item_props, result)
             else:
                 result["form"].append(itm['name'])
+
+            if 'help_text' in itm:
+                item_props['help_text'] = itm['help_text']
 
             if 'schema' in itm:
                 item_props['schema'] = itm['schema']

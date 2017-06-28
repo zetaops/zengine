@@ -432,7 +432,7 @@ class Task(Model):
                 else:
                     query_dict[k] = parse[0]
 
-        return model.objects.filter(**query_dict)
+        return model.objects.all(**query_dict)
 
     def get_roles(self):
         """

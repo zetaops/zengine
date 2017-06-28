@@ -12,6 +12,7 @@ import os
 from pyoko.lib.utils import un_camel_id
 from .fields import *
 import six
+from pyoko.model import Model
 
 BYPASS_REQUIRED_FIELDS = os.getenv('BYPASS_REQUIRED_FIELDS')
 
@@ -226,14 +227,17 @@ class ModelForm(object):
         result = []
         if self._config['fields']:
             self._get_fields(result, self._model)
+        if self._config['models']:
+            self._get_models(result, self._model)
         if self is not self._model:  # to allow additional fields
             try:
                 self._get_fields(result, self)
+                # If self._model is instance of Model and it has linked models
+                self._get_models(result, self)
             except AttributeError:
                 # TODO: all "forms" of world, unite!
                 pass
-        if self._config['models']:
-            self._get_models(result)
+
         if self._config['nodes'] or self._config['list_nodes']:
             self._get_nodes(result)
 
@@ -247,9 +251,11 @@ class ModelForm(object):
         :param name: field, node or model name.
         :return:
         """
+        if not isinstance(self._model, Model) or not getattr(self._model.__class__, name, False):
+            return False
         if self.exclude and name in self.exclude:
             return True
-        if self.include and name not in self.include:
+        if self.include and name not in self.include and name not in dict(self._ordered_fields):
             return True
 
     def _get_nodes(self, result):
@@ -284,12 +290,12 @@ class ModelForm(object):
                            'default': None,
                            })
 
-    def _get_models(self, result):
-        for lnk in self._model.get_links(is_set=False):
+    def _get_models(self, result, model_obj):
+        for lnk in model_obj.get_links(is_set=False):
             if self._filter_out(lnk['field']):
                 continue
             model = lnk['mdl']
-            model_instance = getattr(self._model, lnk['field'])
+            model_instance = getattr(model_obj, lnk['field'])
             result.append({'name': un_camel_id(lnk['field']),
                            'model_name': model.__name__,
                            'type': 'model',
@@ -299,7 +305,7 @@ class ModelForm(object):
                                                       models=False,
                                                       list_nodes=False,
                                                       nodes=False)._serialize()
-                                       if self._model.is_in_db() else None),
+                                       if model_obj.is_in_db() else None),
                            'required': None,
                            'default': None,
                            })
@@ -326,17 +332,18 @@ class ModelForm(object):
                 val = self._serialize_value(getattr(model_obj, name))
 
             item = {'name': name,
-                           'type': self.customize_types.get(name,
-                                                            field.solr_type),
-                           'value': val,
-                           'required': (False if BYPASS_REQUIRED_FIELDS or
-                                                 field.solr_type is 'boolean' else field.required),
-                           'choices': getattr(field, 'choices', None),
-                           'kwargs': field.kwargs,
-                           'title': field.title,
-                           'default': field.default() if callable(
-                                   field.default) else field.default,
-                           }
+                    'type': self.customize_types.get(name,
+                                                     field.solr_type),
+                    'value': val,
+                    'required': (False if BYPASS_REQUIRED_FIELDS or
+                                          field.solr_type is 'boolean' else field.required),
+                    'choices': getattr(field, 'choices', None),
+                    'kwargs': field.kwargs,
+                    'title': field.title,
+                    'default': field.default() if callable(
+                        field.default) else field.default,
+                    'help_text': field.help_text,
+                    }
 
             if isinstance(field, (Date, DateTime)):
                 item['format'] = field.format
@@ -352,7 +359,8 @@ class ModelForm(object):
                            'model_name': model_instance.__class__.__name__,
                            'type': 'model',
                            'title': model_instance.Meta.verbose_name,
-                           'required': None,})
+                           'required': None,
+                           'help_text': model_instance.help_text})
         for name, field in node._ordered_fields:
             if field.kwargs.get('hidden'):
                 continue
@@ -364,6 +372,7 @@ class ModelForm(object):
                 'title': field.title,
                 'required': field.required,
                 'default': field.default() if callable(field.default) else field.default,
+                'help_text': field.help_text,
             }
             if choices:
                 data['titleMap'] = self.get_choices(choices)
