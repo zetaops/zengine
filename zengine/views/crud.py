@@ -419,7 +419,7 @@ class CrudView(BaseView):
         return {self.model_class(self.current).get(itm_key)
                 for itm_key in self.input['selected_items']}
 
-    def make_list_header(self, list_fields=None):
+    def make_list_header(self, **kwargs):
         """
         Sets header row of object list.
 
@@ -427,10 +427,10 @@ class CrudView(BaseView):
         If it's not defined to which fields to be used in object
         listing, then no header is set and first item set to ``-1``.
         """
-        list_fields = list_fields  or self.object.Meta.list_fields
+        list_fields = kwargs.get('list_fields', self.object.Meta.list_fields)
         if list_fields:
             list_headers = []
-            for f in self.object.Meta.list_fields:
+            for f in list_fields:
                 if callable(getattr(self.object, f, None)):
                     list_headers.append(getattr(self.object, f).title)
                 elif "." in f:
@@ -509,11 +509,11 @@ class CrudView(BaseView):
         return query
 
     @obj_filter
-    def _get_list_obj(self, obj, result):
-        fields = self.object.Meta.list_fields
+    def _get_list_obj(self, obj, result, **kwargs):
+        fields = kwargs.get('list_fields', self.object.Meta.list_fields)
 
         if fields:
-            for f in self.object.Meta.list_fields:
+            for f in fields:
                 field = getattr(obj, f, None)
                 field_str = ''
                 if isinstance(field, Model):
@@ -528,7 +528,7 @@ class CrudView(BaseView):
         else:
             result['fields'] = [six.text_type(obj)]
 
-    def _parse_object_actions(self, obj):
+    def _parse_object_actions(self, obj, **kwargs):
         """
         Applies registered (with ``@obj_filter`` decorator)
         object filter methods
@@ -592,7 +592,7 @@ class CrudView(BaseView):
         actions.extend(extra_actions)
         result = {'key': obj.key, 'fields': [], 'actions': actions}.copy()
         for method in self.FILTER_METHODS:
-            method(self, obj, result)
+            method(self, obj, result, **kwargs)
         return result
 
     def _apply_list_queries(self, queryset):
@@ -697,16 +697,16 @@ class CrudView(BaseView):
                 ]
 
     @view_method
-    def list(self, custom_form=None, list_fields=None):
+    def list(self, custom_form=None, **kwargs):
         """
         Creates object listings for the model.
         """
         query = self._apply_list_queries(self.object.objects.all().order_by())
         self.output['objects'] = []
-        self.make_list_header(list_fields)
+        self.make_list_header(**kwargs)
         self.display_list_filters()
         for obj in query:
-            list_obj = self._parse_object_actions(obj)
+            list_obj = self._parse_object_actions(obj, **kwargs)
             list_obj['actions'] = sorted(list_obj['actions'], key=lambda x: x.get('name', ''))
             if not ('exclude' in list_obj or obj.deleted):
                 self.output['objects'].append(list_obj)
