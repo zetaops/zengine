@@ -419,7 +419,7 @@ class CrudView(BaseView):
         return {self.model_class(self.current).get(itm_key)
                 for itm_key in self.input['selected_items']}
 
-    def make_list_header(self):
+    def make_list_header(self, list_fields=None):
         """
         Sets header row of object list.
 
@@ -427,7 +427,8 @@ class CrudView(BaseView):
         If it's not defined to which fields to be used in object
         listing, then no header is set and first item set to ``-1``.
         """
-        if self.object.Meta.list_fields:
+        list_fields = list_fields  or self.object.Meta.list_fields
+        if list_fields:
             list_headers = []
             for f in self.object.Meta.list_fields:
                 if callable(getattr(self.object, f, None)):
@@ -696,13 +697,13 @@ class CrudView(BaseView):
                 ]
 
     @view_method
-    def list(self, custom_form=None):
+    def list(self, custom_form=None, list_fields=None):
         """
         Creates object listings for the model.
         """
         query = self._apply_list_queries(self.object.objects.all().order_by())
         self.output['objects'] = []
-        self.make_list_header()
+        self.make_list_header(list_fields)
         self.display_list_filters()
         for obj in query:
             list_obj = self._parse_object_actions(obj)
