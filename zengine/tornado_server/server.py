@@ -138,10 +138,10 @@ class HttpHandler(web.RequestHandler):
 
     def write_message(self, output):
         log.debug("WRITE MESSAGE To CLIENT: %s" % output)
-        if 'login_process' not in output:
-            # workaround for premature logout bug (empty login form).
-            # FIXME: find a better way to handle HTTP and SOCKET connections for same sess_id.
-            return
+        # if 'login_process' not in output:
+        #     # workaround for premature logout bug (empty login form).
+        #     # FIXME: find a better way to handle HTTP and SOCKET connections for same sess_id.
+        #     return
         self.write(output)
         self.finish()
         self.flush()
