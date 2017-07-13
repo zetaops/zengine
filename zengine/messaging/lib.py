@@ -47,7 +47,8 @@ class BaseUser(object):
         Returns:
             str: kullanıcı avatar url
         """
-        return "%s%s" % (settings.S3_PUBLIC_URL, self.avatar)
+        if self.avatar:
+            return "%s%s" % (settings.S3_PUBLIC_URL, self.avatar)
 
     def __unicode__(self):
         return "User %s" % self.username
