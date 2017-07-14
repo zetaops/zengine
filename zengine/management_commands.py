@@ -427,7 +427,7 @@ class ListSysViews(Command):
                 print("  |_   %s" % view)
 
 
-class LoadDiagrams(Command):
+class LoadDiagrams(Command, BaseThreadedCommand):
     """
     Loads wf diagrams from disk to DB
     """
@@ -437,6 +437,7 @@ class LoadDiagrams(Command):
     PARAMS = [
         {'name': 'wf_path', 'default': None,
          'help': 'Only update given BPMN diagram'},
+        {'name': 'threads', 'default': 30, 'help': 'Max number of threads. Defaults to 1'},
 
         {'name': 'clear', 'action': 'store_true',
          'help': 'Clear all TaskManager related models'},
@@ -451,7 +452,6 @@ class LoadDiagrams(Command):
         read workflows, checks if it's updated,
         tries to update if there aren't any running instances of that wf
         """
-        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, RunningInstancesExist
         from zengine.lib.cache import WFSpecNames
 
         if self.manager.args.clear:
@@ -462,22 +462,30 @@ class LoadDiagrams(Command):
             paths = self.get_wf_from_path(self.manager.args.wf_path)
         else:
             paths = self.get_workflows()
+
         count = 0
-        for wf_name, content in paths:
-            wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name)
-            content = self._tmp_fix_diagram(content)
-            diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
-            if wf_is_new or diagram_is_updated or self.manager.args.force:
-                count += 1
-                print("%s created or updated" % wf_name.upper())
-                try:
-                    wf.set_xml(diagram, self.manager.args.force)
-                except RunningInstancesExist as e:
-                    print(e.message)
-                    print("Give \"--force\" parameter to enforce")
+
+        self.do_with_submit(self.load_diagram, paths, count, threads=self.manager.args.threads)
         WFSpecNames().refresh()
 
         print("%s BPMN file loaded" % count)
+
+    def load_diagram(self, paths, count):
+        from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, RunningInstancesExist
+
+        wf_name, content = paths
+        key = 'bpmn_workflow_%s' % wf_name
+        wf, wf_is_new = BPMNWorkflow.objects.get_or_create(name=wf_name, key=key)
+        content = self._tmp_fix_diagram(content)
+        diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
+        if wf_is_new or diagram_is_updated or self.manager.args.force:
+            count += 1
+            print("%s created or updated" % wf_name.upper())
+            try:
+                wf.set_xml(diagram, self.manager.args.force)
+            except RunningInstancesExist as e:
+                print(e.message)
+                print("Give \"--force\" parameter to enforce")
 
     def _clear_models(self):
         from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, WFInstance, \
@@ -584,7 +592,7 @@ class CheckList(Command):
 
         try:
             cache.ping()
-            print(CheckList.OKGREEN+"{0}Redis is working{1}"+CheckList.ENDC)
+            print(CheckList.OKGREEN + "{0}Redis is working{1}" + CheckList.ENDC)
         except ConnectionError as e:
             print(__(u"{0}Redis is not working{1} ").format(CheckList.FAIL,
                                                             CheckList.ENDC), e.message)
@@ -666,7 +674,7 @@ class ClearCache(Command):
         if prefix_name != "":
             if prefix_name != 'all':
                 for name in prefix_name.split(','):
-                    keys = cache.keys(name+"*")
+                    keys = cache.keys(name + "*")
                     for key in keys:
                         cache.delete(key)
                     print("%d object(s) deleted from cache with PREFIX %s " % (len(keys), name))
