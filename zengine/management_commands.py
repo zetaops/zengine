@@ -463,14 +463,14 @@ class LoadDiagrams(Command, BaseThreadedCommand):
         else:
             paths = self.get_workflows()
 
-        count = 0
+        self.count = 0
 
-        self.do_with_submit(self.load_diagram, paths, count, threads=self.manager.args.threads)
+        self.do_with_submit(self.load_diagram, paths, threads=self.manager.args.threads)
         WFSpecNames().refresh()
 
-        print("%s BPMN file loaded" % count)
+        print("%s BPMN file loaded" % self.count)
 
-    def load_diagram(self, paths, count):
+    def load_diagram(self, paths):
         from zengine.models.workflow_manager import DiagramXML, BPMNWorkflow, RunningInstancesExist
 
         wf_name, content = paths
@@ -479,7 +479,7 @@ class LoadDiagrams(Command, BaseThreadedCommand):
         content = self._tmp_fix_diagram(content)
         diagram, diagram_is_updated = DiagramXML.get_or_create_by_content(wf_name, content)
         if wf_is_new or diagram_is_updated or self.manager.args.force:
-            count += 1
+            self.count+=1
             print("%s created or updated" % wf_name.upper())
             try:
                 wf.set_xml(diagram, self.manager.args.force)
