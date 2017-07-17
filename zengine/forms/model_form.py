@@ -251,8 +251,18 @@ class ModelForm(object):
         :param name: field, node or model name.
         :return:
         """
-        if not isinstance(self._model, Model) or not getattr(self._model.__class__, name, False):
+
+        # if self._model is form
+        # if self._model is Model and model or model class does not have `name` attribute
+        # then skip include/exclude checking
+
+        if not any([isinstance(self._model, Model),
+                    getattr(self._model.__class__, name, False),
+                    getattr(self._model, name, False)]
+
+                   ):
             return False
+
         if self.exclude and name in self.exclude:
             return True
         if self.include and name not in self.include and name not in dict(self._ordered_fields):
