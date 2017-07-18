@@ -65,6 +65,18 @@ class CatalogData(object):
         """
         return self._get_from_local_cache(cat) or self._get_from_cache(cat) or self._get_from_db(cat)
 
+    def get_all_as_dict(self, cat):
+        """
+        Transforms get_all method's results to key value pairs in dict.
+        
+        Args:
+            cat(str): catalog data key name 
+
+        Returns(dict): key-value pair dict.
+        
+        """
+        return {item['value']: item['name'] for item in self.get_all(cat)}
+
     def _get_from_cache(self, cat):
         lang = self._get_lang()
         self.CACHE[lang][cat] = CatalogCache(self._get_lang(), cat).get()
