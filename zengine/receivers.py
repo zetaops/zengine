@@ -65,7 +65,7 @@ def send_message_for_lane_change(sender, **kwargs):
             start_date=today,
             finish_date=today + timedelta(15)
         )
-        inv.title = wfi.wf.title
+        inv.title = current.task_data.get('INVITATION_TITLE') or wfi.wf.title
         inv.save()
 
 
