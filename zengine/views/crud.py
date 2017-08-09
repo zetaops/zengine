@@ -7,6 +7,7 @@
 This module holds CrudView and related classes that helps building
 CRUDS (Create Read Update Delete Search) type of views.
 """
+from collections import OrderedDict
 from operator import attrgetter
 
 import six
@@ -778,7 +779,7 @@ class CrudView(BaseView):
         self.set_client_cmd('show')
         obj_form = forms.JsonForm(self.object, current=self.current, models=False,
                                   list_nodes=False)._serialize(readable=True)
-        obj_data = {}
+        obj_data = OrderedDict()
         for d in obj_form:
             val = d['value']
             # Python doesn't allow custom JSON encoders for keys of dictionaries.
