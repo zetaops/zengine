@@ -322,7 +322,7 @@ class ZEngine(object):
         # external_wf should finish EndEvent and it's name should be
         # also EndEvent for switching again to main wf.
         if self.wf_state['in_external'] and self.current.task_type == 'EndEvent' and \
-                self.current.task_name == 'EndEvent':
+                (self.current.task_name == 'EndEvent' or self.current.spec.description == 'External EndEvent'):
 
             # main_wf information was copied in switch_to_external_wf and it takes this information.
             main_wf = self.wf_state['main_wf']
