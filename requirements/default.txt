@@ -11,6 +11,6 @@ werkzeug
 pytest
 celery
 tornado
-pika
+pika==0.10.0
 babel
 futures

@@ -13,7 +13,7 @@ setup(
                 'permissions and extensible CRUD features',
     install_requires=['beaker', 'passlib', 'falcon', 'beaker_extensions', 'lazy_object_proxy',
                       'redis', 'enum34', 'werkzeug', 'celery', 'SpiffWorkflow', 'pyoko',
-                      'tornado', 'pika', 'babel'],
+                      'tornado', 'pika==0.10.0', 'babel'],
     dependency_links=[
         'git+https://github.com/didip/beaker_extensions.git#egg=beaker_extensions',
         'git+https://github.com/zetaops/SpiffWorkflow.git#egg=SpiffWorkflow',
