@@ -790,7 +790,8 @@ class CrudView(BaseView):
             if d['type'] == 'file' and d['value'] and d['value'][-3:] in ('jpg', 'png'):
                 continue  # passing for now, needs client support
 
-            obj_data[key] = six.text_type(val) if val is not None else val
+            if not d['kwargs'].get('hidden', False):
+                obj_data[key] = six.text_type(val) if val is not None else val
         self.output['object_title'] = "%s : %s" % (self.model_class.Meta.verbose_name, self.object)
         self.output['object_key'] = self.object.key
         self.output['object'] = obj_data

@@ -462,7 +462,7 @@ class Task(Model):
         if self.abstract_role.exist and roles:
             # apply abstract_role filtering on roles we got
             if isinstance(roles, (list, types.GeneratorType)):
-                roles = [a for a in roles if a.abstract_role == self.abstract_role]
+                roles = [a for a in roles if a.abstract_role.key == self.abstract_role.key]
             else:
                 roles = roles.filter(abstract_role=self.abstract_role)
         else:

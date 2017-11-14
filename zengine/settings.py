@@ -83,7 +83,7 @@ LOG_FILE = os.environ.get('LOG_FILE', './zengine.log')
 DEFAULT_CACHE_EXPIRE_TIME = 99999999
 
 #: Workflows that dosen't require logged in user.
-ANONYMOUS_WORKFLOWS = ['login', 'reset_cache']
+ANONYMOUS_WORKFLOWS = ['login', 'reset_cache', 'not_found', ]
 
 #: Workflows which are available for all authenticated users.
 COMMON_WORKFLOWS = ['role_switching']
