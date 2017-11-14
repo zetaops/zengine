@@ -29,7 +29,7 @@ from zengine.lib.camunda_parser import ZopsSerializer
 from zengine.lib.exceptions import HTTPError
 from zengine.lib import translation
 from zengine.log import log
-from zengine.models import BPMNWorkflow
+from zengine.models import BPMNWorkflow, ObjectDoesNotExist
 from zengine.models.workflow_manager import TaskInvitation, WFCache
 
 
@@ -205,7 +205,12 @@ class ZEngine(object):
             # spec_package = InMemoryPackager.package_in_memory(self.current.workflow_name, path)
             # spec = BpmnSerializer().deserialize_workflow_spec(spec_package)
 
-            self.current.wf_object = BPMNWorkflow.objects.get(name=self.current.workflow_name)
+            try:
+                self.current.wf_object = BPMNWorkflow.objects.get(name=self.current.workflow_name)
+            except ObjectDoesNotExist:
+                self.current.wf_object = BPMNWorkflow.objects.get(name='not_found')
+                self.current.task_data['non-existent-wf'] = self.current.workflow_name
+                self.current.workflow_name = 'not_found'
             xml_content = self.current.wf_object.xml.body
             spec = ZopsSerializer().deserialize_workflow_spec(xml_content, self.current.workflow_name)
 
