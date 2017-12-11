@@ -56,7 +56,7 @@ class ClientQueue(object):
                 self.channel = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
         return self.channel
 
-    def send_to_default_exchange(self, sess_id, message=None):
+    def send_to_default_exchange(self, sess_id, props, message=None):
         """
         Send messages through RabbitMQ's default exchange,
         which will be delivered through routing_key (sess_id).
@@ -70,7 +70,11 @@ class ClientQueue(object):
         msg = json.dumps(message, cls=ZEngineJSONEncoder)
         log.debug("Sending following message to %s queue through default exchange:\n%s" % (
             sess_id, msg))
-        self.get_channel().publish(exchange='', routing_key=sess_id, body=msg)
+
+        properties = pika.BasicProperties(correlation_id= \
+                                              props.correlation_id)
+
+        self.get_channel().publish(exchange='output_exc', routing_key=sess_id, body=msg, properties=properties)
 
     def send_to_prv_exchange(self, user_id, message=None):
         """

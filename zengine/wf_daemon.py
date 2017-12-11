@@ -181,13 +181,6 @@ class Worker(object):
             input = json_decode(body)
             data = input['data']
 
-            # since this comes as "path" we dont know if it's view or workflow yet
-            # TODO: just a workaround till we modify ui to
-            if 'path' in data:
-                if data['path'] in VIEW_METHODS:
-                    data['view'] = data['path']
-                else:
-                    data['wf'] = data['path']
             session = Session(self.sessid)
 
             headers = {'remote_ip': input['_zops_remote_ip'],
@@ -200,7 +193,8 @@ class Worker(object):
                 self._handle_job(session, data, headers)
                 return
             else:
-                output = self._handle_view(session, data, headers)
+                if data['view'] in VIEW_METHODS:
+                    output = self._handle_view(session, data, headers)
 
         except HTTPError as e:
             import sys
@@ -221,15 +215,15 @@ class Worker(object):
             output['callbackID'] = input['callbackID']
         log.info("OUTPUT for %s: %s" % (self.sessid, output))
         output['reply_timestamp'] = time()
-        self.send_output(output)
+        self.send_output(output=output, props=properties)
 
-    def send_output(self, output):
+    def send_output(self, output, props):
         # TODO: This is ugly, we should separate login process
         # log.debug("SEND_OUTPUT: %s" % output)
-        if self.current.user_id is None or 'login_process' in output:
-            self.client_queue.send_to_default_exchange(self.sessid, output)
-        else:
-            self.client_queue.send_to_prv_exchange(self.current.user_id, output)
+        # if self.current.user_id is None or 'login_process' in output:
+        self.client_queue.send_to_default_exchange(sess_id=self.sessid, message=output, props=props)
+        # else:
+        #     self.client_queue.send_to_prv_exchange(self.current.user_id, output)
 
 
 def run_workers(no_subprocess, watch_paths=None, is_background=False):

@@ -13,13 +13,14 @@ from uuid import uuid4
 from tornado import websocket, web, ioloop
 from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
+import pika
+import time
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
 from ws_to_queue import QueueManager, log, settings
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
-# blocking_connection = BlockingConnectionForHTTP()
 
 
 class SocketHandler(websocket.WebSocketHandler):
@@ -76,6 +77,8 @@ class HttpHandler(web.RequestHandler):
     login handler class
     """
 
+    response_queue = {}
+
     def _handle_headers(self):
         """
         Do response processing
@@ -96,18 +99,7 @@ class HttpHandler(web.RequestHandler):
         self.set_header('Content-Type', 'application/json')
 
     @web.asynchronous
-    def get(self, view_name):
-        """
-        only used to display login form
-
-        Args:
-            view_name: should be "login"
-
-        """
-        self.post(view_name)
-
-    @web.asynchronous
-    def post(self, view_name):
+    def post(self):
         """
         login handler
         """
@@ -116,42 +108,75 @@ class HttpHandler(web.RequestHandler):
         # try:
         self._handle_headers()
 
+        self.corr_id = uuid4().hex
+        log.info("new colleration id: {}".format(self.corr_id) )
+
         # handle input
         input_data = json_decode(self.request.body) if self.request.body else {}
-        input_data['path'] = view_name
+        # input_data['path'] = view_name
 
         # set or get session cookie
         if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
-            sess_id = uuid4().hex
-            self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
+            self.sess_id = uuid4().hex
+            self.set_cookie(COOKIE_NAME, self.sess_id)  # , domain='127.0.0.1'
+
         else:
-            sess_id = self.get_cookie(COOKIE_NAME)
-        # h_sess_id = "HTTP_%s" % sess_id
-        input_data = {'data': input_data,
-                      '_zops_remote_ip': self.request.remote_ip}
-        log.info("New Request for %s: %s" % (sess_id, input_data))
+            self.sess_id = self.get_cookie(COOKIE_NAME)
 
-        self.application.pc.register_websocket(sess_id, self)
-        self.application.pc.redirect_incoming_message(sess_id,
-                                                      json_encode(input_data),
-                                                      self.request)
+        self.input_data = {'data': input_data,
+                           '_zops_remote_ip': self.request.remote_ip,
+                           '_zops_sess_id': self.sess_id,
+                           '_zops_source': 'Remote',
+                           }
 
-    def write_message(self, output):
-        log.debug("WRITE MESSAGE To CLIENT: %s" % output)
-        # if 'login_process' not in output:
-        #     # workaround for premature logout bug (empty login form).
-        #     # FIXME: find a better way to handle HTTP and SOCKET connections for same sess_id.
-        #     return
-        self.write(output)
-        self.finish()
-        self.flush()
+        log.info("New Request for %s: %s" % (self.sess_id, self.input_data))
+
+        self.queue_name = "rpc_queue_{}".format(self.sess_id)
+
+        self.application.pc.in_channel.queue_declare(exclusive=True, queue=self.queue_name,
+                                                     callback=None)
+
+        log.info("queue {} declared...".format(self.queue_name))
+
+        self.application.pc.in_channel.queue_bind(exchange='output_exc',
+                                                  queue=self.queue_name,
+                                                  routing_key=self.sess_id,
+                                                  callback=self.on_queue_bind)
+        log.info("queue {} binded with {}...".format(self.queue_name, self.sess_id))
+
+    def on_queue_bind(self, frame):
+
+        log.info('consuming... consuming..')
+        self.application.pc.in_channel.basic_consume(self.on_rpc_response,
+                                                     queue=self.queue_name, no_ack=True)
+
+        props = pika.BasicProperties(
+            delivery_mode=1,
+            correlation_id=self.corr_id,
+            reply_to=self.sess_id)
+
+        log.info('Publish rpc call. Self Corr ID: {}'.format(self.corr_id))
+        self.application.pc.in_channel.basic_publish(exchange='input_exc',
+                                                     routing_key=self.sess_id,
+                                                     body=json_encode(self.input_data),
+                                                     properties=props, mandatory=1)
+
+    def on_rpc_response(self, channel, method, header, body):
+        self.response_queue[header.correlation_id] = body
+        if header.correlation_id == self.corr_id:
+            self.write(body)
+            log.info("wrintg body: %s" % body)
+            self.finish()
 
 
+        else:
+            lg = "rpc response failed: #{0}, Corr ID: {2} | Self Corr ID: {3}"
+            log.error(lg.format(method.delivery_tag, header.correlation_id, self.corr_id))
 
 
 URL_CONFS = [
     (r'/ws', SocketHandler),
-    (r'/(\w+)', HttpHandler),
+    (r'/', HttpHandler),
 ]
 
 app = web.Application(URL_CONFS, debug=DEBUG, autoreload=False)
@@ -166,7 +191,7 @@ def runserver(host=None, port=None):
     zioloop = ioloop.IOLoop.instance()
 
     # setup pika client:
-    pc = QueueManager(zioloop)
+    pc = QueueManager(io_loop=zioloop)
     app.pc = pc
     pc.connect()
     app.listen(port, host)
