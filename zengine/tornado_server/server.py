@@ -109,7 +109,7 @@ class HttpHandler(web.RequestHandler):
         self._handle_headers()
 
         self.corr_id = uuid4().hex
-        log.info("new colleration id: {}".format(self.corr_id) )
+        log.info("new colleration id: {}".format(self.corr_id))
 
         # handle input
         input_data = json_decode(self.request.body) if self.request.body else {}
@@ -170,8 +170,9 @@ class HttpHandler(web.RequestHandler):
 
 
         else:
-            lg = "rpc response failed: #{0}, Corr ID: {2} | Self Corr ID: {3}"
-            log.error(lg.format(method.delivery_tag, header.correlation_id, self.corr_id))
+            log.error(
+                "rpc response failed: #{0}, Corr ID: {1} | Self Corr ID: {2}".format(
+                    method.delivery_tag, header.correlation_id, self.corr_id))
 
 
 URL_CONFS = [
