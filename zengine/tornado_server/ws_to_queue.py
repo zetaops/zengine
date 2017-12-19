@@ -110,6 +110,7 @@ class QueueManager(object):
         self.in_channel.exchange_declare(exchange='input_exc', type='topic', durable=True)
         channel.queue_declare(callback=self.on_input_queue_declare, queue=self.INPUT_QUEUE_NAME)
 
+
     def on_input_queue_declare(self, queue):
         """
         Input queue declaration callback.
@@ -140,8 +141,8 @@ class QueueManager(object):
                                       routing_key=sess_id,
                                       body=json_encode(dict(data={
                                           'view': '_zops_mark_offline_user',
-                                          'sess_id': sess_id,},
-                                          _zops_source= 'Internal',
+                                          'sess_id': sess_id, },
+                                          _zops_source='Internal',
                                           _zops_remote_ip='')))
 
         self.websockets[sess_id].write_message(json.dumps({"cmd": "status", "status": "closing"}))
@@ -169,6 +170,7 @@ class QueueManager(object):
                                       # no_ack=True
                                       )
                 log.debug("BINDED QUEUE TO WS Q.%s" % sess_id)
+
             self.out_channels[sess_id] = channel
 
             channel.queue_declare(callback=_on_output_queue_decleration,
@@ -179,7 +181,6 @@ class QueueManager(object):
                                   )
 
         self.connection.channel(_on_output_channel_creation)
-
 
     def redirect_incoming_message(self, sess_id, message, request):
         message = json_decode(message)

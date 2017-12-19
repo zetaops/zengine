@@ -15,9 +15,11 @@ from tornado.escape import json_decode, json_encode
 from tornado.httpclient import HTTPError
 import pika
 import time
+import copy
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
 from ws_to_queue import QueueManager, log, settings
+from blocking_rpc import RpcClient
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
@@ -77,7 +79,7 @@ class HttpHandler(web.RequestHandler):
     login handler class
     """
 
-    response_queue = {}
+
 
     def _handle_headers(self):
         """
@@ -98,7 +100,6 @@ class HttpHandler(web.RequestHandler):
         self.set_header('Access-Control-Allow-Methods', 'OPTIONS')
         self.set_header('Content-Type', 'application/json')
 
-    @web.asynchronous
     def post(self):
         """
         login handler
@@ -108,8 +109,8 @@ class HttpHandler(web.RequestHandler):
         # try:
         self._handle_headers()
 
-        self.corr_id = uuid4().hex
-        log.info("new colleration id: {}".format(self.corr_id))
+        corr_id = uuid4().hex
+        log.info("new colleration id: {}".format(corr_id))
 
         # handle input
         input_data = json_decode(self.request.body) if self.request.body else {}
@@ -123,56 +124,23 @@ class HttpHandler(web.RequestHandler):
         else:
             self.sess_id = self.get_cookie(COOKIE_NAME)
 
-        self.input_data = {'data': input_data,
+        rpc_data = {'data': input_data,
                            '_zops_remote_ip': self.request.remote_ip,
                            '_zops_sess_id': self.sess_id,
                            '_zops_source': 'Remote',
                            }
 
-        log.info("New Request for %s: %s" % (self.sess_id, self.input_data))
-
-        self.queue_name = "rpc_queue_{}".format(self.sess_id)
-
-        self.application.pc.in_channel.queue_declare(exclusive=True, queue=self.queue_name,
-                                                     callback=None)
-
-        log.info("queue {} declared...".format(self.queue_name))
-
-        self.application.pc.in_channel.queue_bind(exchange='output_exc',
-                                                  queue=self.queue_name,
-                                                  routing_key=self.sess_id,
-                                                  callback=self.on_queue_bind)
-        log.info("queue {} binded with {}...".format(self.queue_name, self.sess_id))
-
-    def on_queue_bind(self, frame):
-
-        log.info('consuming... consuming..')
-        self.application.pc.in_channel.basic_consume(self.on_rpc_response,
-                                                     queue=self.queue_name, no_ack=True)
-
-        props = pika.BasicProperties(
-            delivery_mode=1,
-            correlation_id=self.corr_id,
-            reply_to=self.sess_id)
-
-        log.info('Publish rpc call. Self Corr ID: {}'.format(self.corr_id))
-        self.application.pc.in_channel.basic_publish(exchange='input_exc',
-                                                     routing_key=self.sess_id,
-                                                     body=json_encode(self.input_data),
-                                                     properties=props, mandatory=1)
-
-    def on_rpc_response(self, channel, method, header, body):
-        self.response_queue[header.correlation_id] = body
-        if header.correlation_id == self.corr_id:
-            self.write(body)
-            log.info("wrintg body: %s" % body)
-            self.finish()
+        body = self.application.rpc_client.rpc_call(message=rpc_data)
 
 
+        if body:
+                self.write(body)
+                log.info("wrintg body: %s" % body)
+                self.finish()
         else:
             log.error(
-                "rpc response failed: #{0}, Corr ID: {1} | Self Corr ID: {2}".format(
-                    method.delivery_tag, header.correlation_id, self.corr_id))
+                "asfasfasadas")
+            self.finish()
 
 
 URL_CONFS = [
@@ -195,6 +163,8 @@ def runserver(host=None, port=None):
     pc = QueueManager(io_loop=zioloop)
     app.pc = pc
     pc.connect()
+    rpc = RpcClient()
+    app.rpc_client = rpc
     app.listen(port, host)
     zioloop.start()
 
