@@ -8,19 +8,20 @@
 # (GPLv3).  See LICENSE.txt for details.
 import json
 import threading
-from uuid import uuid4
-
 import os, sys
-
-sys.sessid_to_userid = {}
 import pika
 import time
+import signal
+
 from pika.exceptions import ConnectionClosed
+from uuid import uuid4
 
 try:
     from .get_logger import get_logger
 except:
     from get_logger import get_logger
+
+sys.sessid_to_userid = {}
 
 settings = type('settings', (object,), {
     'LOG_HANDLER': os.environ.get('LOG_HANDLER', 'file'),
@@ -46,24 +47,22 @@ BLOCKING_MQ_PARAMS = pika.ConnectionParameters(
 
 WORKER_TIMEOUT = 60
 
+
 class RpcClient(object):
     internal_lock = threading.Lock()
 
     def __init__(self):
-
-
         self.exchange = 'output_exc'
         self.exchange_declared = False
         self.connection = None
         self.channel = None
 
-        log.info("connection for rpc... __init__")
-
+        log.debug("Establishing rpc connection...")
         self.open_connection()
         thread = threading.Thread(target=self._process_data_events)
         thread.setDaemon(True)
         thread.start()
-        log.info("a new thread started for rpc data events... __init__")
+        log.debug("A new thread started for rpc data events...")
 
     def _process_data_events(self):
         """
@@ -79,7 +78,6 @@ class RpcClient(object):
 
         while True:
             with self.internal_lock:
-                # log.info("process data events.... .... ... ")
                 self.connection.process_data_events()
             time.sleep(0.05)
 
@@ -89,22 +87,20 @@ class RpcClient(object):
         """
 
         if not self.connection or self.connection.is_closed:
-            log.info("create a new connection for rpc... __open_connection__")
+            log.debug("Creating a new connection for rpc")
             self.connection = pika.BlockingConnection(BLOCKING_MQ_PARAMS)
 
         if not self.channel or self.channel.is_closed:
-            log.info("open a new channel for rpc... __open_connection__")
+            log.debug("Opening a new channel for rpc")
             self.channel = self.connection.channel()
 
         if not self.exchange_declared:
-            log.info("exchange declared for rpc... __open_connection__ {}".format(self.exchange))
-            self.channel.exchange_declare(exchange=self.exchange, exchange_type='topic', durable=True,
-                                          auto_delete=False)
+            self.channel.exchange_declare(exchange=self.exchange, exchange_type='topic',
+                                          durable=True, auto_delete=False)
             self.exchange_declared = True
 
         result = self.channel.queue_declare(exclusive=True)
         self.callback_queue = result.method.queue
-        log.info("queue declared for rpc... __open_connection__ {}".format(self.callback_queue))
 
     def close_connection(self):
         """
@@ -120,7 +116,8 @@ class RpcClient(object):
         self.connection, self.channel = None, None
 
     def on_response(self, ch, method, props, body):
-        log.info('Got a new response, Corr ID: {} / Self Corr: {}'.format(props.correlation_id, self.corr_id))
+        log.debug('Got a new response, Corr ID: {} / Self Corr: {}'.format(props.correlation_id,
+                                                                           self.corr_id))
         if self.corr_id == props.correlation_id:
             self.response = json.loads(body)
 
@@ -129,7 +126,8 @@ class RpcClient(object):
         self.corr_id = str(uuid4())
 
         try:
-            if not self.connection or self.connection.is_closed or not self.channel or self.channel.is_closed:
+            if not self.connection or self.connection.is_closed or not self.channel or \
+                    self.channel.is_closed:
                 with self.internal_lock:
                     self.open_connection()
 
@@ -154,15 +152,28 @@ class RpcClient(object):
             return self.rpc_call(message=message, blocking=blocking, time_limit=time_limit)
 
         except Exception as e:
-            self.response = {"error": {"code": -32603, "message": "Can not connect AMQP or another error occured!"}, }
+            self.response = {
+                "rpc_error": {
+                    "code": -32603, "message": "Can not connect AMQP or another error occured!"
+                },
+            }
             self.close_connection()
 
-        deadline = time.time() + time_limit
-
+        signal.signal(signal.SIGALRM, self.timeout_handler)
+        signal.alarm(time_limit)
         while self.response is None:
-            time_limit = deadline - time.time()
-            if time_limit <= 0:
-                self.response = {"error": {"code": -32003, "message": "Worker timeout"}, }
+            time.sleep(0.05)
+
+        if "rpc_error" not in self.response:
+            signal.alarm(0)
 
         return self.response
+
+    def timeout_handler(self):
+        self.response = {
+            "rpc_error": {
+                "code": -32003,
+                "message": "Worker timeout"
+            },
+        }
 

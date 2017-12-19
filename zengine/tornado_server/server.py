@@ -8,14 +8,10 @@ tornado websocket proxy for WF worker daemons
 # (GPLv3).  See LICENSE.txt for details.
 import json
 import os, sys
-import traceback
 from uuid import uuid4
 from tornado import websocket, web, ioloop
-from tornado.escape import json_decode, json_encode
+from tornado.escape import json_decode
 from tornado.httpclient import HTTPError
-import pika
-import time
-import copy
 
 sys.path.insert(0, os.path.realpath(os.path.dirname(__file__)))
 from ws_to_queue import QueueManager, log, settings
@@ -23,6 +19,11 @@ from blocking_rpc import RpcClient
 
 COOKIE_NAME = 'zopsess'
 DEBUG = os.getenv("DEBUG", False)
+
+RPC_ERRORS = {
+    -32603: 500,
+    -32003: 504,
+}
 
 
 class SocketHandler(websocket.WebSocketHandler):
@@ -76,10 +77,12 @@ class SocketHandler(websocket.WebSocketHandler):
 # noinspection PyAbstractClass
 class HttpHandler(web.RequestHandler):
     """
-    login handler class
+    Http handler class to manage http requests from client through the worker.
+
+    Basically, obtains messages coming from the client and delivers them to the workers via RPC call
+    feature of RabbitMQ. Each message sent to worker processed and corresponding response of that
+    message is delivered to the client.
     """
-
-
 
     def _handle_headers(self):
         """
@@ -105,41 +108,39 @@ class HttpHandler(web.RequestHandler):
         login handler
         """
         sess_id = None
-        input_data = {}
         # try:
         self._handle_headers()
 
-        corr_id = uuid4().hex
-        log.info("new colleration id: {}".format(corr_id))
-
         # handle input
         input_data = json_decode(self.request.body) if self.request.body else {}
-        # input_data['path'] = view_name
 
         # set or get session cookie
         if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
-            self.sess_id = uuid4().hex
-            self.set_cookie(COOKIE_NAME, self.sess_id)  # , domain='127.0.0.1'
-
+            sess_id = uuid4().hex
+            self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
         else:
             self.sess_id = self.get_cookie(COOKIE_NAME)
 
-        rpc_data = {'data': input_data,
-                           '_zops_remote_ip': self.request.remote_ip,
-                           '_zops_sess_id': self.sess_id,
-                           '_zops_source': 'Remote',
-                           }
+        rpc_data = {
+            'data': input_data,
+            '_zops_remote_ip': self.request.remote_ip,
+            '_zops_sess_id': sess_id,
+            '_zops_source': 'Remote',
+        }
 
         body = self.application.rpc_client.rpc_call(message=rpc_data)
 
-
         if body:
-                self.write(body)
-                log.info("wrintg body: %s" % body)
-                self.finish()
+            if 'rpc_error' in body:
+                log.error(body['error']['message'])
+                raise HTTPError(
+                    RPC_ERRORS[body['error']['code']],
+                    message=body['error']['message'],
+                )
+            self.write(body)
+            log.debug("wrintg body: %s" % body)
+            self.finish()
         else:
-            log.error(
-                "asfasfasadas")
             self.finish()
 
 

@@ -181,6 +181,13 @@ class Worker(object):
             input = json_decode(body)
             data = input['data']
 
+            # since this comes as "path" we dont know if it's view or workflow yet
+            # TODO: just a workaround till we modify ui to
+            if 'path' in data:
+                if data['path'] in VIEW_METHODS:
+                    data['view'] = data['path']
+                else:
+                    data['wf'] = data['path']
             session = Session(self.sessid)
 
             headers = {'remote_ip': input['_zops_remote_ip'],
@@ -193,7 +200,7 @@ class Worker(object):
                 self._handle_job(session, data, headers)
                 return
             else:
-                if data['view'] in VIEW_METHODS:
+                if data.get('view') in VIEW_METHODS:
                     output = self._handle_view(session, data, headers)
 
         except HTTPError as e:
@@ -215,7 +222,7 @@ class Worker(object):
             output['callbackID'] = input['callbackID']
         log.info("OUTPUT for %s: %s" % (self.sessid, output))
         output['reply_timestamp'] = time()
-        self.send_output(output=output, props=properties)
+        self.send_output(output, properties)
 
     def send_output(self, output, props):
         # TODO: This is ugly, we should separate login process

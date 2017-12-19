@@ -10,8 +10,7 @@ import json
 
 from pyoko.conf import settings
 import pika
-import time
-from pika.exceptions import ConnectionClosed, ChannelClosed
+from pika.exceptions import ConnectionClosed
 from zengine.lib.json_interface import ZEngineJSONEncoder
 
 
@@ -68,14 +67,13 @@ class ClientQueue(object):
             message dict: Message object.
         """
         msg = json.dumps(message, cls=ZEngineJSONEncoder)
-        log.debug("Sending following message to %s queue through output_exc exchange with corr_id: %s" % (
-            props.reply_to,
-            props.correlation_id))
+        log.debug("Sending following message to %s queue through output_exc exchange with "
+                  "corr_id: %s" % (props.reply_to, props.correlation_id))
 
-        properties = pika.BasicProperties(correlation_id= \
-                                              props.correlation_id)
+        properties = pika.BasicProperties(correlation_id=props.correlation_id)
 
-        self.get_channel().publish(exchange='', routing_key=props.reply_to, body=msg, properties=properties)
+        self.get_channel().publish(exchange='', routing_key=props.reply_to, body=msg,
+                                   properties=properties)
 
     def send_to_prv_exchange(self, user_id, message=None):
         """

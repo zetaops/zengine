@@ -147,9 +147,8 @@ class BaseTestClient(Worker):
         return self.response_wrapper
 
 
-
 class TestClient(BaseTestClient):
-    def send_output(self, output):
+    def send_output(self, output, props):
         self.response_wrapper = ResponseWrapper(output)
 
 

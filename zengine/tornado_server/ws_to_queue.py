@@ -110,7 +110,6 @@ class QueueManager(object):
         self.in_channel.exchange_declare(exchange='input_exc', type='topic', durable=True)
         channel.queue_declare(callback=self.on_input_queue_declare, queue=self.INPUT_QUEUE_NAME)
 
-
     def on_input_queue_declare(self, queue):
         """
         Input queue declaration callback.
@@ -123,8 +122,6 @@ class QueueManager(object):
                                    exchange='input_exc',
                                    queue=self.INPUT_QUEUE_NAME,
                                    routing_key="#")
-
-
 
     def register_websocket(self, sess_id, ws):
         """
@@ -170,7 +167,6 @@ class QueueManager(object):
                                       # no_ack=True
                                       )
                 log.debug("BINDED QUEUE TO WS Q.%s" % sess_id)
-
             self.out_channels[sess_id] = channel
 
             channel.queue_declare(callback=_on_output_queue_decleration,
