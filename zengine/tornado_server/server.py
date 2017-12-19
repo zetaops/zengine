@@ -108,7 +108,6 @@ class HttpHandler(web.RequestHandler):
         login handler
         """
         sess_id = None
-        # try:
         self._handle_headers()
 
         # handle input
@@ -117,7 +116,7 @@ class HttpHandler(web.RequestHandler):
         # set or get session cookie
         if not self.get_cookie(COOKIE_NAME) or 'username' in input_data:
             sess_id = uuid4().hex
-            self.set_cookie(COOKIE_NAME, sess_id)  # , domain='127.0.0.1'
+            self.set_cookie(COOKIE_NAME, sess_id)
         else:
             self.sess_id = self.get_cookie(COOKIE_NAME)
 
@@ -138,9 +137,10 @@ class HttpHandler(web.RequestHandler):
                     message=body['error']['message'],
                 )
             self.write(body)
-            log.debug("wrintg body: %s" % body)
+            log.debug("Response sent successfully. \n")
             self.finish()
         else:
+            log.debug("Response is empty. \n")
             self.finish()
 
 

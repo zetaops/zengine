@@ -7,14 +7,10 @@
 # This file is licensed under the GNU General Public License v3
 # (GPLv3).  See LICENSE.txt for details.
 import json
-from uuid import uuid4
-
-import os, sys
-sys.sessid_to_userid = {}
+import os
 import pika
-import time
-from pika.adapters import TornadoConnection, BaseConnection
-from pika.exceptions import ChannelClosed, ConnectionClosed
+from pika.adapters import TornadoConnection
+from pika.exceptions import ChannelClosed
 from tornado.escape import json_decode, json_encode
 
 try:
@@ -145,7 +141,6 @@ class QueueManager(object):
         self.websockets[sess_id].write_message(json.dumps({"cmd": "status", "status": "closing"}))
 
     def unregister_websocket(self, sess_id):
-        # user_id = sys.sessid_to_userid.get(sess_id, None)
         try:
             self.inform_disconnection(sess_id)
             del self.websockets[sess_id]

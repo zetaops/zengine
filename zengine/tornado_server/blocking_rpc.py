@@ -8,7 +8,7 @@
 # (GPLv3).  See LICENSE.txt for details.
 import json
 import threading
-import os, sys
+import os
 import pika
 import time
 import signal
@@ -21,7 +21,6 @@ try:
 except:
     from get_logger import get_logger
 
-sys.sessid_to_userid = {}
 
 settings = type('settings', (object,), {
     'LOG_HANDLER': os.environ.get('LOG_HANDLER', 'file'),
@@ -154,7 +153,7 @@ class RpcClient(object):
         except Exception as e:
             self.response = {
                 "rpc_error": {
-                    "code": -32603, "message": "Can not connect AMQP or another error occured!"
+                    "code": -32603, "message": "Can not connect AMQP or unknown error occured!"
                 },
             }
             self.close_connection()
