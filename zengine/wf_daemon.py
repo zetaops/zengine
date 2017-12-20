@@ -227,8 +227,10 @@ class Worker(object):
     def send_output(self, output, props):
         # TODO: This is ugly, we should separate login process
         # log.debug("SEND_OUTPUT: %s" % output)
-        # if self.current.user_id is None or 'login_process' in output:
-        self.client_queue.send_to_default_exchange(sess_id=self.sessid, message=output, props=props)
+        if props.reply_to=='prv':
+            self.client_queue.send_to_prv_exchange(self.current.user_id, output)
+        else:
+            self.client_queue.send_to_default_exchange(sess_id=self.sessid, message=output, props=props)
         # else:
         #     self.client_queue.send_to_prv_exchange(self.current.user_id, output)
 

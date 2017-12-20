@@ -180,7 +180,13 @@ class QueueManager(object):
         message['_zops_source'] = 'Remote'
         self.in_channel.basic_publish(exchange='input_exc',
                                       routing_key=sess_id,
+                                      properties=pika.BasicProperties(
+                                          # delivery_mode=1,
+                                          reply_to="prv",
+                                          correlation_id=self.corr_id,
+                                      ),
                                       body=json_encode(message))
+
 
     def on_message(self, channel, method, header, body):
         sess_id = method.consumer_tag
